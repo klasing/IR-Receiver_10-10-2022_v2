@@ -1,3 +1,4 @@
+#define IDC_RCV_MSG				33000
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by IR-Receiver_10-10-2022_v2.rc

@@ -7,7 +7,9 @@
 #define MAX_LOADSTRING 100
 
 // Global Variables:
-HINSTANCE hInst;                                // current instance
+HINSTANCE g_hInst;                              // current instance
+HANDLE g_hComm;                                 // handle to RS-232 serial interface
+
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
@@ -15,6 +17,7 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -95,7 +98,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   hInst = hInstance; // Store instance handle in our global variable
+   g_hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
@@ -125,6 +128,68 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
+    case WM_NCCREATE:
+    {
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    case WM_CREATE:
+    {
+        g_hComm = CreateFile(L"\\\\.\\COM3"
+            , GENERIC_READ | GENERIC_WRITE
+            , 0
+            , NULL
+            , OPEN_EXISTING
+            , 0
+            , NULL
+        );
+        if (g_hComm == INVALID_HANDLE_VALUE)
+        {
+            OutputDebugString(L"ERROR\n");
+            return 0;
+
+        }
+        else
+        {
+            OutputDebugString(L"SUCCESS\n");
+        }
+        DCB dcb;
+        dcb.DCBlength = sizeof(DCB);
+        GetCommState(g_hComm, (LPDCB)&dcb);
+        // BaudRate...: 115200
+        // ByteSize...: 8
+        // Parity.....: 0
+        // Stopbits...: 0
+        if (dcb.BaudRate != 115200 || dcb.ByteSize != 8 || dcb.fParity != 0 || dcb.StopBits != 0)
+        {
+            return 0;
+        }
+        OutputDebugString(L"good to go\n");
+        SetCommMask(g_hComm, EV_RXCHAR);
+        return 0;
+    }
+    case WM_SIZE:
+    {
+        CreateDialog(g_hInst, L"DLGPROCWINDOW", hWnd, DlgProc);
+        DWORD dwEvtMask = EV_RXCHAR;
+        OVERLAPPED overlapped;
+        overlapped.hEvent = CreateEvent(NULL
+            , TRUE
+            , FALSE
+            , NULL
+        );
+        overlapped.Internal = 0;
+        overlapped.InternalHigh = 0;
+        overlapped.Offset = 0;
+        overlapped.OffsetHigh = 0;
+        if (WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, (LPOVERLAPPED)&overlapped))
+        {
+            if (dwEvtMask & EV_RXCHAR)
+            {
+                OutputDebugString(L"char received\n");
+            }
+        }
+        return (INT_PTR)TRUE;
+    }
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -132,7 +197,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (wmId)
             {
             case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
             case IDM_EXIT:
                 DestroyWindow(hWnd);
@@ -158,7 +223,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
-
+INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+    case WM_INITDIALOG:
+    {
+        HWND hWndParent = GetParent(hDlg);
+        RECT rect;
+        GetClientRect(hWndParent, &rect);
+        SetWindowPos(hDlg
+            , HWND_TOP
+            , rect.left
+            , rect.top
+            , rect.right
+            , rect.bottom
+            , SWP_SHOWWINDOW
+        );
+        return (INT_PTR)FALSE;
+    }
+    } // eof switch
+    return (INT_PTR)FALSE;
+}
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -166,8 +252,9 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_INITDIALOG:
+    {
         return (INT_PTR)TRUE;
-
+    }
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
         {
