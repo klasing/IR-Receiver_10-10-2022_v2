@@ -182,7 +182,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // Stopbits...: 1
         DCB dcb;
         dcb.DCBlength = sizeof(DCB);
-		dcb.BaudRate = 115200;
+        dcb.BaudRate = 115200;
         dcb.fBinary = 1;
         dcb.fParity = 0;
         dcb.fOutxCtsFlow = 0;
@@ -207,8 +207,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         dcb.EvtChar = 0;
         dcb.wReserved1 = 0;
         dcb.ByteSize = 8;
-		dcb.StopBits = 0;
-		SetCommState(g_hComm, (LPDCB)&dcb);
+        dcb.StopBits = 0;
+        SetCommState(g_hComm, (LPDCB)&dcb);
 
         COMMTIMEOUTS commtimeouts;
         commtimeouts.ReadIntervalTimeout = MAXDWORD;
