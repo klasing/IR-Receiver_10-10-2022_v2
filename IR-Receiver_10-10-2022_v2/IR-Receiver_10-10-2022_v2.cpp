@@ -9,6 +9,9 @@
 // Global Variables:
 HINSTANCE g_hInst;                              // current instance
 HANDLE g_hComm;                                 // handle to RS-232 serial interface
+DWORD g_dwEvtMask = EV_RXCHAR;
+OVERLAPPED g_overlapped;
+
 
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
@@ -18,6 +21,7 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+DWORD WINAPI        RS232ThreadFunc(LPVOID lpParam);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -100,8 +104,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    g_hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindowW(szWindowClass
+       , szTitle
+       , WS_OVERLAPPEDWINDOW
+       , 10//CW_USEDEFAULT
+       , 10//0
+       , 440//CW_USEDEFAULT
+       , 460//0
+       , nullptr
+       , nullptr
+       , hInstance
+       , nullptr
+   );
 
    if (!hWnd)
    {
@@ -124,12 +138,26 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - post a quit message and return
 //
 //
+//****************************************************************************
+//*                     WndProc
+//****************************************************************************
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    static HWND hWndDlg;
     switch (message)
     {
     case WM_NCCREATE:
     {
+        hWndDlg = CreateDialog(g_hInst, L"DLGPROCWINDOW", hWnd, DlgProc);
+        g_overlapped.hEvent = CreateEvent(NULL
+            , TRUE
+            , FALSE
+            , NULL
+        );
+        g_overlapped.Internal = 0;
+        g_overlapped.InternalHigh = 0;
+        g_overlapped.Offset = 0;
+        g_overlapped.OffsetHigh = 0;
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     case WM_CREATE:
@@ -139,55 +167,84 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             , 0
             , NULL
             , OPEN_EXISTING
-            , 0
+            , 0 //should NOT be FILE_FLAG_OVERLAPPED
             , NULL
         );
-        if (g_hComm == INVALID_HANDLE_VALUE)
-        {
-            OutputDebugString(L"ERROR\n");
-            return 0;
 
-        }
-        else
-        {
-            OutputDebugString(L"SUCCESS\n");
-        }
-        DCB dcb;
-        dcb.DCBlength = sizeof(DCB);
-        GetCommState(g_hComm, (LPDCB)&dcb);
+        // just checking
+        //DCB dcb0;
+        //dcb0.DCBlength = sizeof(DCB);
+        //GetCommState(g_hComm, &dcb0);
+
         // BaudRate...: 115200
         // ByteSize...: 8
         // Parity.....: 0
-        // Stopbits...: 0
-        if (dcb.BaudRate != 115200 || dcb.ByteSize != 8 || dcb.fParity != 0 || dcb.StopBits != 0)
-        {
-            return 0;
-        }
-        OutputDebugString(L"good to go\n");
+        // Stopbits...: 1
+        DCB dcb;
+        dcb.DCBlength = sizeof(DCB);
+		dcb.BaudRate = 115200;
+        dcb.fBinary = 1;
+        dcb.fParity = 0;
+        dcb.fOutxCtsFlow = 0;
+        dcb.fOutxDsrFlow = 0;
+        dcb.fDtrControl = 1;
+        dcb.fDsrSensitivity = 0;
+        dcb.fTXContinueOnXoff = 0;
+        dcb.fOutX = 0;
+        dcb.fInX = 0;
+        dcb.fErrorChar = 0;
+        dcb.fNull = 0;
+        dcb.fRtsControl = 1;
+        dcb.fAbortOnError = 0;
+        dcb.fDummy2 = 0;
+        dcb.wReserved = 0;
+        dcb.ByteSize = 8;
+        dcb.Parity = 0;
+        dcb.StopBits = 0;
+        dcb.XoffChar = 0;
+        dcb.XoffChar = 0;
+        dcb.ErrorChar = 24;
+        dcb.EvtChar = 0;
+        dcb.wReserved1 = 0;
+        dcb.ByteSize = 8;
+		dcb.StopBits = 0;
+		SetCommState(g_hComm, (LPDCB)&dcb);
+
+        COMMTIMEOUTS commtimeouts;
+        commtimeouts.ReadIntervalTimeout = MAXDWORD;
+        commtimeouts.ReadTotalTimeoutMultiplier = 0;
+        commtimeouts.ReadTotalTimeoutConstant = 0;
+        commtimeouts.WriteTotalTimeoutMultiplier = 0;
+        commtimeouts.WriteTotalTimeoutConstant = 0;
+        SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts);
+
         SetCommMask(g_hComm, EV_RXCHAR);
+
+        LPVOID lpParam = hWndDlg;
+        DWORD dwThreadId;
+        HANDLE hThread = CreateThread(NULL
+            , 0
+            , RS232ThreadFunc
+            , lpParam
+            , 0
+            , &dwThreadId
+        );
+
+        //SendMessage(hWndDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
         return 0;
     }
     case WM_SIZE:
     {
-        CreateDialog(g_hInst, L"DLGPROCWINDOW", hWnd, DlgProc);
-        DWORD dwEvtMask = EV_RXCHAR;
-        OVERLAPPED overlapped;
-        overlapped.hEvent = CreateEvent(NULL
-            , TRUE
-            , FALSE
-            , NULL
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        SetWindowPos(hWndDlg
+            , HWND_TOP
+            , rect.left
+            , rect.top
+            , rect.right
+            , rect.bottom
+            , SWP_SHOWWINDOW
         );
-        overlapped.Internal = 0;
-        overlapped.InternalHigh = 0;
-        overlapped.Offset = 0;
-        overlapped.OffsetHigh = 0;
-        if (WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, (LPOVERLAPPED)&overlapped))
-        {
-            if (dwEvtMask & EV_RXCHAR)
-            {
-                OutputDebugString(L"char received\n");
-            }
-        }
         return (INT_PTR)TRUE;
     }
     case WM_COMMAND:
@@ -223,29 +280,66 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
+//****************************************************************************
+//*                     DlgProc
+//****************************************************************************
 INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
     case WM_INITDIALOG:
     {
-        HWND hWndParent = GetParent(hDlg);
-        RECT rect;
-        GetClientRect(hWndParent, &rect);
-        SetWindowPos(hDlg
-            , HWND_TOP
-            , rect.left
-            , rect.top
-            , rect.right
-            , rect.bottom
-            , SWP_SHOWWINDOW
-        );
         return (INT_PTR)FALSE;
+    }
+    case WM_SIZE:
+    {
+        return (INT_PTR)TRUE;
+    }
+    case WM_COMMAND:
+    {
+        switch (LOWORD(wParam))
+        {
+        case START_RECEIVE:
+        {
+            // NOT USED
+            // message sent from hWndProc to this hWndDlg             
+            return (INT_PTR)TRUE;
+        }
+        } // eof switch
+        break;
     }
     } // eof switch
     return (INT_PTR)FALSE;
 }
-// Message handler for about box.
+//****************************************************************************
+//*                     RS232ThreadFunc
+//****************************************************************************
+DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
+{
+    HWND hWndDlg = (HWND)lpParam;
+    HWND hWndEdit = GetDlgItem(hWndDlg, IDC_RCV_MSG);
+    BOOL bResult = FALSE;
+    CHAR chBuffer[128] = { 0 };
+    DWORD dwBytesRead;
+    std::string str = "";
+    // wait a transmission from the micro controller
+    while (WaitCommEvent(g_hComm, (LPDWORD)&g_dwEvtMask, (LPOVERLAPPED)&g_overlapped))
+    {
+        // a character has been received
+        if (g_dwEvtMask & EV_RXCHAR)
+        {
+            // read input buffer into char-buffer
+            bResult = ReadFile(g_hComm, &chBuffer, 128, &dwBytesRead, &g_overlapped);
+            str = chBuffer;
+            // append string to edit control in dialog window
+            appendTextToEditControlA(hWndEdit, str.c_str());
+        }
+    }
+    return 0;
+}
+//****************************************************************************
+//*                     About
+//****************************************************************************
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     UNREFERENCED_PARAMETER(lParam);

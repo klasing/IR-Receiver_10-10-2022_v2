@@ -12,4 +12,6 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <memory.h>
+#include <string>
 #include <tchar.h>
+
