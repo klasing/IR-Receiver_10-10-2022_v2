@@ -1,3 +1,4 @@
+#define BUFFER_MAX				128
 // control
 #define IDC_RCV_MSG				33000
 // message

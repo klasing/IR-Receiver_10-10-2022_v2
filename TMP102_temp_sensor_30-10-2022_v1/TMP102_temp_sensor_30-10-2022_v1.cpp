@@ -163,56 +163,56 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // set structure to initialize communication port
         DCB dcb;
         dcb.DCBlength = sizeof(DCB);
-        dcb.BaudRate            = 115200;
-        dcb.fBinary             = 1;
-        dcb.fParity             = 0;
-        dcb.fOutxCtsFlow        = 0;
-        dcb.fOutxDsrFlow        = 0;
-        dcb.fDtrControl         = 1;
-        dcb.fDsrSensitivity     = 0;
-        dcb.fTXContinueOnXoff   = 0;
-        dcb.fOutX               = 0;
-        dcb.fInX                = 0;
-        dcb.fErrorChar          = 0;
-        dcb.fNull               = 0;
-        dcb.fRtsControl         = 1;
-        dcb.fAbortOnError       = 0;
-        dcb.fDummy2             = 0;
-        dcb.wReserved           = 0;
-        dcb.ByteSize            = 8;
-        dcb.Parity              = 0;
-        dcb.StopBits            = 0;
-        dcb.XoffChar            = 0;
-        dcb.XoffChar            = 0;
-        dcb.ErrorChar           = 24;
-        dcb.EvtChar             = 0;
-        dcb.wReserved1          = 0;
-        dcb.ByteSize            = 8;
-        dcb.StopBits            = 0;
+        dcb.BaudRate = 115200;
+        dcb.fBinary = 1;
+        dcb.fParity = 0;
+        dcb.fOutxCtsFlow = 0;
+        dcb.fOutxDsrFlow = 0;
+        dcb.fDtrControl = 1;
+        dcb.fDsrSensitivity = 0;
+        dcb.fTXContinueOnXoff = 0;
+        dcb.fOutX = 0;
+        dcb.fInX = 0;
+        dcb.fErrorChar = 0;
+        dcb.fNull = 0;
+        dcb.fRtsControl = 1;
+        dcb.fAbortOnError = 0;
+        dcb.fDummy2 = 0;
+        dcb.wReserved = 0;
+        dcb.ByteSize = 8;
+        dcb.Parity = 0;
+        dcb.StopBits = 0;
+        dcb.XoffChar = 0;
+        dcb.XoffChar = 0;
+        dcb.ErrorChar = 24;
+        dcb.EvtChar = 0;
+        dcb.wReserved1 = 0;
+        dcb.ByteSize = 8;
+        dcb.StopBits = 0;
         // initialize communication port
         SetCommState(g_hComm, (LPDCB)&dcb);
         // set structure for communication port timeout
         COMMTIMEOUTS commtimeouts;
-        commtimeouts.ReadIntervalTimeout            = MAXDWORD;
-        commtimeouts.ReadTotalTimeoutMultiplier     = 0;
-        commtimeouts.ReadTotalTimeoutConstant       = 0;
-        commtimeouts.WriteTotalTimeoutMultiplier    = 0;
-        commtimeouts.WriteTotalTimeoutConstant      = 0;
+        commtimeouts.ReadIntervalTimeout = MAXDWORD;
+        commtimeouts.ReadTotalTimeoutMultiplier = 0;
+        commtimeouts.ReadTotalTimeoutConstant = 0;
+        commtimeouts.WriteTotalTimeoutMultiplier = 0;
+        commtimeouts.WriteTotalTimeoutConstant = 0;
         // set communication port timeout
         SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts);
         // set communication port mask bit to capture event
-        SetCommMask(g_hComm, EV_RXCHAR | EV_PERR | EV_ERR);
-        // create thread and pass a handle of the dialog to the thread func
-        LPVOID lpParam = hWndDlg;
-        DWORD dwThreadId;
-        HANDLE hThread = CreateThread(NULL
-            , 0
-            , RS232ThreadFunc
-            , lpParam
-            , 0
-            , &dwThreadId
-        );
-        return 0;
+SetCommMask(g_hComm, EV_RXCHAR | EV_PERR | EV_ERR | EV_RLSD);
+// create thread and pass a handle of the dialog to the thread func
+LPVOID lpParam = hWndDlg;
+DWORD dwThreadId;
+HANDLE hThread = CreateThread(NULL
+    , 0
+    , RS232ThreadFunc
+    , lpParam
+    , 0
+    , &dwThreadId
+);
+return 0;
     } // eof WM_CREATE
     case WM_SIZE:
     {
@@ -227,33 +227,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             , rect.bottom
             , SWP_SHOWWINDOW
         );
+        // NOT used
+        //SendMessage(hWndDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
         return (INT_PTR)TRUE;
     } // eof WM_SIZE
     case WM_COMMAND:
+    {
+        int wmId = LOWORD(wParam);
+        // Parse the menu selections:
+        switch (wmId)
         {
-            int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
+        case IDM_ABOUT:
+            DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+            break;
+        case IDM_EXIT:
+            DestroyWindow(hWnd);
+            break;
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
         }
-        break;
+    }
+    break;
     case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
-        }
-        break;
+    {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+        // TODO: Add any drawing code that uses hdc here...
+        EndPaint(hWnd, &ps);
+    }
+    break;
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
@@ -283,7 +285,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
         case START_RECEIVE:
         {
-            // NOT USED
+            // NOT used
             // message sent from hWndProc to this hWndDlg             
             return (INT_PTR)TRUE;
         }
@@ -296,73 +298,140 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //****************************************************************************
 //*                     RS232ThreadFunc
 //****************************************************************************
-#define BUFFER_MAX 128
 DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
 {
-    HWND hWndDlg = (HWND)lpParam;
-    HWND hWndEdit = GetDlgItem(hWndDlg, IDC_RCV_MSG);
+	HWND hWndDlg = (HWND)lpParam;
+	HWND hWndEdit = GetDlgItem(hWndDlg, IDC_RCV_MSG);
     DWORD dwEvtMask = EV_RXCHAR;
-    BOOL bResult = FALSE;
-    CHAR chBuffer[BUFFER_MAX] = { 0 };
+	OVERLAPPED g_overlapped = { 0 };
+	g_overlapped.hEvent = CreateEvent(NULL
+		, TRUE
+		, FALSE
+		, NULL
+	);
+	g_overlapped.Internal = 0;
+	g_overlapped.InternalHigh = 0;
+	g_overlapped.Offset = 0;
+	g_overlapped.OffsetHigh = 0;
+    BOOL bContinue = TRUE;
+	BOOL bResult = FALSE;
+	CHAR chBuffer[BUFFER_MAX] = { 0 };
     DWORD dwBytesRead = 0;
-    DWORD64 dwTotalBytesRead = 0;
+	DWORD64 dwTotalBytesRead = 0;
     std::string str = "";
-    // wait for a transmission from the micro controller
-    while (WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, NULL))
+    while (bContinue)
     {
-        // clear buffer
-        clear_buffer(dwBytesRead, chBuffer);
-        // a character has been received
+		WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &g_overlapped);
+        if (g_overlapped.hEvent == 0) break;
+		WaitForSingleObject(g_overlapped.hEvent, INFINITE);
         if (dwEvtMask & EV_RXCHAR)
         {
-            // create an overlapped structure for reading one line from file
-            OVERLAPPED overlapped = { 0 };
-            overlapped.Offset = dwTotalBytesRead & 0xFFFFFFFF;
-            overlapped.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
-            overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-            // read input buffer into char-buffer
-            bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped);
-            if (dwBytesRead < BUFFER_MAX - 1)
-            {
-                chBuffer[dwBytesRead] = '\0';
-                str = chBuffer;
-                // append string to edit control in dialog window
-                appendTextToEditControlA(hWndEdit, str.c_str());
-            }
-            dwTotalBytesRead += dwBytesRead;
+            OutputDebugString(L"char received\n");
+			// create an overlapped structure for reading one line from file
+			OVERLAPPED overlapped = { 0 };
+			overlapped.Offset = dwTotalBytesRead & 0xFFFFFFFF;
+			overlapped.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
+			overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+			// read input buffer into char-buffer
+			bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped);
+			if (dwBytesRead < BUFFER_MAX - 1)
+			{
+				chBuffer[dwBytesRead] = '\0';
+				str = chBuffer;
+				// append string to edit control in dialog window
+				appendTextToEditControlA(hWndEdit, str.c_str());
+			}
+			dwTotalBytesRead += dwBytesRead;
         }
-        else if (dwEvtMask & EV_PERR)
-        {
-            str = "parity error\r\n";
-            // append string to edit control in dialog window
-            appendTextToEditControlA(hWndEdit, str.c_str());
-        }
-        else if (dwEvtMask & EV_ERR)
-        {
-            str = "line status error: CE_FRAME | CE_OVERRUN | CE_RXPARITY\r\n";
-            // append string to edit control in dialog window
-            appendTextToEditControlA(hWndEdit, str.c_str());
-        }
-        else
-        {
-            DWORD dwRet = GetLastError();
-            if (dwRet == ERROR_IO_PENDING)
-            {
-                str = "I/O is pending\r\n";
-                // append string to edit control in dialog window
-                appendTextToEditControlA(hWndEdit, str.c_str());
-            }
-            else
-            {
-                str = "Wait failed with error: " + std::to_string(GetLastError());
-                // append string to edit control in dialog window
-                appendTextToEditControlA(hWndEdit, str.c_str());
-                return 1;
-            }
-        }
-    }
+   }
     return 0;
 }
+//    HWND hWndDlg = (HWND)lpParam;
+//    HWND hWndEdit = GetDlgItem(hWndDlg, IDC_RCV_MSG);
+//    DWORD dwEvtMask = EV_RXCHAR | EV_PERR | EV_ERR | EV_RLSD;
+//    BOOL bResult = FALSE;
+//    CHAR chBuffer[BUFFER_MAX] = { 0 };
+//    DWORD dwBytesRead = 0;
+//    DWORD64 dwTotalBytesRead = 0;
+//    std::string str = "";
+//    // create overlapped structure for WaitCommEvent func
+//    OVERLAPPED g_overlapped = { 0 };
+//    g_overlapped.hEvent = CreateEvent(NULL
+//        , TRUE
+//        , FALSE
+//        , NULL
+//    );
+//    g_overlapped.Internal = 0;
+//    g_overlapped.InternalHigh = 0;
+//    g_overlapped.Offset = 0;
+//    g_overlapped.OffsetHigh = 0;
+//    BOOL bContinue = TRUE;
+//    while (bContinue)
+//    {
+//		// wait for a transmission from the micro controller
+//		while (WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &g_overlapped))//NULL))//))
+//		{
+//			// clear buffer
+//			clear_buffer(dwBytesRead, chBuffer);
+//			// a character has been received
+//			if (dwEvtMask & EV_RXCHAR)
+//			{
+//				// create an overlapped structure for reading one line from file
+//				OVERLAPPED overlapped = { 0 };
+//				overlapped.Offset = dwTotalBytesRead & 0xFFFFFFFF;
+//				overlapped.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
+//				overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+//				// read input buffer into char-buffer
+//				bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped);
+//				if (dwBytesRead < BUFFER_MAX - 1)
+//				{
+//					chBuffer[dwBytesRead] = '\0';
+//					str = chBuffer;
+//					// append string to edit control in dialog window
+//					appendTextToEditControlA(hWndEdit, str.c_str());
+//				}
+//				dwTotalBytesRead += dwBytesRead;
+//			}
+//			else if (dwEvtMask & EV_PERR)
+//			{
+//				str = "parity error\r\n";
+//				// append string to edit control in dialog window
+//				appendTextToEditControlA(hWndEdit, str.c_str());
+//			}
+//			else if (dwEvtMask & EV_ERR)
+//			{
+//				str = "line status error: CE_FRAME | CE_OVERRUN | CE_RXPARITY\r\n";
+//				// append string to edit control in dialog window
+//				appendTextToEditControlA(hWndEdit, str.c_str());
+//			}
+//			else if (dwEvtMask & EV_RLSD)
+//			{
+//				OutputDebugString(L"bla\n");
+//			}
+//			else
+//			{
+//				DWORD dwRet = GetLastError();
+//				if (dwRet == ERROR_IO_PENDING)
+//				{
+//					str = "I/O is pending\r\n";
+//					// append string to edit control in dialog window
+//					appendTextToEditControlA(hWndEdit, str.c_str());
+//				}
+//				else
+//				{
+//					str = "Wait failed with error: " + std::to_string(GetLastError());
+//					// append string to edit control in dialog window
+//					appendTextToEditControlA(hWndEdit, str.c_str());
+//					return 1;
+//				}
+//			}
+//		}
+//		std::string strstr = "Wait failed with error: " + std::to_string(GetLastError()) + "\n";
+//		OutputDebugStringA(strstr.c_str());
+//		ResetEvent(g_overlapped.hEvent);
+//	}
+//    return 0;
+//}
 VOID clear_buffer(const DWORD dwBytesRead, CHAR* pchBuffer)
 {
     if (dwBytesRead == 0)
