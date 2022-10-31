@@ -101,8 +101,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    g_hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindowW(szWindowClass
+       , szTitle
+       , WS_OVERLAPPEDWINDOW
+       , 10
+       , 10
+       , 440
+       , 460
+       , nullptr
+       , nullptr
+       , hInstance
+       , nullptr
+   );
 
    if (!hWnd)
    {
@@ -144,7 +154,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // create file for RS-232 communication port
         g_hComm = CreateFile(L"\\\\.\\COM3"
             , GENERIC_READ | GENERIC_WRITE
-            , FILE_SHARE_READ
+            , 0
             , NULL
             , OPEN_EXISTING
             , FILE_FLAG_OVERLAPPED
@@ -295,20 +305,20 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
     BOOL bResult = FALSE;
     CHAR chBuffer[BUFFER_MAX] = { 0 };
     DWORD dwBytesRead = 0;
-    DWORD dwTotalBytesRead = 0;
+    DWORD64 dwTotalBytesRead = 0;
     std::string str = "";
     // wait a transmission from the micro controller
     while (WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, NULL))
     {
         // clear buffer
-        clear_buffer;
+        clear_buffer(dwBytesRead, chBuffer);
         // a character has been received
         if (dwEvtMask & EV_RXCHAR)
         {
             // create an overlapped structure for reading one line from file
             OVERLAPPED overlapped = { 0 };
-            overlapped.Offset = dwTotalBytesRead;
-            overlapped.OffsetHigh = BUFFER_MAX;
+            overlapped.Offset = dwTotalBytesRead & 0xFFFFFFFF;
+            overlapped.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
             overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
             // read input buffer into char-buffer
             bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped);
