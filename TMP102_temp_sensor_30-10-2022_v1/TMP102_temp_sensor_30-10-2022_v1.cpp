@@ -201,7 +201,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // set communication port timeout
         SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts);
         // set communication port mask bit to capture event
-        SetCommMask(g_hComm, EV_RXCHAR);
+        SetCommMask(g_hComm, EV_RXCHAR | EV_PERR | EV_ERR);
         // create thread and pass a handle of the dialog to the thread func
         LPVOID lpParam = hWndDlg;
         DWORD dwThreadId;
@@ -307,7 +307,7 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
     DWORD dwBytesRead = 0;
     DWORD64 dwTotalBytesRead = 0;
     std::string str = "";
-    // wait a transmission from the micro controller
+    // wait for a transmission from the micro controller
     while (WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, NULL))
     {
         // clear buffer
@@ -330,6 +330,35 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
                 appendTextToEditControlA(hWndEdit, str.c_str());
             }
             dwTotalBytesRead += dwBytesRead;
+        }
+        else if (dwEvtMask & EV_PERR)
+        {
+            str = "parity error\r\n";
+            // append string to edit control in dialog window
+            appendTextToEditControlA(hWndEdit, str.c_str());
+        }
+        else if (dwEvtMask & EV_ERR)
+        {
+            str = "line status error: CE_FRAME | CE_OVERRUN | CE_RXPARITY\r\n";
+            // append string to edit control in dialog window
+            appendTextToEditControlA(hWndEdit, str.c_str());
+        }
+        else
+        {
+            DWORD dwRet = GetLastError();
+            if (dwRet == ERROR_IO_PENDING)
+            {
+                str = "I/O is pending\r\n";
+                // append string to edit control in dialog window
+                appendTextToEditControlA(hWndEdit, str.c_str());
+            }
+            else
+            {
+                str = "Wait failed with error: " + std::to_string(GetLastError());
+                // append string to edit control in dialog window
+                appendTextToEditControlA(hWndEdit, str.c_str());
+                return 1;
+            }
         }
     }
     return 0;
