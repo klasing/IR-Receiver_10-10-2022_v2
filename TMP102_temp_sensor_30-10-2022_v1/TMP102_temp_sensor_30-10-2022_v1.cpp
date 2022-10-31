@@ -141,6 +141,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     static HWND hWndDlg;
+
     switch (message)
     {
     case WM_NCCREATE:
@@ -151,68 +152,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     } // eof WM_NCCREATE
     case WM_CREATE:
     {
-        // create file for RS-232 communication port
-        g_hComm = CreateFile(L"\\\\.\\COM3"
-            , GENERIC_READ | GENERIC_WRITE
-            , 0
-            , NULL
-            , OPEN_EXISTING
-            , FILE_FLAG_OVERLAPPED
-            , NULL
-        );
-        // set structure to initialize communication port
-        DCB dcb;
-        dcb.DCBlength = sizeof(DCB);
-        dcb.BaudRate = 115200;
-        dcb.fBinary = 1;
-        dcb.fParity = 0;
-        dcb.fOutxCtsFlow = 0;
-        dcb.fOutxDsrFlow = 0;
-        dcb.fDtrControl = 1;
-        dcb.fDsrSensitivity = 0;
-        dcb.fTXContinueOnXoff = 0;
-        dcb.fOutX = 0;
-        dcb.fInX = 0;
-        dcb.fErrorChar = 0;
-        dcb.fNull = 0;
-        dcb.fRtsControl = 1;
-        dcb.fAbortOnError = 0;
-        dcb.fDummy2 = 0;
-        dcb.wReserved = 0;
-        dcb.ByteSize = 8;
-        dcb.Parity = 0;
-        dcb.StopBits = 0;
-        dcb.XoffChar = 0;
-        dcb.XoffChar = 0;
-        dcb.ErrorChar = 24;
-        dcb.EvtChar = 0;
-        dcb.wReserved1 = 0;
-        dcb.ByteSize = 8;
-        dcb.StopBits = 0;
-        // initialize communication port
-        SetCommState(g_hComm, (LPDCB)&dcb);
-        // set structure for communication port timeout
-        COMMTIMEOUTS commtimeouts;
-        commtimeouts.ReadIntervalTimeout = MAXDWORD;
-        commtimeouts.ReadTotalTimeoutMultiplier = 0;
-        commtimeouts.ReadTotalTimeoutConstant = 0;
-        commtimeouts.WriteTotalTimeoutMultiplier = 0;
-        commtimeouts.WriteTotalTimeoutConstant = 0;
-        // set communication port timeout
-        SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts);
-        // set communication port mask bit to capture event
-SetCommMask(g_hComm, EV_RXCHAR | EV_PERR | EV_ERR | EV_RLSD);
-// create thread and pass a handle of the dialog to the thread func
-LPVOID lpParam = hWndDlg;
-DWORD dwThreadId;
-HANDLE hThread = CreateThread(NULL
-    , 0
-    , RS232ThreadFunc
-    , lpParam
-    , 0
-    , &dwThreadId
-);
-return 0;
+
+		return 0;
     } // eof WM_CREATE
     case WM_SIZE:
     {
@@ -227,8 +168,7 @@ return 0;
             , rect.bottom
             , SWP_SHOWWINDOW
         );
-        // NOT used
-        //SendMessage(hWndDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
+        SendMessage(hWndDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
         return (INT_PTR)TRUE;
     } // eof WM_SIZE
     case WM_COMMAND:
@@ -285,10 +225,74 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
         case START_RECEIVE:
         {
-            // NOT used
-            // message sent from hWndProc to this hWndDlg             
+            // create file for RS-232 communication port
+            g_hComm = CreateFile(L"\\\\.\\COM3"
+                , GENERIC_READ | GENERIC_WRITE
+                , 0
+                , NULL
+                , OPEN_EXISTING
+                , FILE_FLAG_OVERLAPPED
+                , NULL
+            );
+            // set structure to initialize communication port
+            DCB dcb;
+            dcb.DCBlength = sizeof(DCB);
+            dcb.BaudRate = 115200;
+            dcb.fBinary = 1;
+            dcb.fParity = 0;
+            dcb.fOutxCtsFlow = 0;
+            dcb.fOutxDsrFlow = 0;
+            dcb.fDtrControl = 1;
+            dcb.fDsrSensitivity = 0;
+            dcb.fTXContinueOnXoff = 0;
+            dcb.fOutX = 0;
+            dcb.fInX = 0;
+            dcb.fErrorChar = 0;
+            dcb.fNull = 0;
+            dcb.fRtsControl = 1;
+            dcb.fAbortOnError = 0;
+            dcb.fDummy2 = 0;
+            dcb.wReserved = 0;
+            dcb.ByteSize = 8;
+            dcb.Parity = 0;
+            dcb.StopBits = 0;
+            dcb.XoffChar = 0;
+            dcb.XoffChar = 0;
+            dcb.ErrorChar = 24;
+            dcb.EvtChar = 0;
+            dcb.wReserved1 = 0;
+            dcb.ByteSize = 8;
+            dcb.StopBits = 0;
+            // initialize communication port
+            SetCommState(g_hComm, (LPDCB)&dcb);
+            // set structure for communication port timeout
+            COMMTIMEOUTS commtimeouts;
+            commtimeouts.ReadIntervalTimeout = MAXDWORD;
+            commtimeouts.ReadTotalTimeoutMultiplier = 0;
+            commtimeouts.ReadTotalTimeoutConstant = 0;
+            commtimeouts.WriteTotalTimeoutMultiplier = 0;
+            commtimeouts.WriteTotalTimeoutConstant = 0;
+            // set communication port timeout
+            SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts);
+            // set communication port mask bit to capture event
+            SetCommMask(g_hComm, EV_RXCHAR);
+            // create thread and pass a handle of the dialog to the thread func
+            LPVOID lpParam = hDlg;
+            DWORD dwThreadId;
+            HANDLE hThread = CreateThread(NULL
+                , 0
+                , RS232ThreadFunc
+                , lpParam
+                , 0
+                , &dwThreadId
+            );
             return (INT_PTR)TRUE;
         }
+        case SERIAL_DISCONNECTED:
+        {
+            SendMessage(hDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
+            return (INT_PTR)TRUE;
+        } // eof SERIAL_DISCONNECTED
         } // eof switch
         break;
     }
@@ -319,9 +323,42 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
     DWORD dwBytesRead = 0;
 	DWORD64 dwTotalBytesRead = 0;
     std::string str = "";
+    //DWORD modemStatus = 0;
     while (bContinue)
     {
-		WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &g_overlapped);
+        DCB dcb = { 0 };
+        if (!GetCommState(g_hComm, &dcb))
+        {
+            OutputDebugString(L"serial disconnected\n");
+            // check if the disconnected state is already indicated in the dialog item
+            PWCHAR pszTextDlgItem[13];
+            SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
+                , WM_GETTEXT
+                , (WPARAM)13
+                , (LPARAM)pszTextDlgItem
+            );
+#pragma warning(disable : 6054; once)
+            if (wcslen((const wchar_t*)pszTextDlgItem) <= 9)
+            {
+
+                SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
+                    , WM_SETTEXT
+                    , (WPARAM)0
+                    , (LPARAM)L"Disconnected"
+                );
+            }
+            SendMessage(hWndDlg, WM_COMMAND, (WPARAM)SERIAL_DISCONNECTED, (LPARAM)0);
+            return 1;
+        }
+        else
+        {
+            SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)L"Connected"
+            );
+        }
+        WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &g_overlapped);
         if (g_overlapped.hEvent == 0) break;
 		WaitForSingleObject(g_overlapped.hEvent, INFINITE);
         if (dwEvtMask & EV_RXCHAR)
