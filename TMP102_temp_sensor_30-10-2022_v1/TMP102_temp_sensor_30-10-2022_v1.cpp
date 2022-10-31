@@ -8,7 +8,7 @@
 
 // Global Variables:
 HINSTANCE g_hInst;                                // current instance
-HANDLE g_hComm;
+HANDLE g_hComm = { 0 };
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
@@ -17,8 +17,7 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-DWORD WINAPI RS232ThreadFunc(LPVOID lpParam);
-VOID clear_buffer(const DWORD dwBytesRead, CHAR* pchBuffer);
+DWORD WINAPI        RS232ThreadFunc(LPVOID lpParam);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -225,57 +224,58 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
         case START_RECEIVE:
         {
-            // create file for RS-232 communication port
-            g_hComm = CreateFile(L"\\\\.\\COM3"
-                , GENERIC_READ | GENERIC_WRITE
-                , 0
-                , NULL
-                , OPEN_EXISTING
-                , FILE_FLAG_OVERLAPPED
-                , NULL
-            );
-            // set structure to initialize communication port
-            DCB dcb;
-            dcb.DCBlength = sizeof(DCB);
-            dcb.BaudRate = 115200;
-            dcb.fBinary = 1;
-            dcb.fParity = 0;
-            dcb.fOutxCtsFlow = 0;
-            dcb.fOutxDsrFlow = 0;
-            dcb.fDtrControl = 1;
-            dcb.fDsrSensitivity = 0;
-            dcb.fTXContinueOnXoff = 0;
-            dcb.fOutX = 0;
-            dcb.fInX = 0;
-            dcb.fErrorChar = 0;
-            dcb.fNull = 0;
-            dcb.fRtsControl = 1;
-            dcb.fAbortOnError = 0;
-            dcb.fDummy2 = 0;
-            dcb.wReserved = 0;
-            dcb.ByteSize = 8;
-            dcb.Parity = 0;
-            dcb.StopBits = 0;
-            dcb.XoffChar = 0;
-            dcb.XoffChar = 0;
-            dcb.ErrorChar = 24;
-            dcb.EvtChar = 0;
-            dcb.wReserved1 = 0;
-            dcb.ByteSize = 8;
-            dcb.StopBits = 0;
-            // initialize communication port
-            SetCommState(g_hComm, (LPDCB)&dcb);
-            // set structure for communication port timeout
-            COMMTIMEOUTS commtimeouts;
-            commtimeouts.ReadIntervalTimeout = MAXDWORD;
-            commtimeouts.ReadTotalTimeoutMultiplier = 0;
-            commtimeouts.ReadTotalTimeoutConstant = 0;
-            commtimeouts.WriteTotalTimeoutMultiplier = 0;
-            commtimeouts.WriteTotalTimeoutConstant = 0;
-            // set communication port timeout
-            SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts);
-            // set communication port mask bit to capture event
-            SetCommMask(g_hComm, EV_RXCHAR);
+			// create file for RS-232 communication port
+			g_hComm = CreateFile(L"\\\\.\\COM3"
+				, GENERIC_READ | GENERIC_WRITE
+				, 0
+				, NULL
+				, OPEN_EXISTING
+				, FILE_FLAG_OVERLAPPED
+				, NULL
+			);
+			// set structure to initialize communication port
+			DCB dcb;
+			dcb.DCBlength = sizeof(DCB);
+			dcb.BaudRate = 115200;
+			dcb.fBinary = 1;
+			dcb.fParity = 0;
+			dcb.fOutxCtsFlow = 0;
+			dcb.fOutxDsrFlow = 0;
+			dcb.fDtrControl = 1;
+			dcb.fDsrSensitivity = 0;
+			dcb.fTXContinueOnXoff = 0;
+			dcb.fOutX = 0;
+			dcb.fInX = 0;
+			dcb.fErrorChar = 0;
+			dcb.fNull = 0;
+			dcb.fRtsControl = 1;
+			dcb.fAbortOnError = 0;
+			dcb.fDummy2 = 0;
+			dcb.wReserved = 0;
+			dcb.ByteSize = 8;
+			dcb.Parity = 0;
+			dcb.StopBits = 0;
+			dcb.XoffChar = 0;
+			dcb.XoffChar = 0;
+			dcb.ErrorChar = 24;
+			dcb.EvtChar = 0;
+			dcb.wReserved1 = 0;
+			dcb.ByteSize = 8;
+			dcb.StopBits = 0;
+			// initialize communication port
+			SetCommState(g_hComm, (LPDCB)&dcb);
+			// set structure for communication port timeout
+			COMMTIMEOUTS commtimeouts;
+			commtimeouts.ReadIntervalTimeout = MAXDWORD;
+			commtimeouts.ReadTotalTimeoutMultiplier = 0;
+			commtimeouts.ReadTotalTimeoutConstant = 0;
+			commtimeouts.WriteTotalTimeoutMultiplier = 0;
+			commtimeouts.WriteTotalTimeoutConstant = 0;
+			// set communication port timeout
+			SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts);
+			// set communication port mask bit to capture event
+			SetCommMask(g_hComm, EV_RXCHAR);
+
             // create thread and pass a handle of the dialog to the thread func
             LPVOID lpParam = hDlg;
             DWORD dwThreadId;
@@ -286,10 +286,12 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 , 0
                 , &dwThreadId
             );
+
             return (INT_PTR)TRUE;
         }
         case SERIAL_DISCONNECTED:
         {
+            Sleep(1000);
             SendMessage(hDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
             return (INT_PTR)TRUE;
         } // eof SERIAL_DISCONNECTED
@@ -307,40 +309,35 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
 	HWND hWndDlg = (HWND)lpParam;
 	HWND hWndEdit = GetDlgItem(hWndDlg, IDC_RCV_MSG);
     DWORD dwEvtMask = EV_RXCHAR;
-	OVERLAPPED g_overlapped = { 0 };
-	g_overlapped.hEvent = CreateEvent(NULL
+	OVERLAPPED overlapped = { 0 };
+	overlapped.hEvent = CreateEvent(NULL
 		, TRUE
 		, FALSE
 		, NULL
 	);
-	g_overlapped.Internal = 0;
-	g_overlapped.InternalHigh = 0;
-	g_overlapped.Offset = 0;
-	g_overlapped.OffsetHigh = 0;
-    BOOL bContinue = TRUE;
+	overlapped.Internal = 0;
+	overlapped.InternalHigh = 0;
+	overlapped.Offset = 0;
+	overlapped.OffsetHigh = 0;
 	BOOL bResult = FALSE;
 	CHAR chBuffer[BUFFER_MAX] = { 0 };
     DWORD dwBytesRead = 0;
 	DWORD64 dwTotalBytesRead = 0;
     std::string str = "";
-    //DWORD modemStatus = 0;
-    while (bContinue)
+    while (TRUE)
     {
         DCB dcb = { 0 };
         if (!GetCommState(g_hComm, &dcb))
         {
-            OutputDebugString(L"serial disconnected\n");
             // check if the disconnected state is already indicated in the dialog item
-            PWCHAR pszTextDlgItem[13];
+            PWCHAR pszTextDlgItem[13] = { 0 };
             SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
                 , WM_GETTEXT
                 , (WPARAM)13
                 , (LPARAM)pszTextDlgItem
             );
-#pragma warning(disable : 6054; once)
             if (wcslen((const wchar_t*)pszTextDlgItem) <= 9)
             {
-
                 SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
                     , WM_SETTEXT
                     , (WPARAM)0
@@ -358,19 +355,18 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
                 , (LPARAM)L"Connected"
             );
         }
-        WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &g_overlapped);
-        if (g_overlapped.hEvent == 0) break;
-		WaitForSingleObject(g_overlapped.hEvent, INFINITE);
+        WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &overlapped);
+        if (overlapped.hEvent == 0) break;
+		WaitForSingleObject(overlapped.hEvent, INFINITE);
         if (dwEvtMask & EV_RXCHAR)
         {
-            OutputDebugString(L"char received\n");
-			// create an overlapped structure for reading one line from file
-			OVERLAPPED overlapped = { 0 };
-			overlapped.Offset = dwTotalBytesRead & 0xFFFFFFFF;
-			overlapped.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
-			overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+			// create an overlapped structure for reading from file
+			OVERLAPPED overlapped_ = { 0 };
+			overlapped_.Offset = dwTotalBytesRead & 0xFFFFFFFF;
+			overlapped_.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
+			overlapped_.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 			// read input buffer into char-buffer
-			bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped);
+			bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped_);
 			if (dwBytesRead < BUFFER_MAX - 1)
 			{
 				chBuffer[dwBytesRead] = '\0';
@@ -382,103 +378,6 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
         }
    }
     return 0;
-}
-//    HWND hWndDlg = (HWND)lpParam;
-//    HWND hWndEdit = GetDlgItem(hWndDlg, IDC_RCV_MSG);
-//    DWORD dwEvtMask = EV_RXCHAR | EV_PERR | EV_ERR | EV_RLSD;
-//    BOOL bResult = FALSE;
-//    CHAR chBuffer[BUFFER_MAX] = { 0 };
-//    DWORD dwBytesRead = 0;
-//    DWORD64 dwTotalBytesRead = 0;
-//    std::string str = "";
-//    // create overlapped structure for WaitCommEvent func
-//    OVERLAPPED g_overlapped = { 0 };
-//    g_overlapped.hEvent = CreateEvent(NULL
-//        , TRUE
-//        , FALSE
-//        , NULL
-//    );
-//    g_overlapped.Internal = 0;
-//    g_overlapped.InternalHigh = 0;
-//    g_overlapped.Offset = 0;
-//    g_overlapped.OffsetHigh = 0;
-//    BOOL bContinue = TRUE;
-//    while (bContinue)
-//    {
-//		// wait for a transmission from the micro controller
-//		while (WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &g_overlapped))//NULL))//))
-//		{
-//			// clear buffer
-//			clear_buffer(dwBytesRead, chBuffer);
-//			// a character has been received
-//			if (dwEvtMask & EV_RXCHAR)
-//			{
-//				// create an overlapped structure for reading one line from file
-//				OVERLAPPED overlapped = { 0 };
-//				overlapped.Offset = dwTotalBytesRead & 0xFFFFFFFF;
-//				overlapped.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
-//				overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-//				// read input buffer into char-buffer
-//				bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped);
-//				if (dwBytesRead < BUFFER_MAX - 1)
-//				{
-//					chBuffer[dwBytesRead] = '\0';
-//					str = chBuffer;
-//					// append string to edit control in dialog window
-//					appendTextToEditControlA(hWndEdit, str.c_str());
-//				}
-//				dwTotalBytesRead += dwBytesRead;
-//			}
-//			else if (dwEvtMask & EV_PERR)
-//			{
-//				str = "parity error\r\n";
-//				// append string to edit control in dialog window
-//				appendTextToEditControlA(hWndEdit, str.c_str());
-//			}
-//			else if (dwEvtMask & EV_ERR)
-//			{
-//				str = "line status error: CE_FRAME | CE_OVERRUN | CE_RXPARITY\r\n";
-//				// append string to edit control in dialog window
-//				appendTextToEditControlA(hWndEdit, str.c_str());
-//			}
-//			else if (dwEvtMask & EV_RLSD)
-//			{
-//				OutputDebugString(L"bla\n");
-//			}
-//			else
-//			{
-//				DWORD dwRet = GetLastError();
-//				if (dwRet == ERROR_IO_PENDING)
-//				{
-//					str = "I/O is pending\r\n";
-//					// append string to edit control in dialog window
-//					appendTextToEditControlA(hWndEdit, str.c_str());
-//				}
-//				else
-//				{
-//					str = "Wait failed with error: " + std::to_string(GetLastError());
-//					// append string to edit control in dialog window
-//					appendTextToEditControlA(hWndEdit, str.c_str());
-//					return 1;
-//				}
-//			}
-//		}
-//		std::string strstr = "Wait failed with error: " + std::to_string(GetLastError()) + "\n";
-//		OutputDebugStringA(strstr.c_str());
-//		ResetEvent(g_overlapped.hEvent);
-//	}
-//    return 0;
-//}
-VOID clear_buffer(const DWORD dwBytesRead, CHAR* pchBuffer)
-{
-    if (dwBytesRead == 0)
-    {
-        return;
-    }
-    for (uint8_t i = 0; i < BUFFER_MAX; i++)
-    {
-        pchBuffer[i] = '\0';
-    }
 }
 
 // Message handler for about box.
