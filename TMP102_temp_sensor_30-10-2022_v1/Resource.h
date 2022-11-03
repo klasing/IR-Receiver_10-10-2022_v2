@@ -1,4 +1,4 @@
-#define BUFFER_MAX				128
+#define BUFFER_MAX				512
 // control
 #define IDC_STATUS_CONNECT		33000
 #define IDC_RCV_MSG				33001

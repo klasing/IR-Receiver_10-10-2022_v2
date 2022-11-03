@@ -167,7 +167,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             , rect.bottom
             , SWP_SHOWWINDOW
         );
-        SendMessage(hWndDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
+        //SendMessage(hWndDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
         return (INT_PTR)TRUE;
     } // eof WM_SIZE
     case WM_COMMAND:
@@ -275,24 +275,23 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts);
 			// set communication port mask bit to capture event
 			SetCommMask(g_hComm, EV_RXCHAR);
-
-            // create thread and pass a handle of the dialog to the thread func
-            LPVOID lpParam = hDlg;
-            DWORD dwThreadId;
-            HANDLE hThread = CreateThread(NULL
-                , 0
-                , RS232ThreadFunc
-                , lpParam
-                , 0
-                , &dwThreadId
-            );
-
+            SetupComm(g_hComm, BUFFER_MAX, 0);
+			// create thread and pass a handle of the dialog to the thread func
+			LPVOID lpParam = hDlg;
+			DWORD dwThreadId;
+			HANDLE hThread = CreateThread(NULL
+				, 0
+				, RS232ThreadFunc
+				, lpParam
+				, 0
+				, &dwThreadId
+			);
+            Button_Enable(GetDlgItem(hDlg, START_RECEIVE), FALSE);
             return (INT_PTR)TRUE;
         }
         case SERIAL_DISCONNECTED:
         {
-            Sleep(1000);
-            SendMessage(hDlg, WM_COMMAND, (WPARAM)START_RECEIVE, (LPARAM)0);
+            Button_Enable(GetDlgItem(hDlg, START_RECEIVE), TRUE);
             return (INT_PTR)TRUE;
         } // eof SERIAL_DISCONNECTED
         } // eof switch
@@ -315,71 +314,70 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
 		, FALSE
 		, NULL
 	);
-	overlapped.Internal = 0;
-	overlapped.InternalHigh = 0;
-	overlapped.Offset = 0;
-	overlapped.OffsetHigh = 0;
-	BOOL bResult = FALSE;
-	CHAR chBuffer[BUFFER_MAX] = { 0 };
-    DWORD dwBytesRead = 0;
+	if (overlapped.hEvent == NULL) return 1;
+	DWORD dwNofByteTransferred = 0;
+    BOOL bResult = FALSE;
+	DWORD dwBytesRead = 0;
 	DWORD64 dwTotalBytesRead = 0;
+    CHAR chBuffer[BUFFER_MAX] = { 0 };
     std::string str = "";
+	DCB dcb = { 0 };
+    if (GetCommState(g_hComm, &dcb))
+    {
+		SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)L"Connected"
+		);
+    }
+    else
+    {
+        SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)L"Disconnected"
+        );
+        SendMessage(hWndDlg, WM_COMMAND, (WPARAM)SERIAL_DISCONNECTED, (LPARAM)0);
+        return 1;
+    }
+	// infinite loop
     while (TRUE)
     {
-        DCB dcb = { 0 };
-        if (!GetCommState(g_hComm, &dcb))
+        WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &overlapped);
+        WaitForSingleObject(overlapped.hEvent, INFINITE);
+        GetOverlappedResult(g_hComm, &overlapped, &dwNofByteTransferred, FALSE);
+        if (dwEvtMask & EV_RXCHAR)
         {
-            // check if the disconnected state is already indicated in the dialog item
-            PWCHAR pszTextDlgItem[13] = { 0 };
-            SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
-                , WM_GETTEXT
-                , (WPARAM)13
-                , (LPARAM)pszTextDlgItem
-            );
-            if (wcslen((const wchar_t*)pszTextDlgItem) <= 9)
-            {
-                SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
-                    , WM_SETTEXT
-                    , (WPARAM)0
-                    , (LPARAM)L"Disconnected"
-                );
-            }
-            SendMessage(hWndDlg, WM_COMMAND, (WPARAM)SERIAL_DISCONNECTED, (LPARAM)0);
-            return 1;
+            // create an overlapped structure for reading from file
+            OVERLAPPED overlapped_ = { 0 };
+            overlapped_.Offset = dwTotalBytesRead & 0xFFFFFFFF;
+            overlapped_.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
+            overlapped_.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+            // read input buffer into char-buffer
+            bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped_);
+            if (dwBytesRead < BUFFER_MAX - 1) chBuffer[dwBytesRead] = '\0';
+            str = chBuffer;
+            // append string to edit control in dialog window
+            appendTextToEditControlA(hWndEdit, str.c_str());
+            dwTotalBytesRead += dwBytesRead;
+            if (overlapped_.hEvent != NULL) CloseHandle(overlapped_.hEvent);
         }
-        else
+        if (!GetCommState(g_hComm, &dcb))
         {
             SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
                 , WM_SETTEXT
                 , (WPARAM)0
-                , (LPARAM)L"Connected"
+                , (LPARAM)L"Disconnected"
             );
+            SendMessage(hWndDlg, WM_COMMAND, (WPARAM)SERIAL_DISCONNECTED, (LPARAM)0);
+            return 1;
         }
-        WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &overlapped);
-        if (overlapped.hEvent == 0) break;
-		WaitForSingleObject(overlapped.hEvent, INFINITE);
-        if (dwEvtMask & EV_RXCHAR)
-        {
-			// create an overlapped structure for reading from file
-			OVERLAPPED overlapped_ = { 0 };
-			overlapped_.Offset = dwTotalBytesRead & 0xFFFFFFFF;
-			overlapped_.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
-			overlapped_.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-			// read input buffer into char-buffer
-			bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped_);
-			if (dwBytesRead < BUFFER_MAX - 1)
-			{
-				chBuffer[dwBytesRead] = '\0';
-				str = chBuffer;
-				// append string to edit control in dialog window
-				appendTextToEditControlA(hWndEdit, str.c_str());
-			}
-			dwTotalBytesRead += dwBytesRead;
-        }
-   }
+    }
+    OutputDebugString(L"RS232ThreadFunc finished\n");
+    if (overlapped.hEvent != NULL) CloseHandle(overlapped.hEvent);
+    SendMessage(hWndDlg, WM_COMMAND, (WPARAM)SERIAL_DISCONNECTED, (LPARAM)0);
     return 0;
 }
-
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
