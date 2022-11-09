@@ -2,9 +2,12 @@
 // control
 #define IDC_STATUS_CONNECT		33000
 #define IDC_RCV_MSG				33001
+#define IDC_RCV_MSG_MULTILINE	33002
+#define IDC_TRM_MSG				33003
 // message
 #define START_RECEIVE			33100
 #define SERIAL_DISCONNECTED		33101
+#define START_TRANSMIT			33102
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by TMP102_temp_sensor_30-10-2022_v1.rc

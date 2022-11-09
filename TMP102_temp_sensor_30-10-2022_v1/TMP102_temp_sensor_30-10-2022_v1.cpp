@@ -1,3 +1,12 @@
+//****************************************************************************
+//* investigate Rx/Tx with a STM32 UART at:
+//* https://controllerstech.com/uart-receive-in-stm32/
+//* three methods are discussed:
+//* 1) poll
+//* 2) interrupt
+//* 3) dma
+//* for now I will focus on method two (interrupt)
+//****************************************************************************
 // TMP102_temp_sensor_30-10-2022_v1.cpp : Defines the entry point for the application.
 //
 
@@ -18,6 +27,7 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 DWORD WINAPI        RS232ThreadFunc(LPVOID lpParam);
+VOID                setTextToEditControlA(const HWND hWndEdit, std::string str);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -105,7 +115,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
        , WS_OVERLAPPEDWINDOW
        , 10
        , 10
-       , 440
+       , 460
        , 460
        , nullptr
        , nullptr
@@ -306,7 +316,9 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
 {
 	HWND hWndDlg = (HWND)lpParam;
-	HWND hWndEdit = GetDlgItem(hWndDlg, IDC_RCV_MSG);
+	HWND hWndEditMultiLine = GetDlgItem(hWndDlg, IDC_RCV_MSG_MULTILINE);
+    HWND hWndStatus = GetDlgItem(hWndDlg, IDC_STATUS_CONNECT);
+    HWND hWndEdit = GetDlgItem(hWndDlg, IDC_RCV_MSG);
     DWORD dwEvtMask = EV_RXCHAR;
 	OVERLAPPED overlapped = { 0 };
 	overlapped.hEvent = CreateEvent(NULL
@@ -321,6 +333,7 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
 	DWORD64 dwTotalBytesRead = 0;
     CHAR chBuffer[BUFFER_MAX] = { 0 };
     std::string str = "";
+    //std::string str_ = "";
 	DCB dcb = { 0 };
     if (GetCommState(g_hComm, &dcb))
     {
@@ -351,20 +364,25 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
             // create an overlapped structure for reading from file
             OVERLAPPED overlapped_ = { 0 };
             overlapped_.Offset = dwTotalBytesRead & 0xFFFFFFFF;
-            overlapped_.OffsetHigh = Int64ShrlMod32(dwTotalBytesRead, 31);
+            overlapped_.OffsetHigh = (DWORD)Int64ShrlMod32(dwTotalBytesRead, 31);
             overlapped_.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
             // read input buffer into char-buffer
             bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX, &dwBytesRead, &overlapped_);
-            if (dwBytesRead < BUFFER_MAX - 1) chBuffer[dwBytesRead] = '\0';
-            str = chBuffer;
-            // append string to edit control in dialog window
-            appendTextToEditControlA(hWndEdit, str.c_str());
-            dwTotalBytesRead += dwBytesRead;
+            if (bResult)
+            {
+                if (dwBytesRead < BUFFER_MAX - 1) chBuffer[dwBytesRead] = '\0';
+                str = chBuffer;
+                // append string to edit control in dialog window
+                appendTextToEditControlA(hWndEditMultiLine, str.c_str());
+                // set string to edit control in dialog window
+                setTextToEditControlA(hWndEdit, str);
+                dwTotalBytesRead += dwBytesRead;
+            }
             if (overlapped_.hEvent != NULL) CloseHandle(overlapped_.hEvent);
         }
         if (!GetCommState(g_hComm, &dcb))
         {
-            SendMessage(GetDlgItem(hWndDlg, IDC_STATUS_CONNECT)
+            SendMessage(hWndStatus
                 , WM_SETTEXT
                 , (WPARAM)0
                 , (LPARAM)L"Disconnected"
@@ -377,6 +395,41 @@ DWORD WINAPI RS232ThreadFunc(LPVOID lpParam)
     if (overlapped.hEvent != NULL) CloseHandle(overlapped.hEvent);
     SendMessage(hWndDlg, WM_COMMAND, (WPARAM)SERIAL_DISCONNECTED, (LPARAM)0);
     return 0;
+}
+//****************************************************************************
+//*                     setTextToEditControlA
+//****************************************************************************
+VOID setTextToEditControlA(const HWND hWndEdit, std::string str)
+{
+    std::string str_ = "";
+    for (std::string::iterator iter = str.begin(); iter != str.end(); ++iter)
+    {
+        if (*iter == '\n')
+        {
+            // skip character
+            continue;
+        }
+        if (*iter == '\r')
+        {
+            // only show a completed partial string
+            if (str_.length() == 7)
+            {
+                // send partial string to edit control
+                SendMessageA(hWndEdit
+                    , WM_SETTEXT
+                    , (WPARAM)0
+                    , (LPARAM)str_.c_str()
+                );
+                // continue collecting new partial string
+                str_ = "";
+            }
+        }
+        else
+        {
+            // build partial string
+            str_.append(1, *iter);
+        }
+    }
 }
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
