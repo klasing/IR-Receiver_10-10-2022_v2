@@ -2,6 +2,7 @@
 // control
 #define IDC_STATUS_CONNECT_		33000
 #define IDC_LV_CONFIGURATION	33001
+#define IDC_LV_T_LO				33002
 // message
 #define CONNECT_SERIAL			33100
 #define DISCONNECT_SERIAL		33101
@@ -18,6 +19,15 @@
 #define IDS_LVCONFIG_COL9		33509
 #define IDS_LVCONFIG_COL10		33510
 #define IDS_LVCONFIG_COL11		33511
+
+#define IDS_LVTEMP_COL0			33512
+#define IDS_LVTEMP_COL1			33513
+#define IDS_LVTEMP_COL2			33514
+#define IDS_LVTEMP_COL3			33515
+#define IDS_LVTEMP_COL4			33516
+#define IDS_LVTEMP_COL5			33517
+#define IDS_LVTEMP_COL6			33518
+#define IDS_LVTEMP_COL7			33519
 // serial command
 #define RD_REG_TEMP				33600 // address to approach two bytes with 12/13 bits data (with 13 bits data LSB=1 in second byte)
 #define RD_REG_CNFG				33601 // address to approach two bytes with 12 bits data
