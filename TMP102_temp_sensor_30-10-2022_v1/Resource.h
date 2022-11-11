@@ -1,13 +1,38 @@
-#define BUFFER_MAX				512
+#define BUFFER_MAX_SERIAL		512
 // control
-#define IDC_STATUS_CONNECT		33000
-#define IDC_RCV_MSG				33001
-#define IDC_RCV_MSG_MULTILINE	33002
-#define IDC_TRM_MSG				33003
+#define IDC_STATUS_CONNECT_		33000
+#define IDC_LV_CONFIGURATION	33001
 // message
-#define START_RECEIVE			33100
-#define SERIAL_DISCONNECTED		33101
-#define START_TRANSMIT			33102
+#define CONNECT_SERIAL			33100
+#define DISCONNECT_SERIAL		33101
+// string
+#define IDS_LVCONFIG_COL0		33500
+#define IDS_LVCONFIG_COL1		33501
+#define IDS_LVCONFIG_COL2		33502
+#define IDS_LVCONFIG_COL3		33503
+#define IDS_LVCONFIG_COL4		33504
+#define IDS_LVCONFIG_COL5		33505
+#define IDS_LVCONFIG_COL6		33506
+#define IDS_LVCONFIG_COL7		33507
+#define IDS_LVCONFIG_COL8		33508
+#define IDS_LVCONFIG_COL9		33509
+#define IDS_LVCONFIG_COL10		33510
+#define IDS_LVCONFIG_COL11		33511
+// serial command
+#define RD_REG_TEMP				33600 // address to approach two bytes with 12/13 bits data (with 13 bits data LSB=1 in second byte)
+#define RD_REG_CNFG				33601 // address to approach two bytes with 12 bits data
+#define RD_REG_T_LO				33602 // address to approach two bytes with 12/13 bits data
+#define RD_REG_T_HI				33603 // address to approach two bytes with 12/13 bits data
+
+// control
+#define IDC_STATUS_CONNECT		33002
+#define IDC_RCV_MSG				33003
+#define IDC_RCV_MSG_MULTILINE	33004
+#define IDC_TRM_MSG				33005
+// message
+#define START_RECEIVE			33102
+#define SERIAL_DISCONNECTED		33103
+#define START_TRANSMIT			33104
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by TMP102_temp_sensor_30-10-2022_v1.rc
