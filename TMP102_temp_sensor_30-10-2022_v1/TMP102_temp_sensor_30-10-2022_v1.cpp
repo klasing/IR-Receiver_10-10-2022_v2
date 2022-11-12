@@ -31,6 +31,7 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL                connect_serial();
+DWORD WINAPI        receive_serial(LPVOID lpVoid);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -118,7 +119,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
        , WS_OVERLAPPEDWINDOW
        , 10
        , 10
-       , 540
+       , 1080
        , 680
        , nullptr
        , nullptr
@@ -221,7 +222,9 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     static HWND hWndLV_Cnfg = { 0 };
     static HWND hWndLV_T_lo = { 0 };
-    switch (uMsg)
+	static HWND hWndLV_T_hi = { 0 };
+	static HWND hWndLV_Treg = { 0 };
+	switch (uMsg)
     {
     case WM_INITDIALOG:
     {
@@ -233,7 +236,8 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		);
 		// disable button DISCONNECT_SERIAL
 		EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
-        // create listview
+
+        // create listview CONFIGURATION /////////////////////////////////////
         hWndLV_Cnfg = createListView(g_hInst, hDlg, IDC_LV_CONFIGURATION);
 		// add column to listview
 		addColumn(g_hInst
@@ -255,7 +259,8 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				, i
 			);
 		}
-		// create listview
+
+		// create listview TEMPERATURE LOW ///////////////////////////////////
         hWndLV_T_lo = createListView(g_hInst, hDlg, IDC_LV_T_LO);
 		// add column to listview
 		addColumn(g_hInst
@@ -277,18 +282,81 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 , i
             );
         }
-        return (INT_PTR)FALSE;
+
+		// create listview TEMPERATURE HIGH //////////////////////////////////
+		hWndLV_T_hi = createListView(g_hInst, hDlg, IDC_LV_T_HI);
+		// add column to listview
+		addColumn(g_hInst
+			, hWndLV_T_hi
+			, 16
+			, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+			, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+			, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+			, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+		);
+		// adjust column with to the header text width
+		// and add one row with empty listview item
+		for (uint8_t i = 0; i < 16; i++)
+		{
+			ListView_SetColumnWidth(hWndLV_T_hi, i, LVSCW_AUTOSIZE_USEHEADER);
+			createListViewItem(hWndLV_T_hi
+				, (PWCHAR)L" "
+				, 0
+				, i
+			);
+		}
+
+		// create listview TEMPERATURE REGISTER //////////////////////////////
+		hWndLV_Treg = createListView(g_hInst, hDlg, IDC_LV_TREG);
+		// add column to listview
+		addColumn(g_hInst
+			, hWndLV_Treg
+			, 16
+			, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+			, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+			, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+			, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+		);
+		// adjust column with to the header text width
+		// and add one row with empty listview item
+		for (uint8_t i = 0; i < 16; i++)
+		{
+			ListView_SetColumnWidth(hWndLV_Treg, i, LVSCW_AUTOSIZE_USEHEADER);
+			createListViewItem(hWndLV_Treg
+				, (PWCHAR)L" "
+				, 0
+				, i
+			);
+		}
+
+		return (INT_PTR)FALSE;
     }
     case WM_SIZE:
     {
+		// CONFIGURATION
 		MoveWindow(hWndLV_Cnfg
 			, 20, 75
 			, 336
 			, 40
 			, TRUE
 		);
+		// TEMPERATURE LOW
 		MoveWindow(hWndLV_T_lo
 			, 20, 140
+			, 417
+			, 40
+			, TRUE
+		);
+		// TEMPERATURE HIGH
+		MoveWindow(hWndLV_T_hi
+			, 20, 205
+			, 417
+			, 40
+			, TRUE
+		);
+		// TEMPERATURE REGISTER
+		MoveWindow(hWndLV_Treg
+			, 20, 270
 			, 417
 			, 40
 			, TRUE
@@ -314,7 +382,15 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
                 EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
 
-           }
+				DWORD dwThreadId;
+				HANDLE hThread_ = CreateThread(NULL
+					, 0
+					, receive_serial
+					, (LPVOID)hDlg
+					, 0
+					, &dwThreadId
+				);
+            }
             return (INT_PTR)TRUE;
         } // eof CONNECT_SERIAL
         case DISCONNECT_SERIAL:
@@ -339,6 +415,74 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } // eof WM_COMMAND
     } // eof switch
     return (INT_PTR)FALSE;
+}
+//****************************************************************************
+//*                     receive_serial
+//****************************************************************************
+DWORD WINAPI receive_serial(LPVOID lpVoid)
+{
+    HWND hWndRcvMessage = GetDlgItem((HWND)lpVoid, IDC_RCV_MESSAGE);
+
+	DWORD dwEvtMask = 0;
+	OVERLAPPED overlapped = { 0 };
+	overlapped.hEvent = CreateEvent(NULL
+		, TRUE
+		, FALSE
+		, NULL
+	);
+	if (overlapped.hEvent == NULL) return 1;
+
+	DWORD dwReturnCode = 0;
+	DWORD dwNofByteTransferred = 0;
+	BOOL bResult = FALSE;
+	DWORD dwBytesRead = 0;
+	DWORD64 dwTotalBytesRead = 0;
+	CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+
+	// infinite loop
+	while (TRUE)
+	{
+		WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &overlapped);
+		WaitForSingleObject(overlapped.hEvent, INFINITE);
+		GetOverlappedResult(g_hComm, &overlapped, &dwNofByteTransferred, FALSE);
+		if (dwEvtMask & EV_RXCHAR)
+		{
+			// create an overlapped structure for reading from file
+			OVERLAPPED overlapped_ = { 0 };
+			overlapped_.Offset = dwTotalBytesRead & 0xFFFFFFFF;
+			overlapped_.OffsetHigh = 
+				(DWORD)Int64ShrlMod32(dwTotalBytesRead, 31);
+			overlapped_.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+			// read input buffer into char-buffer
+			bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX_SERIAL, &dwBytesRead, &overlapped_);
+			if (bResult)
+			{
+				dwTotalBytesRead += dwBytesRead;
+				std::string str = chBuffer;
+				std::string sub = "";
+				for (std::string::iterator ite = str.begin(); ite != str.end(); ++ite)
+				{
+					if (sub.length() >= 7)
+					{
+						SendMessageA(hWndRcvMessage
+							, WM_SETTEXT
+							, (WPARAM)0
+							, (LPARAM)sub.c_str()
+						);
+					}
+					if (*ite == '\r')
+					{
+						sub = "";
+					}
+					if (*ite != '\n')
+					{
+						sub += *ite;
+					}
+				}
+			}
+		}
+	}
+    return 0;
 }
 
 //****************************************************************************
@@ -409,7 +553,7 @@ BOOL connect_serial()
 	}
 
 	// set communication port mask bit to capture event
-	if (!SetCommMask(g_hComm, EV_RXCHAR))
+	if (!SetCommMask(g_hComm, EV_TXEMPTY | EV_RXCHAR))
 	{
 		return FALSE;
 	}
