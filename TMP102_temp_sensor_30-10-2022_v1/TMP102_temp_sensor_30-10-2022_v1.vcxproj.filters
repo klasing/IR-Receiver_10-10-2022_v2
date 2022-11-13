@@ -27,6 +27,9 @@
     <ClInclude Include="TMP102_temp_sensor_30-10-2022_v1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DlgProc_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TMP102_temp_sensor_30-10-2022_v1.cpp">
