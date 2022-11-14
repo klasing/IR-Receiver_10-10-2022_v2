@@ -25,7 +25,9 @@ HINSTANCE g_hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
-HANDLE g_hComm = { 0 };
+HWND g_hDlg = { 0 };
+HANDLE g_hComm = INVALID_HANDLE_VALUE;
+CHAR g_chBufferTransmit[BUFFER_MAX_SERIAL] = { 0 };
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -64,7 +66,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
     {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+		if (IsDialogMessage(g_hDlg, &msg))
+		{
+			continue;
+		}
+		if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
@@ -155,13 +161,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //****************************************************************************
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    static HWND hWndDlg;
     switch (message)
     {
     case WM_NCCREATE:
     {
 		// create dialog
-		hWndDlg = CreateDialog(g_hInst, L"DLGPROCWINDOW", hWnd, DlgProc);
+		g_hDlg = CreateDialog(g_hInst, L"DLGPROCWINDOW", hWnd, DlgProc);
         return DefWindowProc(hWnd, message, wParam, lParam);
     } // eof WM_NCCREATE
     case WM_CREATE:
@@ -173,7 +178,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		RECT rect;
 		GetClientRect(hWnd, &rect);
 		// set size dialog and show dialog
-		SetWindowPos(hWndDlg
+		SetWindowPos(g_hDlg
 			, HWND_TOP
 			, rect.left
 			, rect.top
@@ -238,6 +243,9 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			, hWndLV_Treg
 		);
 
+		// send the command to fetch the value of the configuration register
+		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "33600");
+
 		return (INT_PTR)FALSE;
     }
     case WM_SIZE:
@@ -252,126 +260,90 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     case WM_COMMAND:
     {
-        switch (LOWORD(wParam))
-        {
-        case CONNECT_SERIAL:
-        {
-			// connect to serial
-            if (connect_serial())
-            {
-                // set edit control IDC_STATUS_CONNECT_ text
-                SendMessage(GetDlgItem(hDlg, IDC_STATUS_CONNECT_)
-                    , WM_SETTEXT
-                    , (WPARAM)0
-                    , (LPARAM)L"Connected"
-                );
-                // enable/disable button
-                EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
-                EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
-
-				DWORD dwThreadId;
-				HANDLE hThread_ = CreateThread(NULL
-					, 0
-					, receive_serial
-					, (LPVOID)hDlg
-					, 0
-					, &dwThreadId
-				);
-            }
-            return (INT_PTR)TRUE;
-        } // eof CONNECT_SERIAL
-        case DISCONNECT_SERIAL:
-        {
-			// disconnect from serial
-			if (CloseHandle(g_hComm))
-			{
-                // set edit control IDC_STATUS_CONNECT_ text
-				SendMessage(GetDlgItem(hDlg, IDC_STATUS_CONNECT_)
-					, WM_SETTEXT
-					, (WPARAM)0
-					, (LPARAM)L"Disconnected"
-				);
-				// enable/disable button
-				EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), TRUE);
-				EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
-			}
-            return (INT_PTR)TRUE;
-        } // eof DISCONNECT_SERIAL
-        } // eof switch
-        break;
-    } // eof WM_COMMAND
-    } // eof switch
-    return (INT_PTR)FALSE;
+		onWmCommand_DlgProc(g_hInst
+			, hDlg
+			, wParam
+			, g_hComm
+		);
+   } // eof WM_COMMAND
+   } // eof switch
+   return (INT_PTR)FALSE;
 }
+
 //****************************************************************************
-//*                     receive_serial
+//*                     transmit
 //****************************************************************************
-DWORD WINAPI receive_serial(LPVOID lpVoid)
+DWORD WINAPI transmit(LPVOID lpVoid)
 {
-    HWND hWndRcvMessage = GetDlgItem((HWND)lpVoid, IDC_RCV_MESSAGE);
-
-	DWORD dwEvtMask = 0;
-	OVERLAPPED overlapped = { 0 };
-	overlapped.hEvent = CreateEvent(NULL
-		, TRUE
-		, FALSE
-		, NULL
-	);
-	if (overlapped.hEvent == NULL) return 1;
-
-	DWORD dwReturnCode = 0;
+	CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+	//sprintf_s(chBuffer, BUFFER_MAX_SERIAL, "hello");
 	DWORD dwNofByteTransferred = 0;
 	BOOL bResult = FALSE;
-	DWORD dwBytesRead = 0;
-	DWORD64 dwTotalBytesRead = 0;
-	CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
-
 	// infinite loop
 	while (TRUE)
 	{
-		WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &overlapped);
-		WaitForSingleObject(overlapped.hEvent, INFINITE);
-		GetOverlappedResult(g_hComm, &overlapped, &dwNofByteTransferred, FALSE);
-		if (dwEvtMask & EV_RXCHAR)
-		{
-			// create an overlapped structure for reading from file
-			OVERLAPPED overlapped_ = { 0 };
-			overlapped_.Offset = dwTotalBytesRead & 0xFFFFFFFF;
-			overlapped_.OffsetHigh = 
-				(DWORD)Int64ShrlMod32(dwTotalBytesRead, 31);
-			overlapped_.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-			// read input buffer into char-buffer
-			bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX_SERIAL, &dwBytesRead, &overlapped_);
-			if (bResult)
-			{
-				dwTotalBytesRead += dwBytesRead;
-				std::string str = chBuffer;
-				std::string sub = "";
-				for (std::string::iterator ite = str.begin(); ite != str.end(); ++ite)
-				{
-					if (sub.length() >= 7)
-					{
-						SendMessageA(hWndRcvMessage
-							, WM_SETTEXT
-							, (WPARAM)0
-							, (LPARAM)sub.c_str()
-						);
-					}
-					if (*ite == '\r')
-					{
-						sub = "";
-					}
-					if (*ite != '\n')
-					{
-						sub += *ite;
-					}
-				}
-			}
-		}
+		bResult = WriteFile(g_hComm
+			, &g_chBufferTransmit //&chBuffer
+			, strlen(g_chBufferTransmit) //strlen(chBuffer)
+			, &dwNofByteTransferred
+			, NULL
+		);
+		//OutputDebugStringA(chBuffer);
+		//OutputDebugString(L" ");
+		Sleep(250);
 	}
-    return 0;
+	return 0;
 }
 
+//****************************************************************************
+//*                     receive
+//****************************************************************************
+DWORD WINAPI receive(LPVOID lpVoid)
+{
+	CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+	DWORD dwNofByteTransferred = 0;
+	BOOL bResult = FALSE;
+	// infinite loop
+	while (TRUE)
+	{
+		bResult = ReadFile(g_hComm
+			, &chBuffer
+			, 9//strlen(chBuffer)
+			, &dwNofByteTransferred
+			, NULL
+		);
+		SendMessageA(GetDlgItem(g_hDlg, IDC_RCV_MESSAGE)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)chBuffer
+		);
+		//OutputDebugStringA(chBuffer);
+		Sleep(250);
+	}
+	return 0;
+}
+
+// Message handler for about box.
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    UNREFERENCED_PARAMETER(lParam);
+    switch (message)
+    {
+    case WM_INITDIALOG:
+        return (INT_PTR)TRUE;
+
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+        {
+            EndDialog(hDlg, LOWORD(wParam));
+            return (INT_PTR)TRUE;
+        }
+        break;
+    }
+    return (INT_PTR)FALSE;
+}
+
+/*
 //****************************************************************************
 //*                     connect_serial
 //****************************************************************************
@@ -454,23 +426,74 @@ BOOL connect_serial()
 	return TRUE;
 }
 
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+//****************************************************************************
+//*                     receive_serial
+//****************************************************************************
+DWORD WINAPI receive_serial(LPVOID lpVoid)
 {
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
+	HWND hWndRcvMessage = GetDlgItem((HWND)lpVoid, IDC_RCV_MESSAGE);
 
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
+	DWORD dwEvtMask = 0;
+	OVERLAPPED overlapped = { 0 };
+	overlapped.hEvent = CreateEvent(NULL
+		, TRUE
+		, FALSE
+		, NULL
+	);
+	if (overlapped.hEvent == NULL) return 1;
+
+	DWORD dwReturnCode = 0;
+	DWORD dwNofByteTransferred = 0;
+	BOOL bResult = FALSE;
+	DWORD dwBytesRead = 0;
+	DWORD64 dwTotalBytesRead = 0;
+	CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+
+	// infinite loop
+	while (TRUE)
+	{
+		WaitCommEvent(g_hComm, (LPDWORD)&dwEvtMask, &overlapped);
+		WaitForSingleObject(overlapped.hEvent, INFINITE);
+		GetOverlappedResult(g_hComm, &overlapped, &dwNofByteTransferred, FALSE);
+		if (dwEvtMask & EV_RXCHAR)
+		{
+			// create an overlapped structure for reading from file
+			OVERLAPPED overlapped_ = { 0 };
+			overlapped_.Offset = dwTotalBytesRead & 0xFFFFFFFF;
+			overlapped_.OffsetHigh =
+				(DWORD)Int64ShrlMod32(dwTotalBytesRead, 31);
+			overlapped_.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+			// read input buffer into char-buffer
+			bResult = ReadFile(g_hComm, &chBuffer, BUFFER_MAX_SERIAL, &dwBytesRead, &overlapped_);
+			if (bResult)
+			{
+				dwTotalBytesRead += dwBytesRead;
+				std::string str = chBuffer;
+				std::string sub = "";
+				for (std::string::iterator ite = str.begin(); ite != str.end(); ++ite)
+				{
+					if (sub.length() >= 7)
+					{
+						SendMessageA(hWndRcvMessage
+							, WM_SETTEXT
+							, (WPARAM)0
+							, (LPARAM)sub.c_str()
+						);
+					}
+					if (*ite == '\r')
+					{
+						sub = "";
+					}
+					if (*ite != '\n')
+					{
+						sub += *ite;
+					}
+				}
+			}
+		}
+	}
+	return 0;
 }
+
+*/
 

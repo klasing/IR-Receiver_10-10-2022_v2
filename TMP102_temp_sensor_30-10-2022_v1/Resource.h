@@ -5,10 +5,14 @@
 #define IDC_LV_T_LO				33002
 #define IDC_LV_T_HI				33003
 #define IDC_LV_TREG				33004
-#define IDC_CB_FAULT_QUEUE		33005
-#define IDC_CB_POLARITY_ALERT	33006
-#define IDC_CB_MODE_THERMOSTAT	33007
-#define IDC_RCV_MESSAGE			33008
+#define IDC_CHB_ONESHOT			33005
+#define IDC_CB_FAULT_QUEUE		33006
+#define IDC_CB_POLARITY_ALERT	33007
+#define IDC_CB_MODE_THERMOSTAT	33008
+#define IDC_CHB_SHUTDOWN		33009
+#define IDC_CB_RATE_CONVERSION	33010
+#define IDC_CHB_EXTENDED		33011
+#define IDC_RCV_MESSAGE			33012
 // message
 #define CONNECT_SERIAL			33100
 #define DISCONNECT_SERIAL		33101
@@ -35,11 +39,12 @@
 #define IDS_LVTEMP_COL5			33517
 #define IDS_LVTEMP_COL6			33518
 #define IDS_LVTEMP_COL7			33519
+
 // serial command
-#define RD_REG_TEMP				33600 // address to approach two bytes with 12/13 bits data (with 13 bits data LSB=1 in second byte)
-#define RD_REG_CNFG				33601 // address to approach two bytes with 12 bits data
-#define RD_REG_T_LO				33602 // address to approach two bytes with 12/13 bits data
-#define RD_REG_T_HI				33603 // address to approach two bytes with 12/13 bits data
+#define RD_REG_CNFG				33600 // address to approach two bytes with 12 bits data
+#define RD_REG_T_LO				33601 // address to approach two bytes with 12/13 bits data
+#define RD_REG_T_HI				33602 // address to approach two bytes with 12/13 bits data
+#define RD_REG_TEMP				33603 // address to approach two bytes with 12/13 bits data (with 13 bits data LSB=1 in second byte)
 
 // control
 #define IDC_STATUS_CONNECT		33002
