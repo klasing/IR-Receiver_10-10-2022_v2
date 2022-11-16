@@ -267,6 +267,11 @@ INT_PTR CALLBACK onWmCommand_DlgProc(const HINSTANCE& hInst
 	, const HWND& hDlg
 	, const WPARAM& wParam
 	, HANDLE& hComm
+	, HANDLE& hThreadTransmit
+	, HANDLE& hThreadReceive
+	, BOOL& bCheckedStateChbOneshot
+	, BOOL& bCheckedStateChbShutdown
+	, BOOL& bCheckedStateChbExtended
 )
 {
 	switch (LOWORD(wParam))
@@ -287,7 +292,7 @@ INT_PTR CALLBACK onWmCommand_DlgProc(const HINSTANCE& hInst
 
 			// create thread to transmit
 			DWORD dwThreadIdTransmit = 0;
-			HANDLE hTreadTransmit = CreateThread(NULL
+			hThreadTransmit = CreateThread(NULL
 				, 0
 				, transmit
 				, (LPVOID)hDlg
@@ -297,7 +302,7 @@ INT_PTR CALLBACK onWmCommand_DlgProc(const HINSTANCE& hInst
 
 			// create thread to receive
 			DWORD dwThreadIdReceive = 0;
-			HANDLE hTreadReceive = CreateThread(NULL
+			hThreadReceive = CreateThread(NULL
 				, 0
 				, receive
 				, (LPVOID)hDlg
@@ -312,6 +317,15 @@ INT_PTR CALLBACK onWmCommand_DlgProc(const HINSTANCE& hInst
 		if (hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
 		if (CloseHandle(hComm))
 		{
+			BOOL bResult = FALSE;
+			DWORD dwExitCode = 0;
+			bResult = TerminateThread(hThreadTransmit, 100);
+			bResult = GetExitCodeThread(hThreadTransmit, &dwExitCode);
+			hThreadTransmit = INVALID_HANDLE_VALUE;
+			bResult = TerminateThread(hThreadReceive, 100);
+			bResult = GetExitCodeThread(hThreadReceive, &dwExitCode);
+			hThreadReceive = INVALID_HANDLE_VALUE;
+
 			hComm = INVALID_HANDLE_VALUE;
 
 			// set text edit control IDC_STATUS_CONNECT
@@ -327,6 +341,76 @@ INT_PTR CALLBACK onWmCommand_DlgProc(const HINSTANCE& hInst
 		}
 		return (INT_PTR)TRUE;
 	} // eof DISCONNECT_SERIAL
+	case IDC_CHB_ONESHOT:
+	{
+		if (bCheckedStateChbOneshot)
+		{
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_ONESHOT)
+				, BM_SETCHECK
+				, (WPARAM)BST_UNCHECKED
+				, (LPARAM)0
+			);
+			bCheckedStateChbOneshot = FALSE;
+		}
+		else
+		{
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_ONESHOT)
+				, BM_SETCHECK
+				, (WPARAM)BST_CHECKED
+				, (LPARAM)0
+			);
+			bCheckedStateChbOneshot = TRUE;
+		}
+		return (INT_PTR)TRUE;
+	} // eof IDC_CHB_ONESHOT
+	case IDC_CHB_SHUTDOWN:
+	{
+		if (bCheckedStateChbShutdown)
+		{
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
+				, BM_SETCHECK
+				, (WPARAM)BST_UNCHECKED
+				, (LPARAM)0
+			);
+			bCheckedStateChbShutdown = FALSE;
+		}
+		else
+		{
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
+				, BM_SETCHECK
+				, (WPARAM)BST_CHECKED
+				, (LPARAM)0
+			);
+			bCheckedStateChbShutdown = TRUE;
+		}
+		return (INT_PTR)TRUE;
+	} // eof IDC_CHB_SHUTDOWN
+	case IDC_CHB_EXTENDED:
+	{
+		if (bCheckedStateChbExtended)
+		{
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
+				, BM_SETCHECK
+				, (WPARAM)BST_UNCHECKED
+				, (LPARAM)0
+			);
+			bCheckedStateChbExtended = FALSE;
+		}
+		else
+		{
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
+				, BM_SETCHECK
+				, (WPARAM)BST_CHECKED
+				, (LPARAM)0
+			);
+			bCheckedStateChbExtended = TRUE;
+		}
+		return (INT_PTR)TRUE;
+	} // eof IDC_CHB_EXTENDED
+	case APPLY_SETTING:
+	{
+		return (INT_PTR)TRUE;
+	} // eof APPLY_SETTING
 	} // eof switch
 	
 	return (INT_PTR)FALSE;

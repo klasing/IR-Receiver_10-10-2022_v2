@@ -227,10 +227,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //****************************************************************************
 INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    static HWND hWndLV_Cnfg = { 0 };
+	static HANDLE hThreadTransmit = INVALID_HANDLE_VALUE;
+	static HANDLE hThreadReceive = INVALID_HANDLE_VALUE;
+	static HWND hWndLV_Cnfg = { 0 };
     static HWND hWndLV_T_lo = { 0 };
 	static HWND hWndLV_T_hi = { 0 };
 	static HWND hWndLV_Treg = { 0 };
+	static BOOL bCheckedStateChbOneshot = FALSE;
+	static BOOL bCheckedStateChbShutdown = FALSE;
+	static BOOL bCheckedStateChbExtended = FALSE;
 	switch (uMsg)
     {
     case WM_INITDIALOG:
@@ -244,7 +249,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		);
 
 		// send the command to fetch the value of the configuration register
-		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "33600");
+		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "33603");
 
 		return (INT_PTR)FALSE;
     }
@@ -258,16 +263,21 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		return (INT_PTR)TRUE;
     }
-    case WM_COMMAND:
-    {
+	case WM_COMMAND:
+	{
 		onWmCommand_DlgProc(g_hInst
 			, hDlg
 			, wParam
 			, g_hComm
+			, hThreadTransmit
+			, hThreadReceive
+			, bCheckedStateChbOneshot
+			, bCheckedStateChbShutdown
+			, bCheckedStateChbExtended
 		);
-   } // eof WM_COMMAND
-   } // eof switch
-   return (INT_PTR)FALSE;
+	} // eof WM_COMMAND
+	} // eof switch
+	return (INT_PTR)FALSE;
 }
 
 //****************************************************************************
@@ -288,8 +298,8 @@ DWORD WINAPI transmit(LPVOID lpVoid)
 			, &dwNofByteTransferred
 			, NULL
 		);
-		//OutputDebugStringA(chBuffer);
-		//OutputDebugString(L" ");
+		OutputDebugStringA(chBuffer);
+		OutputDebugString(L" ");
 		Sleep(250);
 	}
 	return 0;
@@ -317,8 +327,8 @@ DWORD WINAPI receive(LPVOID lpVoid)
 			, (WPARAM)0
 			, (LPARAM)chBuffer
 		);
-		//OutputDebugStringA(chBuffer);
-		Sleep(250);
+		OutputDebugStringA(chBuffer);
+		Sleep(500);// Sleep(250);
 	}
 	return 0;
 }
