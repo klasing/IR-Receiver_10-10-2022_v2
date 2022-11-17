@@ -231,28 +231,28 @@ BOOL onWmSize_DlgProc(const HWND& hWndLV_Cnfg
 {
 	// CONFIGURATION
 	MoveWindow(hWndLV_Cnfg
-		, 20, 75
+		, 20, 90
 		, 336
 		, 40
 		, TRUE
 	);
 	// TEMPERATURE LOW
 	MoveWindow(hWndLV_T_lo
-		, 20, 140
+		, 20, 155
 		, 417
 		, 40
 		, TRUE
 	);
 	// TEMPERATURE HIGH
 	MoveWindow(hWndLV_T_hi
-		, 20, 205
+		, 20, 220
 		, 417
 		, 40
 		, TRUE
 	);
 	// TEMPERATURE REGISTER
 	MoveWindow(hWndLV_Treg
-		, 20, 270
+		, 20, 285
 		, 417
 		, 40
 		, TRUE

@@ -1,18 +1,20 @@
 #define BUFFER_MAX_SERIAL		512
 // control
-#define IDC_STATUS_CONNECT_		33000
+#define IDC_STATUS_CONNECT		33000
 #define IDC_LV_CONFIGURATION	33001
 #define IDC_LV_T_LO				33002
-#define IDC_LV_T_HI				33003
-#define IDC_LV_TREG				33004
-#define IDC_CHB_ONESHOT			33005
-#define IDC_CB_FAULT_QUEUE		33006
-#define IDC_CB_POLARITY_ALERT	33007
-#define IDC_CB_MODE_THERMOSTAT	33008
-#define IDC_CHB_SHUTDOWN		33009
-#define IDC_CB_RATE_CONVERSION	33010
-#define IDC_CHB_EXTENDED		33011
-#define IDC_RCV_MESSAGE			33012
+#define IDC_T_LO_CLCS			33003
+#define IDC_LV_T_HI				33004
+#define IDC_T_HI_CLCS			33005
+#define IDC_LV_TREG				33006
+#define IDC_T_CLCS				33007
+#define IDC_CHB_ONESHOT			33008
+#define IDC_CB_FAULT_QUEUE		33009
+#define IDC_CB_POLARITY_ALERT	33010
+#define IDC_CB_MODE_THERMOSTAT	33011
+#define IDC_CHB_SHUTDOWN		33012
+#define IDC_CB_RATE_CONVERSION	33013
+#define IDC_CHB_EXTENDED		33014
 // message
 #define CONNECT_SERIAL			33100
 #define DISCONNECT_SERIAL		33101
@@ -40,21 +42,14 @@
 #define IDS_LVTEMP_COL6			33518
 #define IDS_LVTEMP_COL7			33519
 
+#define IDS_DEGREE_SYMBOL		33520
+
 // serial command
 #define RD_REG_CNFG				33600 // address to approach two bytes with 12 bits data
 #define RD_REG_T_LO				33601 // address to approach two bytes with 12/13 bits data
 #define RD_REG_T_HI				33602 // address to approach two bytes with 12/13 bits data
 #define RD_REG_TEMP				33603 // address to approach two bytes with 12/13 bits data (with 13 bits data LSB=1 in second byte)
 
-// control
-#define IDC_STATUS_CONNECT		33002
-#define IDC_RCV_MSG				33003
-#define IDC_RCV_MSG_MULTILINE	33004
-#define IDC_TRM_MSG				33005
-// message
-#define START_RECEIVE			33102
-#define SERIAL_DISCONNECTED		33103
-#define START_TRANSMIT			33104
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by TMP102_temp_sensor_30-10-2022_v1.rc

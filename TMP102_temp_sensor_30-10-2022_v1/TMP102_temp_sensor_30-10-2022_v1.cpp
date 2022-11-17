@@ -28,14 +28,15 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 HWND g_hDlg = { 0 };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
 CHAR g_chBufferTransmit[BUFFER_MAX_SERIAL] = { 0 };
+CHAR g_chBufferReceive[BUFFER_MAX_SERIAL] = { 0 };
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-BOOL                connect_serial();
-DWORD WINAPI        receive_serial(LPVOID lpVoid);
+//TODO removeBOOL                connect_serial();
+//TODO removeDWORD WINAPI        receive_serial(LPVOID lpVoid);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -236,6 +237,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	static BOOL bCheckedStateChbOneshot = FALSE;
 	static BOOL bCheckedStateChbShutdown = FALSE;
 	static BOOL bCheckedStateChbExtended = FALSE;
+	static UINT16 uSerialCommand = 0;
 	switch (uMsg)
     {
     case WM_INITDIALOG:
@@ -249,7 +251,8 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		);
 
 		// send the command to fetch the value of the configuration register
-		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "33603");
+		uSerialCommand = RD_REG_TEMP;
+		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", uSerialCommand);
 
 		return (INT_PTR)FALSE;
     }
@@ -285,21 +288,18 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //****************************************************************************
 DWORD WINAPI transmit(LPVOID lpVoid)
 {
-	CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
-	//sprintf_s(chBuffer, BUFFER_MAX_SERIAL, "hello");
 	DWORD dwNofByteTransferred = 0;
 	BOOL bResult = FALSE;
 	// infinite loop
 	while (TRUE)
 	{
 		bResult = WriteFile(g_hComm
-			, &g_chBufferTransmit //&chBuffer
-			, strlen(g_chBufferTransmit) //strlen(chBuffer)
+			, &g_chBufferTransmit
+			, 5
 			, &dwNofByteTransferred
 			, NULL
 		);
-		OutputDebugStringA(chBuffer);
-		OutputDebugString(L" ");
+		OutputDebugStringA(g_chBufferTransmit);
 		Sleep(250);
 	}
 	return 0;
@@ -310,25 +310,30 @@ DWORD WINAPI transmit(LPVOID lpVoid)
 //****************************************************************************
 DWORD WINAPI receive(LPVOID lpVoid)
 {
-	CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 	DWORD dwNofByteTransferred = 0;
 	BOOL bResult = FALSE;
 	// infinite loop
 	while (TRUE)
 	{
 		bResult = ReadFile(g_hComm
-			, &chBuffer
-			, 9//strlen(chBuffer)
+			, &g_chBufferReceive
+			, 2
 			, &dwNofByteTransferred
 			, NULL
 		);
-		SendMessageA(GetDlgItem(g_hDlg, IDC_RCV_MESSAGE)
+		//SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
+		//	, WM_SETTEXT
+		//	, (WPARAM)0
+		//	, (LPARAM)g_chBufferReceive
+		//);
+		OutputDebugStringA(g_chBufferReceive);
+		OutputDebugString(L"\n");
+		SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
 			, WM_SETTEXT
 			, (WPARAM)0
-			, (LPARAM)chBuffer
+			, (LPARAM)"bla"
 		);
-		OutputDebugStringA(chBuffer);
-		Sleep(500);// Sleep(250);
+		Sleep(250);
 	}
 	return 0;
 }
