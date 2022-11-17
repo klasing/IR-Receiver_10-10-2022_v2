@@ -27,6 +27,7 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 HWND g_hDlg = { 0 };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
+UINT16 g_uSerialCommand = 0;
 CHAR g_chBufferTransmit[BUFFER_MAX_SERIAL] = { 0 };
 CHAR g_chBufferReceive[BUFFER_MAX_SERIAL] = { 0 };
 
@@ -237,7 +238,6 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	static BOOL bCheckedStateChbOneshot = FALSE;
 	static BOOL bCheckedStateChbShutdown = FALSE;
 	static BOOL bCheckedStateChbExtended = FALSE;
-	static UINT16 uSerialCommand = 0;
 	switch (uMsg)
     {
     case WM_INITDIALOG:
@@ -250,9 +250,17 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			, hWndLV_Treg
 		);
 
-		// send the command to fetch the value of the configuration register
-		uSerialCommand = RD_REG_TEMP;
-		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", uSerialCommand);
+		// send the command to fetch the value of the temp-lo register
+		//g_uSerialCommand = RD_REG_T_LO;
+		//sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
+
+		// send the command to fetch the value of the temp-hi register
+		//g_uSerialCommand = RD_REG_T_HI;
+		//sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
+
+		// send the command to fetch the value of the temperature register
+		g_uSerialCommand = RD_REG_TEMP;
+		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
 
 		return (INT_PTR)FALSE;
     }
@@ -299,8 +307,8 @@ DWORD WINAPI transmit(LPVOID lpVoid)
 			, &dwNofByteTransferred
 			, NULL
 		);
-		OutputDebugStringA(g_chBufferTransmit);
-		Sleep(250);
+		//OutputDebugStringA(g_chBufferTransmit);
+		Sleep(125);
 	}
 	return 0;
 }
@@ -321,19 +329,45 @@ DWORD WINAPI receive(LPVOID lpVoid)
 			, &dwNofByteTransferred
 			, NULL
 		);
-		//SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
-		//	, WM_SETTEXT
-		//	, (WPARAM)0
-		//	, (LPARAM)g_chBufferReceive
-		//);
-		OutputDebugStringA(g_chBufferReceive);
-		OutputDebugString(L"\n");
-		SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
-			, WM_SETTEXT
-			, (WPARAM)0
-			, (LPARAM)"bla"
-		);
-		Sleep(250);
+		//OutputDebugStringA(g_chBufferReceive);
+		if (dwNofByteTransferred == 2)
+		{
+			INT16 val = ((INT16)g_chBufferReceive[0] << 4 | g_chBufferReceive[1] >> 4);
+			if (val > 0x7FF) val |= 0xF000;
+			FLOAT temp_c = val * 0.0625;
+			temp_c *= 100;
+			sprintf_s(g_chBufferReceive
+				, BUFFER_MAX_SERIAL
+				, "%d.%02d"
+				, ((UINT)temp_c / 100)
+				, ((UINT)temp_c % 100)
+			);
+			if (g_uSerialCommand == RD_REG_T_LO)
+			{
+				SendMessageA(GetDlgItem(g_hDlg, IDC_T_LO_CLCS)
+					, WM_SETTEXT
+					, (WPARAM)0
+					, (LPARAM)g_chBufferReceive
+				);
+			}
+			if (g_uSerialCommand == RD_REG_T_HI)
+			{
+				SendMessageA(GetDlgItem(g_hDlg, IDC_T_HI_CLCS)
+					, WM_SETTEXT
+					, (WPARAM)0
+					, (LPARAM)g_chBufferReceive
+				);
+			}
+			if (g_uSerialCommand == RD_REG_TEMP)
+			{
+				SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
+					, WM_SETTEXT
+					, (WPARAM)0
+					, (LPARAM)g_chBufferReceive
+				);
+			}
+		}
+		Sleep(125);
 	}
 	return 0;
 }
