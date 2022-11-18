@@ -182,7 +182,7 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 		, (WPARAM)0
 		, (LPARAM)L"Interrupt"
 	);
-	// set the default value for the fault queue
+	// set the default value for the mode thermostat
 	SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
 		, CB_SETCURSEL
 		, (WPARAM)0
@@ -193,24 +193,24 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
 		, CB_ADDSTRING
 		, (WPARAM)0
-		, (LPARAM)L"0.25 Hz"
+		, (LPARAM)L"0.25"
 	);
 	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
 		, CB_ADDSTRING
 		, (WPARAM)0
-		, (LPARAM)L"1 Hz"
+		, (LPARAM)L"1"
 	);
 	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
 		, CB_ADDSTRING
 		, (WPARAM)0
-		, (LPARAM)L"4 Hz"
+		, (LPARAM)L"4"
 	);
 	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
 		, CB_ADDSTRING
 		, (WPARAM)0
-		, (LPARAM)L"8 Hz"
+		, (LPARAM)L"8"
 	);
-	// set the default value for the fault queue
+	// set the default value for the rate conversion
 	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
 		, CB_SETCURSEL
 		, (WPARAM)2
@@ -498,4 +498,217 @@ BOOL connect(HANDLE& hComm)
 
 	return EXIT_SUCCESS;
 }
+//****************************************************************************
+//*                     updateRegister
+//****************************************************************************
+BOOL updateRegister(const HWND& hWndDlgItem
+	, const UINT8& hiByte
+	, const UINT8& loByte
+	, const UINT8 nofBits = 16
+)
+{
+	UINT8 mask = 128;
+	for (UINT8 i = 0; i < 8; i++)
+	{
+		if (hiByte & mask)
+		{
+			updateListViewItem(hWndDlgItem
+				, 0
+				, i
+				, (PWCHAR)L"1"
+			);
+		}
+		else
+		{
+			updateListViewItem(hWndDlgItem
+				, 0
+				, i
+				, (PWCHAR)L"0"
+			);
+		}
+		mask >>= 1;
+	}
+	UINT8 limit = (nofBits == 16) ? 8 : 4;
+	mask = 128;
+	for (UINT8 i = 0; i < limit; i++)
+	{
+		if (loByte & mask)
+		{
+			updateListViewItem(hWndDlgItem
+				, 0
+				, i + 8
+				, (PWCHAR)L"1"
+			);
+		}
+		else
+		{
+			updateListViewItem(hWndDlgItem
+				, 0
+				, i + 8
+				, (PWCHAR)L"0"
+			);
+		}
+		mask >>= 1;
+	}
+	return EXIT_SUCCESS;
+}
+//****************************************************************************
+//*                     updateSetting
+//****************************************************************************
+BOOL updateSetting(const HWND& hDlg
+	, const UINT8& hiByte
+	, const UINT8& loByte
+)
+{
+	UINT8 bit_field = 0;
+	// update IDC_CHB_ONESHOT ////////////////////////////////////////////////
+	if (hiByte & 128)
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_ONESHOT)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		);
+		//TODO bCheckedStateChbOneshot is not updated accordingly
+	}
+	else
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_ONESHOT)
+			, BM_SETCHECK
+			, (WPARAM)BST_UNCHECKED
+			, (LPARAM)0
+		);
+		//TODO bCheckedStateChbOneshot is not updated accordingly
+	}
+	// update IDC_RESOLUTION //////////////////////////////////////////////////
+	std::wstring wstrResolution = L"";
+	bit_field = (hiByte & 0x60) >> 5; // note precedence!
+	switch (bit_field)
+	{
+	case 0:
+	case 1:
+	case 2:
+	{
+		wstrResolution = L"not specified";
+		break;
+	} // eof 0 | 1 | 2
+	case 3:
+	{
+		wstrResolution = L"12 bit-resolution";
+		break;
+	} // eof 3
+	} // eof switch
+	SendMessage(GetDlgItem(hDlg, IDC_RESOLUTION)
+		, WM_SETTEXT
+		, (WPARAM)0
+		, (LPARAM)wstrResolution.c_str()
+	);
+	// update IDC_CB_FAULT_QUEUE ////////////////////////////////////////////////
+	bit_field = (hiByte & 0x18) >> 3; // note precedence!
+	// 00 - 1
+	// 01 - 2
+	// 10 - 4
+	// 11 - 6
+	SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+		, CB_SETCURSEL
+		, (WPARAM)bit_field
+		, (LPARAM)0
+	);
+	// update IDC_CB_POLARITY_ALERT //////////////////////////////////////////
+	bit_field = (hiByte & 0x04) >> 2; // note precedence!
+	SendMessage(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT)
+		, CB_SETCURSEL
+		, (WPARAM)bit_field
+		, (LPARAM)0
+	);
+	// update IDC_CB_MODE_THERMOSTAT /////////////////////////////////////////
+	bit_field = (hiByte & 0x02) >> 1; // note precedence!
+	SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
+		, CB_SETCURSEL
+		, (WPARAM)bit_field
+		, (LPARAM)0
+	);
+	// update IDC_CHB_SHUTDOWN ///////////////////////////////////////////////
+	if (hiByte & 1)
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		);
+		//TODO bCheckedStateChbShutdown is not updated accordingly
+	}
+	else
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
+			, BM_SETCHECK
+			, (WPARAM)BST_UNCHECKED
+			, (LPARAM)0
+		);
+		//TODO bCheckedStateChbShutdown is not updated accordingly
+	}
+	// update IDC_CB_RATE_CONVERSION /////////////////////////////////////////
+	// 00 - 0.25 Hz
+	// 01 - 1    Hz
+	// 10 - 4    Hz
+	// 11 - 8    Hz
+	bit_field = (loByte & 0xC0) >> 6; // note precedence!
+	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+		, CB_SETCURSEL
+		, (WPARAM)bit_field
+		, (LPARAM)0
+	);
+	// update IDC_ALERT //////////////////////////////////////////////////////
+	bit_field = (loByte & 0x20) >> 5; // note precedence!
+	std::wstring wstrStateAlert = L"";
+	if ((hiByte & 0x04) >> 2 == 0)
+	{
+		// polarity is active low
+		if (bit_field)
+		{
+			wstrStateAlert = L"Not active";
+		}
+		else
+		{
+			wstrStateAlert = L"Active";
+		}
+	}
+	else
+	{
+		// polarity is active high
+		if (bit_field)
+		{
+			wstrStateAlert = L"Active";
+		}
+		else
+		{
+			wstrStateAlert = L"Not active";
+		}
+	}
+	SendMessage(GetDlgItem(hDlg, IDC_ALERT)
+		, WM_SETTEXT
+		, (WPARAM)0
+		, (LPARAM)wstrStateAlert.c_str()
+	);
+	// update IDC_CHB_EXTENDED ///////////////////////////////////////////////
+	if (loByte & 0x10)
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		);
+		//TODO bCheckedStateChbExtended is not updated accordingly
+	}
+	else
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
+			, BM_SETCHECK
+			, (WPARAM)BST_UNCHECKED
+			, (LPARAM)0
+		);
+		//TODO bCheckedStateChbExtended is not updated accordingly
+	}
 
+	return EXIT_SUCCESS;
+}

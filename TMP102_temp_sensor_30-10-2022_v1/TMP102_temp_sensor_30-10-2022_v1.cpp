@@ -250,6 +250,10 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			, hWndLV_Treg
 		);
 
+		// send the command to fetch the value of the configuration register
+		g_uSerialCommand = RD_REG_CNFG;
+		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
+
 		// send the command to fetch the value of the temp-lo register
 		//g_uSerialCommand = RD_REG_T_LO;
 		//sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
@@ -259,8 +263,8 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		//sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
 
 		// send the command to fetch the value of the temperature register
-		g_uSerialCommand = RD_REG_TEMP;
-		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
+		//g_uSerialCommand = RD_REG_TEMP;
+		//sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
 
 		return (INT_PTR)FALSE;
     }
@@ -332,16 +336,30 @@ DWORD WINAPI receive(LPVOID lpVoid)
 		//OutputDebugStringA(g_chBufferReceive);
 		if (dwNofByteTransferred == 2)
 		{
-			INT16 val = ((INT16)g_chBufferReceive[0] << 4 | g_chBufferReceive[1] >> 4);
-			if (val > 0x7FF) val |= 0xF000;
-			FLOAT temp_c = val * 0.0625;
-			temp_c *= 100;
-			sprintf_s(g_chBufferReceive
-				, BUFFER_MAX_SERIAL
-				, "%d.%02d"
-				, ((UINT)temp_c / 100)
-				, ((UINT)temp_c % 100)
-			);
+			//INT16 val = ((INT16)g_chBufferReceive[0] << 4 | g_chBufferReceive[1] >> 4);
+			//if (val > 0x7FF) val |= 0xF000;
+			//FLOAT temp_c = val * 0.0625;
+			//temp_c *= 100;
+			//sprintf_s(g_chBufferReceive
+			//	, BUFFER_MAX_SERIAL
+			//	, "%d.%02d"
+			//	, ((UINT)temp_c / 100)
+			//	, ((UINT)temp_c % 100)
+			//);
+			// set CONFIGURATION /////////////////////////////////////////////
+			if (g_uSerialCommand == RD_REG_CNFG)
+			{
+				updateRegister(GetDlgItem(g_hDlg, IDC_LV_CONFIGURATION)
+					, g_chBufferReceive[0]
+					, g_chBufferReceive[1]
+					, 12
+				);
+				updateSetting(g_hDlg
+					, g_chBufferReceive[0]
+					, g_chBufferReceive[1]
+				);
+			}
+			// set TEMPERATURE LOW ///////////////////////////////////////////
 			if (g_uSerialCommand == RD_REG_T_LO)
 			{
 				SendMessageA(GetDlgItem(g_hDlg, IDC_T_LO_CLCS)
@@ -350,6 +368,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 					, (LPARAM)g_chBufferReceive
 				);
 			}
+			// set TEMPERATURE HIGH //////////////////////////////////////////
 			if (g_uSerialCommand == RD_REG_T_HI)
 			{
 				SendMessageA(GetDlgItem(g_hDlg, IDC_T_HI_CLCS)
@@ -358,6 +377,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 					, (LPARAM)g_chBufferReceive
 				);
 			}
+			// set TEMPERATURE REGISTER //////////////////////////////////////
 			if (g_uSerialCommand == RD_REG_TEMP)
 			{
 				SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
