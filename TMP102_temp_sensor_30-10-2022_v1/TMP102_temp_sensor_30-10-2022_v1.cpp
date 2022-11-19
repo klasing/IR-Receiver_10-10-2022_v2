@@ -31,6 +31,10 @@ UINT16 g_uSerialCommand = 0;
 CHAR g_chBufferTransmit[BUFFER_MAX_SERIAL] = { 0 };
 CHAR g_chBufferReceive[BUFFER_MAX_SERIAL] = { 0 };
 BOOL g_bTransmit = TRUE;
+static COLORREF g_crInRange = 0x0060DD60;
+static COLORREF g_crOutRange = 0x008080FF;
+static COLORREF g_crT_Lo_Clcs = g_crInRange;
+static COLORREF g_crT_Hi_Clcs = g_crInRange;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -239,6 +243,11 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	static BOOL bCheckedStateChbOneshot = FALSE;
 	static BOOL bCheckedStateChbShutdown = FALSE;
 	static BOOL bCheckedStateChbExtended = FALSE;
+	//static COLORREF crInRange = 0x0060DD60;
+	//static COLORREF crOutRange = 0x008080FF;
+	//static COLORREF crT_Lo_Clcs = crInRange;
+	//static COLORREF crT_Hi_Clcs = crInRange;
+
 	switch (uMsg)
     {
     case WM_INITDIALOG:
@@ -296,6 +305,22 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			, bCheckedStateChbExtended
 		);
 	} // eof WM_COMMAND
+	case WM_CTLCOLOREDIT:
+	{
+		if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_LO_CLCS))
+		{
+			SetBkColor((HDC)wParam, g_crT_Lo_Clcs);
+			SetDCBrushColor((HDC)wParam, g_crT_Lo_Clcs);
+			return (LRESULT)GetStockObject(DC_BRUSH);
+		}
+		if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_HI_CLCS))
+		{
+			SetBkColor((HDC)wParam, g_crT_Hi_Clcs);
+			SetDCBrushColor((HDC)wParam, g_crT_Hi_Clcs);
+			return (LRESULT)GetStockObject(DC_BRUSH);
+		}
+		return (INT_PTR)FALSE;
+	} // eof WM_CTLCOLOREDIT
 	} // eof switch
 	return (INT_PTR)FALSE;
 }
@@ -336,6 +361,8 @@ DWORD WINAPI receive(LPVOID lpVoid)
 	DWORD dwNofByteTransferred = 0;
 	BOOL bResult = FALSE;
 	UINT8 cReceive = 0;
+	UINT16 val = 0;
+	FLOAT temp_c = 0.;
 	// infinite loop
 	while (TRUE)
 	{
@@ -365,7 +392,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 						, g_chBufferReceive[1]
 					);
 					++cReceive;
-					if (cReceive == 10)
+					if (cReceive == MAX_RETRY_SERIAL)
 					{
 						cReceive = 0;
 						// send the command to fetch the value of the temp-lo register
@@ -373,9 +400,20 @@ DWORD WINAPI receive(LPVOID lpVoid)
 						sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
 					}
 				}
-				INT16 val = ((INT16)g_chBufferReceive[0] << 4 | g_chBufferReceive[1] >> 4);
-				if (val > 0x7FF) val |= 0xF000;
-				FLOAT temp_c = val * 0.0625;
+				// do not use
+				//val = ((INT16)g_chBufferReceive[0] << 4) | (g_chBufferReceive[1] >> 4);
+				// use this correct statement
+				val = ((INT8)g_chBufferReceive[0] << 4 | (UINT8)g_chBufferReceive[1] >> 4);
+				// do not use
+				//if (val > 0x7FF) val |= 0xF000;
+				// use the traditional definition of a two'2 complement
+				// logical not operator ! or bitwise operator ~ can be used
+				if (val & 0x8000)
+				{
+					val = ~val;
+					val += 1;
+				}
+				temp_c = val * 0.0625;
 				temp_c *= 100;
 				sprintf_s(chBufferReceive
 					, BUFFER_MAX_SERIAL
@@ -396,7 +434,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 						, (LPARAM)chBufferReceive
 					);
 					++cReceive;
-					if (cReceive == 10)
+					if (cReceive == MAX_RETRY_SERIAL)
 					{
 						cReceive = 0;
 						// send the command to fetch the value of the temp-lo register
@@ -417,7 +455,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 						, (LPARAM)chBufferReceive
 					);
 					++cReceive;
-					if (cReceive == 10)
+					if (cReceive == MAX_RETRY_SERIAL)
 					{
 						cReceive = 0;
 						// send the command to fetch the value of the temp-lo register
@@ -432,7 +470,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 						, g_chBufferReceive[0]
 						, g_chBufferReceive[1]
 					);
-					//----------------------------------------------------------------
+			//----------------------------------------------------------------
 					SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
 						, WM_SETTEXT
 						, (WPARAM)0

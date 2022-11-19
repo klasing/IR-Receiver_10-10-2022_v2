@@ -8,6 +8,13 @@
 //*****************************************************************************
 #include "framework.h"
 //*****************************************************************************
+//*                     extern
+//*****************************************************************************
+extern COLORREF g_crInRange;
+extern COLORREF g_crOutRange;
+extern COLORREF g_crT_Lo_Clcs;
+extern COLORREF g_crT_Hi_Clcs;
+//*****************************************************************************
 //*                     prototype
 //*****************************************************************************
 BOOL connect(HANDLE& hComm);
@@ -667,6 +674,19 @@ BOOL updateSetting(const HWND& hDlg
 		if (bit_field)
 		{
 			wstrStateAlert = L"Not active";
+			// test changing background color in edittext
+			g_crT_Lo_Clcs = g_crOutRange;
+			SendMessage(hDlg
+				, WM_CTLCOLOREDIT
+				, (WPARAM)GetDC(hDlg)
+				, (LPARAM)GetDlgItem(hDlg, IDC_T_LO_CLCS)
+			);
+			g_crT_Hi_Clcs = g_crOutRange;
+			SendMessage(hDlg
+				, WM_CTLCOLOREDIT
+				, (WPARAM)GetDC(hDlg)
+				, (LPARAM)GetDlgItem(hDlg, IDC_T_HI_CLCS)
+			);
 		}
 		else
 		{

@@ -1,4 +1,5 @@
 #define BUFFER_MAX_SERIAL		512
+#define MAX_RETRY_SERIAL		3
 // control
 #define IDC_STATUS_CONNECT		33000
 #define IDC_LV_CONFIGURATION	33001
@@ -47,10 +48,15 @@
 #define IDS_DEGREE_SYMBOL		33520
 
 // serial command
+// read commands
 #define RD_REG_CNFG				33600 // address to approach two bytes with 12 bits data
 #define RD_REG_T_LO				33601 // address to approach two bytes with 12/13 bits data
 #define RD_REG_T_HI				33602 // address to approach two bytes with 12/13 bits data
 #define RD_REG_TEMP				33603 // address to approach two bytes with 12/13 bits data (with 13 bits data LSB=1 in second byte)
+// write commands
+#define WR_REG_CNFG				33610 // address to approach two bytes with 12 bits data
+#define WR_REG_T_LO				33611 // address to approach two bytes with 12/13 bits data
+#define WR_REG_T_HI				33612 // address to approach two bytes with 12/13 bits data
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
