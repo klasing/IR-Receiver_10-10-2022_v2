@@ -712,3 +712,4 @@ BOOL updateSetting(const HWND& hDlg
 
 	return EXIT_SUCCESS;
 }
+

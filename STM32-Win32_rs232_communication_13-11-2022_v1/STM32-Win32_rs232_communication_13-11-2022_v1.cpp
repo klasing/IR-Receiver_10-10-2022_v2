@@ -11,6 +11,7 @@ HINSTANCE g_hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
+BOOL g_bTransmit = TRUE;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -18,9 +19,9 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-BOOL                connect();
 DWORD WINAPI        transmit(LPVOID lpVoid);
 DWORD WINAPI        receive(LPVOID lpVoid);
+BOOL                connect();
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -278,6 +279,63 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 //****************************************************************************
+//*                     transmit
+//****************************************************************************
+DWORD WINAPI transmit(LPVOID lpVoid)
+{
+    CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+    sprintf_s(chBuffer, BUFFER_MAX_SERIAL, "33603");
+    DWORD dwNofByteTransferred = 0;
+    BOOL bResult = FALSE;
+    // infinite loop
+    while (TRUE)
+    {
+        if (g_bTransmit)
+        {
+            bResult = WriteFile(g_hComm
+                , &chBuffer
+                , 5
+                , &dwNofByteTransferred
+                , NULL
+            );
+            OutputDebugStringA(chBuffer);
+            OutputDebugString(L" ");
+            Sleep(125);
+            g_bTransmit = FALSE;
+        }
+    }
+    return 0;
+}
+
+//****************************************************************************
+//*                     receive
+//****************************************************************************
+DWORD WINAPI receive(LPVOID lpVoid)
+{
+    CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+    DWORD dwNofByteTransferred = 0;
+    BOOL bResult = FALSE;
+    // infinite loop
+    while (TRUE)
+    {
+        if (!g_bTransmit)
+        {
+            bResult = ReadFile(g_hComm
+                , &chBuffer
+                , 2//strlen(chBuffer)
+                , &dwNofByteTransferred
+                , NULL
+            );
+            OutputDebugStringA(chBuffer);
+            OutputDebugString(L"\n");
+            Sleep(125);
+            g_bTransmit = TRUE;
+        }
+    }
+    return 0;
+}
+
+//****************************************************************************
 //*                     connect
 //****************************************************************************
 BOOL connect()
@@ -288,7 +346,7 @@ BOOL connect()
         , 0
         , NULL
         , OPEN_EXISTING
-        , FILE_ATTRIBUTE_NORMAL
+        , FILE_ATTRIBUTE_NORMAL // synchronous I/O
         , NULL
     );
     if (g_hComm == INVALID_HANDLE_VALUE)
@@ -357,54 +415,6 @@ BOOL connect()
     }
 
     return TRUE;
-}
-
-//****************************************************************************
-//*                     transmit
-//****************************************************************************
-DWORD WINAPI transmit(LPVOID lpVoid)
-{
-    CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
-    sprintf_s(chBuffer, BUFFER_MAX_SERIAL, "hello");
-    DWORD dwNofByteTransferred = 0;
-    BOOL bResult = FALSE;
-    // infinite loop
-    while (TRUE)
-    {
-        bResult = WriteFile(g_hComm
-            , &chBuffer
-            , strlen(chBuffer)
-            , &dwNofByteTransferred
-            , NULL
-        );
-        OutputDebugStringA(chBuffer);
-        OutputDebugString(L" ");
-        Sleep(250);
-    }
-    return 0;
-}
-
-//****************************************************************************
-//*                     receive
-//****************************************************************************
-DWORD WINAPI receive(LPVOID lpVoid)
-{
-    CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
-    DWORD dwNofByteTransferred = 0;
-    BOOL bResult = FALSE;
-    // infinite loop
-    while (TRUE)
-    {
-        bResult = ReadFile(g_hComm
-            , &chBuffer
-            , 5//strlen(chBuffer)
-            , &dwNofByteTransferred
-            , NULL
-        );
-        OutputDebugStringA(chBuffer);
-        Sleep(250);
-    }
-    return 0;
 }
 
 // Message handler for about box.

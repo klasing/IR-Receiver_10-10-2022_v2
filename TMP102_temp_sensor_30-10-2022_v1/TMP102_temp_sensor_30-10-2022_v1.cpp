@@ -30,6 +30,7 @@ HANDLE g_hComm = INVALID_HANDLE_VALUE;
 UINT16 g_uSerialCommand = 0;
 CHAR g_chBufferTransmit[BUFFER_MAX_SERIAL] = { 0 };
 CHAR g_chBufferReceive[BUFFER_MAX_SERIAL] = { 0 };
+BOOL g_bTransmit = TRUE;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -254,6 +255,10 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		g_uSerialCommand = RD_REG_CNFG;
 		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
 
+		// after 10 receives the g_uSerialCommand value will change to the next,
+		// ultimately the g_uSerialCommand value will be set to RD_REG_TEMP
+		// and the actual temperature will be received
+		
 		// send the command to fetch the value of the temp-lo register
 		//g_uSerialCommand = RD_REG_T_LO;
 		//sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
@@ -305,14 +310,19 @@ DWORD WINAPI transmit(LPVOID lpVoid)
 	// infinite loop
 	while (TRUE)
 	{
-		bResult = WriteFile(g_hComm
-			, &g_chBufferTransmit
-			, 5
-			, &dwNofByteTransferred
-			, NULL
-		);
-		//OutputDebugStringA(g_chBufferTransmit);
-		Sleep(125);
+		if (g_bTransmit)
+		{
+			bResult = WriteFile(g_hComm
+				, &g_chBufferTransmit
+				, 5
+				, &dwNofByteTransferred
+				, NULL
+			);
+			OutputDebugStringA(g_chBufferTransmit);
+			OutputDebugString(L" ");
+			Sleep(125);
+			g_bTransmit = FALSE;
+		}
 	}
 	return 0;
 }
@@ -322,72 +332,117 @@ DWORD WINAPI transmit(LPVOID lpVoid)
 //****************************************************************************
 DWORD WINAPI receive(LPVOID lpVoid)
 {
+	CHAR chBufferReceive[BUFFER_MAX_SERIAL] = { 0 };
 	DWORD dwNofByteTransferred = 0;
 	BOOL bResult = FALSE;
+	UINT8 cReceive = 0;
 	// infinite loop
 	while (TRUE)
 	{
-		bResult = ReadFile(g_hComm
-			, &g_chBufferReceive
-			, 2
-			, &dwNofByteTransferred
-			, NULL
-		);
-		//OutputDebugStringA(g_chBufferReceive);
-		if (dwNofByteTransferred == 2)
+		if (!g_bTransmit)
 		{
-			//INT16 val = ((INT16)g_chBufferReceive[0] << 4 | g_chBufferReceive[1] >> 4);
-			//if (val > 0x7FF) val |= 0xF000;
-			//FLOAT temp_c = val * 0.0625;
-			//temp_c *= 100;
-			//sprintf_s(g_chBufferReceive
-			//	, BUFFER_MAX_SERIAL
-			//	, "%d.%02d"
-			//	, ((UINT)temp_c / 100)
-			//	, ((UINT)temp_c % 100)
-			//);
-			// set CONFIGURATION /////////////////////////////////////////////
-			if (g_uSerialCommand == RD_REG_CNFG)
+			bResult = ReadFile(g_hComm
+				, &g_chBufferReceive
+				, 2
+				, &dwNofByteTransferred
+				, NULL
+			);
+			//-----------------------------------------------------------------
+			OutputDebugStringA(g_chBufferReceive);
+			OutputDebugString(L"\n");
+			if (dwNofByteTransferred == 2)
 			{
-				updateRegister(GetDlgItem(g_hDlg, IDC_LV_CONFIGURATION)
-					, g_chBufferReceive[0]
-					, g_chBufferReceive[1]
-					, 12
+				// set CONFIGURATION /////////////////////////////////////////
+				if (g_uSerialCommand == RD_REG_CNFG)
+				{
+					updateRegister(GetDlgItem(g_hDlg, IDC_LV_CONFIGURATION)
+						, g_chBufferReceive[0]
+						, g_chBufferReceive[1]
+						, 12
+					);
+					updateSetting(g_hDlg
+						, g_chBufferReceive[0]
+						, g_chBufferReceive[1]
+					);
+					++cReceive;
+					if (cReceive == 10)
+					{
+						cReceive = 0;
+						// send the command to fetch the value of the temp-lo register
+						g_uSerialCommand = RD_REG_T_LO;
+						sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
+					}
+				}
+				INT16 val = ((INT16)g_chBufferReceive[0] << 4 | g_chBufferReceive[1] >> 4);
+				if (val > 0x7FF) val |= 0xF000;
+				FLOAT temp_c = val * 0.0625;
+				temp_c *= 100;
+				sprintf_s(chBufferReceive
+					, BUFFER_MAX_SERIAL
+					, "%d.%02d"
+					, ((UINT)temp_c / 100)
+					, ((UINT)temp_c % 100)
 				);
-				updateSetting(g_hDlg
-					, g_chBufferReceive[0]
-					, g_chBufferReceive[1]
-				);
+				// set TEMPERATURE LOW ///////////////////////////////////////
+				if (g_uSerialCommand == RD_REG_T_LO)
+				{
+					updateRegister(GetDlgItem(g_hDlg, IDC_LV_T_LO)
+						, g_chBufferReceive[0]
+						, g_chBufferReceive[1]
+					);
+					SendMessageA(GetDlgItem(g_hDlg, IDC_T_LO_CLCS)
+						, WM_SETTEXT
+						, (WPARAM)0
+						, (LPARAM)chBufferReceive
+					);
+					++cReceive;
+					if (cReceive == 10)
+					{
+						cReceive = 0;
+						// send the command to fetch the value of the temp-lo register
+						g_uSerialCommand = RD_REG_T_HI;
+						sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
+					}
+				}
+				// set TEMPERATURE HIGH //////////////////////////////////////
+				if (g_uSerialCommand == RD_REG_T_HI)
+				{
+					updateRegister(GetDlgItem(g_hDlg, IDC_LV_T_HI)
+						, g_chBufferReceive[0]
+						, g_chBufferReceive[1]
+					);
+					SendMessageA(GetDlgItem(g_hDlg, IDC_T_HI_CLCS)
+						, WM_SETTEXT
+						, (WPARAM)0
+						, (LPARAM)chBufferReceive
+					);
+					++cReceive;
+					if (cReceive == 10)
+					{
+						cReceive = 0;
+						// send the command to fetch the value of the temp-lo register
+						g_uSerialCommand = RD_REG_TEMP;
+						sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
+					}
+				}
+				// set TEMPERATURE REGISTER //////////////////////////////////
+				if (g_uSerialCommand == RD_REG_TEMP)
+				{
+					updateRegister(GetDlgItem(g_hDlg, IDC_LV_TREG)
+						, g_chBufferReceive[0]
+						, g_chBufferReceive[1]
+					);
+					//----------------------------------------------------------------
+					SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
+						, WM_SETTEXT
+						, (WPARAM)0
+						, (LPARAM)chBufferReceive
+					);
+				}
 			}
-			// set TEMPERATURE LOW ///////////////////////////////////////////
-			if (g_uSerialCommand == RD_REG_T_LO)
-			{
-				SendMessageA(GetDlgItem(g_hDlg, IDC_T_LO_CLCS)
-					, WM_SETTEXT
-					, (WPARAM)0
-					, (LPARAM)g_chBufferReceive
-				);
-			}
-			// set TEMPERATURE HIGH //////////////////////////////////////////
-			if (g_uSerialCommand == RD_REG_T_HI)
-			{
-				SendMessageA(GetDlgItem(g_hDlg, IDC_T_HI_CLCS)
-					, WM_SETTEXT
-					, (WPARAM)0
-					, (LPARAM)g_chBufferReceive
-				);
-			}
-			// set TEMPERATURE REGISTER //////////////////////////////////////
-			if (g_uSerialCommand == RD_REG_TEMP)
-			{
-				SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
-					, WM_SETTEXT
-					, (WPARAM)0
-					, (LPARAM)g_chBufferReceive
-				);
-			}
+			Sleep(125);
+			g_bTransmit = TRUE;
 		}
-		Sleep(125);
 	}
 	return 0;
 }
