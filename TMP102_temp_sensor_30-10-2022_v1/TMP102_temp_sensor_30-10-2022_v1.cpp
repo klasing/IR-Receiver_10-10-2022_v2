@@ -476,6 +476,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 						, (WPARAM)0
 						, (LPARAM)chBufTempInCelcius
 					);
+					updateTAlert(g_hDlg, val_lo, val_hi, val);
 				}
 				//updateBkColor(g_hDlg, val_lo, val_hi, val);
 			}

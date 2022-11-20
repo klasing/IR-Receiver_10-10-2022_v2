@@ -718,6 +718,36 @@ BOOL updateSetting(const HWND& hDlg
 
 	return EXIT_SUCCESS;
 }
+//****************************************************************************
+//*                     updateTAlert
+//****************************************************************************
+BOOL updateTAlert(const HWND& hDlg
+	, const UINT16& val_lo
+	, const UINT16& val_hi
+	, const UINT16& val
+)
+{
+	std::wstring wstrTAlert = L"";
+	if (val < val_lo)
+	{
+		wstrTAlert = L"too low";
+	}
+	else if (val > val_hi)
+	{
+		wstrTAlert = L"too high";
+	}
+	else
+	{
+		wstrTAlert = L"in range";
+	}
+	SendMessage(GetDlgItem(g_hDlg, IDC_T_ALERT)
+		, WM_SETTEXT
+		, (WPARAM)0
+		, (LPARAM)wstrTAlert.c_str()
+	);
+	return EXIT_SUCCESS;
+}
+
 //VOID updateBkColor(const HWND& hDlg
 //	, const UINT16& val_lo
 //	, const UINT16& val_hi
