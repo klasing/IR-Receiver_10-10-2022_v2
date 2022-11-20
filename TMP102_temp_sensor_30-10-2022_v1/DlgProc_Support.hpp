@@ -10,6 +10,7 @@
 //*****************************************************************************
 //*                     extern
 //*****************************************************************************
+extern HWND g_hDlg;
 extern COLORREF g_crInRange;
 extern COLORREF g_crOutRange;
 extern COLORREF g_crT_Lo_Clcs;
@@ -666,44 +667,29 @@ BOOL updateSetting(const HWND& hDlg
 		, (LPARAM)0
 	);
 	// update IDC_ALERT //////////////////////////////////////////////////////
-	bit_field = (loByte & 0x20) >> 5; // note precedence!
 	std::wstring wstrStateAlert = L"";
-	if ((hiByte & 0x04) >> 2 == 0)
+	if (loByte & 0x20)
 	{
-		// polarity is active low
-		if (bit_field)
-		{
-			wstrStateAlert = L"Not active";
-			// test changing background color in edittext
-			g_crT_Lo_Clcs = g_crOutRange;
-			SendMessage(hDlg
-				, WM_CTLCOLOREDIT
-				, (WPARAM)GetDC(hDlg)
-				, (LPARAM)GetDlgItem(hDlg, IDC_T_LO_CLCS)
-			);
-			g_crT_Hi_Clcs = g_crOutRange;
-			SendMessage(hDlg
-				, WM_CTLCOLOREDIT
-				, (WPARAM)GetDC(hDlg)
-				, (LPARAM)GetDlgItem(hDlg, IDC_T_HI_CLCS)
-			);
-		}
-		else
-		{
-			wstrStateAlert = L"Active";
-		}
+		// alert active
+		wstrStateAlert = L"Active";
+		// test changing background color in edittext
+		//g_crT_Lo_Clcs = g_crOutRange;
+		//SendMessage(hDlg
+		//	, WM_CTLCOLOREDIT
+		//	, (WPARAM)GetDC(hDlg)
+		//	, (LPARAM)GetDlgItem(hDlg, IDC_T_LO_CLCS)
+		//);
+		//g_crT_Hi_Clcs = g_crOutRange;
+		//SendMessage(hDlg
+		//	, WM_CTLCOLOREDIT
+		//	, (WPARAM)GetDC(hDlg)
+		//	, (LPARAM)GetDlgItem(hDlg, IDC_T_HI_CLCS)
+		//);
 	}
 	else
 	{
-		// polarity is active high
-		if (bit_field)
-		{
-			wstrStateAlert = L"Active";
-		}
-		else
-		{
-			wstrStateAlert = L"Not active";
-		}
+		// alert not active
+		wstrStateAlert = L"Not active";
 	}
 	SendMessage(GetDlgItem(hDlg, IDC_ALERT)
 		, WM_SETTEXT
@@ -732,4 +718,68 @@ BOOL updateSetting(const HWND& hDlg
 
 	return EXIT_SUCCESS;
 }
+//VOID updateBkColor(const HWND& hDlg
+//	, const UINT16& val_lo
+//	, const UINT16& val_hi
+//	, const UINT16& val
+//)
+//{
+//	if (val < val_lo)
+//	{
+//		g_crT_Lo_Clcs = g_crOutRange;
+//		SendMessage(hDlg
+//			, WM_CTLCOLOREDIT
+//			, (WPARAM)GetDC(hDlg)
+//			, (LPARAM)GetDlgItem(hDlg, IDC_T_LO_CLCS)
+//		);
+//		g_crT_Hi_Clcs = g_crInRange;
+//		SendMessage(hDlg
+//			, WM_CTLCOLOREDIT
+//			, (WPARAM)GetDC(hDlg)
+//			, (LPARAM)GetDlgItem(hDlg, IDC_T_HI_CLCS)
+//		);
+//	}
+//	else if (val > val_hi)
+//	{
+//		g_crT_Lo_Clcs = g_crInRange;
+//		SendMessage(hDlg
+//			, WM_CTLCOLOREDIT
+//			, (WPARAM)GetDC(hDlg)
+//			, (LPARAM)GetDlgItem(hDlg, IDC_T_LO_CLCS)
+//		);
+//		g_crT_Hi_Clcs = g_crOutRange;
+//		SendMessage(hDlg
+//			, WM_CTLCOLOREDIT
+//			, (WPARAM)GetDC(hDlg)
+//			, (LPARAM)GetDlgItem(hDlg, IDC_T_HI_CLCS)
+//		);
+//	}
+//	else
+//	{
+//		g_crT_Lo_Clcs = g_crInRange;
+//		SendMessage(hDlg
+//			, WM_CTLCOLOREDIT
+//			, (WPARAM)GetDC(hDlg)
+//			, (LPARAM)GetDlgItem(hDlg, IDC_T_LO_CLCS)
+//		);
+//		g_crT_Hi_Clcs = g_crInRange;
+//		SendMessage(hDlg
+//			, WM_CTLCOLOREDIT
+//			, (WPARAM)GetDC(hDlg)
+//			, (LPARAM)GetDlgItem(hDlg, IDC_T_HI_CLCS)
+//		);
+//	}
+	//g_crT_Lo_Clcs = g_crOutRange;
+	//SendMessage(hDlg
+	//	, WM_CTLCOLOREDIT
+	//	, (WPARAM)GetDC(hDlg)
+	//	, (LPARAM)GetDlgItem(hDlg, IDC_T_LO_CLCS)
+	//);
+	//g_crT_Hi_Clcs = g_crOutRange;
+	//SendMessage(hDlg
+	//	, WM_CTLCOLOREDIT
+	//	, (WPARAM)GetDC(hDlg)
+	//	, (LPARAM)GetDlgItem(hDlg, IDC_T_HI_CLCS)
+	//);
+//}
 

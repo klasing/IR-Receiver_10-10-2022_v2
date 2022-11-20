@@ -31,10 +31,10 @@ UINT16 g_uSerialCommand = 0;
 CHAR g_chBufferTransmit[BUFFER_MAX_SERIAL] = { 0 };
 CHAR g_chBufferReceive[BUFFER_MAX_SERIAL] = { 0 };
 BOOL g_bTransmit = TRUE;
-static COLORREF g_crInRange = 0x0060DD60;
-static COLORREF g_crOutRange = 0x008080FF;
-static COLORREF g_crT_Lo_Clcs = g_crInRange;
-static COLORREF g_crT_Hi_Clcs = g_crInRange;
+//COLORREF g_crInRange = 0x0060DD60;
+//COLORREF g_crOutRange = 0x008080FF;
+//COLORREF g_crT_Lo_Clcs = g_crInRange;
+//COLORREF g_crT_Hi_Clcs = g_crInRange;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -305,22 +305,22 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			, bCheckedStateChbExtended
 		);
 	} // eof WM_COMMAND
-	case WM_CTLCOLOREDIT:
-	{
-		if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_LO_CLCS))
-		{
-			SetBkColor((HDC)wParam, g_crT_Lo_Clcs);
-			SetDCBrushColor((HDC)wParam, g_crT_Lo_Clcs);
-			return (LRESULT)GetStockObject(DC_BRUSH);
-		}
-		if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_HI_CLCS))
-		{
-			SetBkColor((HDC)wParam, g_crT_Hi_Clcs);
-			SetDCBrushColor((HDC)wParam, g_crT_Hi_Clcs);
-			return (LRESULT)GetStockObject(DC_BRUSH);
-		}
-		return (INT_PTR)FALSE;
-	} // eof WM_CTLCOLOREDIT
+	//case WM_CTLCOLOREDIT:
+	//{
+	//	if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_LO_CLCS))
+	//	{
+	//		SetBkColor((HDC)wParam, g_crT_Lo_Clcs);
+	//		SetDCBrushColor((HDC)wParam, g_crT_Lo_Clcs);
+	//		return (LRESULT)GetStockObject(DC_BRUSH);
+	//	}
+	//	if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_HI_CLCS))
+	//	{
+	//		SetBkColor((HDC)wParam, g_crT_Hi_Clcs);
+	//		SetDCBrushColor((HDC)wParam, g_crT_Hi_Clcs);
+	//		return (LRESULT)GetStockObject(DC_BRUSH);
+	//	}
+	//	return (INT_PTR)FALSE;
+	//} // eof WM_CTLCOLOREDIT
 	} // eof switch
 	return (INT_PTR)FALSE;
 }
@@ -357,11 +357,11 @@ DWORD WINAPI transmit(LPVOID lpVoid)
 //****************************************************************************
 DWORD WINAPI receive(LPVOID lpVoid)
 {
-	CHAR chBufferReceive[BUFFER_MAX_SERIAL] = { 0 };
+	CHAR chBufTempInCelcius[BUFFER_MAX_SERIAL] = { 0 };
 	DWORD dwNofByteTransferred = 0;
 	BOOL bResult = FALSE;
 	UINT8 cReceive = 0;
-	UINT16 val = 0;
+	UINT16 val = 0, val_lo = 0, val_hi = 0;
 	FLOAT temp_c = 0.;
 	// infinite loop
 	while (TRUE)
@@ -374,7 +374,6 @@ DWORD WINAPI receive(LPVOID lpVoid)
 				, &dwNofByteTransferred
 				, NULL
 			);
-			//-----------------------------------------------------------------
 			OutputDebugStringA(g_chBufferReceive);
 			OutputDebugString(L"\n");
 			if (dwNofByteTransferred == 2)
@@ -415,7 +414,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 				}
 				temp_c = val * 0.0625;
 				temp_c *= 100;
-				sprintf_s(chBufferReceive
+				sprintf_s(chBufTempInCelcius
 					, BUFFER_MAX_SERIAL
 					, "%d.%02d"
 					, ((UINT)temp_c / 100)
@@ -431,11 +430,12 @@ DWORD WINAPI receive(LPVOID lpVoid)
 					SendMessageA(GetDlgItem(g_hDlg, IDC_T_LO_CLCS)
 						, WM_SETTEXT
 						, (WPARAM)0
-						, (LPARAM)chBufferReceive
+						, (LPARAM)chBufTempInCelcius
 					);
 					++cReceive;
 					if (cReceive == MAX_RETRY_SERIAL)
 					{
+						val_lo = val;
 						cReceive = 0;
 						// send the command to fetch the value of the temp-lo register
 						g_uSerialCommand = RD_REG_T_HI;
@@ -452,11 +452,12 @@ DWORD WINAPI receive(LPVOID lpVoid)
 					SendMessageA(GetDlgItem(g_hDlg, IDC_T_HI_CLCS)
 						, WM_SETTEXT
 						, (WPARAM)0
-						, (LPARAM)chBufferReceive
+						, (LPARAM)chBufTempInCelcius
 					);
 					++cReceive;
 					if (cReceive == MAX_RETRY_SERIAL)
 					{
+						val_hi = val;
 						cReceive = 0;
 						// send the command to fetch the value of the temp-lo register
 						g_uSerialCommand = RD_REG_TEMP;
@@ -470,13 +471,13 @@ DWORD WINAPI receive(LPVOID lpVoid)
 						, g_chBufferReceive[0]
 						, g_chBufferReceive[1]
 					);
-			//----------------------------------------------------------------
 					SendMessageA(GetDlgItem(g_hDlg, IDC_T_CLCS)
 						, WM_SETTEXT
 						, (WPARAM)0
-						, (LPARAM)chBufferReceive
+						, (LPARAM)chBufTempInCelcius
 					);
 				}
+				//updateBkColor(g_hDlg, val_lo, val_hi, val);
 			}
 			Sleep(125);
 			g_bTransmit = TRUE;
