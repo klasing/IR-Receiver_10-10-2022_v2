@@ -6,6 +6,7 @@
 
 #define BUFFER_MAX_SERIAL		512
 #define DELAY_DFLT_SERIAL		125
+#define LEN_FRAME				9
 
 // control
 #define IDC_CONNECT				33000

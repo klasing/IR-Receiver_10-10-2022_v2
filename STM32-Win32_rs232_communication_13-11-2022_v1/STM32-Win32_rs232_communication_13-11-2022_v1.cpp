@@ -31,13 +31,14 @@ WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 HWND g_hDlg = { 0 };
-//HANDLE g_hComm = INVALID_HANDLE_VALUE;
+HANDLE g_hComm = INVALID_HANDLE_VALUE;
 //BOOL g_bTransmit = TRUE;
 volatile BOOL g_bContinueTxRx = TRUE;
 volatile UINT16 g_iCommand = RD_REG_0;
+volatile UINT8 g_nReg = 0;
 volatile BOOL g_bRead = TRUE;
 volatile FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT }; // RAII
-volatile CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -49,8 +50,11 @@ BOOL                connect(HANDLE& hComm);
 DWORD WINAPI        TxRx(LPVOID lpVoid);
 BOOL                transmit();
 BOOL                receive(LPVOID lpVoid);
+BOOL                determineCmnd();
 //DWORD WINAPI        transmit(LPVOID lpVoid);
 //DWORD WINAPI        receive(LPVOID lpVoid);
+
+BOOL bBkMustBeRed = FALSE;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -207,14 +211,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
-        }
-        break;
+	case WM_PAINT:
+	{
+		PAINTSTRUCT ps;
+		HDC hdc = BeginPaint(hWnd, &ps);
+		// TODO: Add any drawing code that uses hdc here...
+		EndPaint(hWnd, &ps);
+	}
+	break;
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
@@ -229,7 +233,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //****************************************************************************
 INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    static HANDLE hComm = INVALID_HANDLE_VALUE;
+    //static HANDLE hComm = INVALID_HANDLE_VALUE;
+    //static BOOL bBkMustBeRed = FALSE;
     switch (uMsg)
     {
     case WM_INITDIALOG:
@@ -278,8 +283,8 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
         case IDC_CONNECT:
         {
-            //if (connect(hComm) == EXIT_SUCCESS)
-            //{
+            if (connect(g_hComm) == EXIT_SUCCESS)
+            {
                 g_bContinueTxRx = TRUE;
 
                 // set text edit control IDC_STATUS
@@ -325,7 +330,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 //    , 0
                 //    , &dwThreadIdReceive
                 //);
-            //}
+            }
             return (INT_PTR)TRUE;
         } // eof IDC_CONNECT
         case IDC_RB_WRITE:
@@ -344,12 +349,12 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         } // IDC_RB_READ;
         case IDC_DISCONNECT:
         {
-            //if (hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
-            if (CloseHandle(hComm))
+            if (g_hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
+            if (CloseHandle(g_hComm))
             {
                 g_bContinueTxRx = FALSE;
 
-                hComm = INVALID_HANDLE_VALUE;
+                g_hComm = INVALID_HANDLE_VALUE;
 
                 // set text edit control IDC_STATUS
                 SendMessage(GetDlgItem(hDlg, IDC_STATUS_SERIAL)
@@ -365,9 +370,64 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return (INT_PTR)TRUE;
         } // eof IDC_DISCONNECT
         } // eof switch
+        switch (HIWORD(wParam))
+        {
+        case CBN_SELCHANGE:
+        {
+            g_nReg = SendMessage((HWND)lParam
+                , CB_GETCURSEL
+                , (WPARAM)0
+                , (LPARAM)0
+            );
+            return (INT_PTR)TRUE;
+        } // eof CBN_SELCHANGE
+        //case EN_CHANGE:
+        //{
+        //    if (LOWORD(wParam) == IDC_RECEIVE)
+        //    {
+        //        OutputDebugString(L"EN_CHANGE IDC_RECEIVE\n");
+        //        bBkMustBeRed = !bBkMustBeRed;
+        //        InvalidateRect(hDlg, NULL, TRUE);
+        //    }
+        //} // eof EN_CHANGE
+        } // eof switch
         return (INT_PTR)FALSE;
     }  // eof WM_COMMAND
-     } // eof switch
+    //case WM_CTLCOLOREDIT:
+    //{
+    //    HBRUSH hBrush;
+    //    if (bBkMustBeRed)
+    //    {
+    //        SetBkColor(GetDC(hDlg), RGB(0xFF, 0, 0));
+    //        hBrush = CreateSolidBrush(RGB(0xFF, 0, 0));
+    //    }
+    //    else
+    //    {
+    //        SetBkColor(GetDC(hDlg), RGB(0, 0xFF, 0));
+    //        hBrush = CreateSolidBrush(RGB(0, 0xFF, 0));
+    //    }
+    //    return (LRESULT)hBrush;
+    //} // eof WM_CTLCOLOREDIT
+    //case WM_PAINT:
+    //{
+    //    HBRUSH hBrush;
+    //    if (bBkMustBeRed)
+    //    {
+    //        hBrush = CreateSolidBrush(RGB(0xFF, 0, 0));
+    //    }
+    //    else
+    //    {
+    //        hBrush = CreateSolidBrush(RGB(0, 0xFF, 0));
+    //    }
+    //    PAINTSTRUCT ps;
+    //    HDC hdc = BeginPaint(hDlg, &ps);
+    //    SelectObject(hdc, hBrush);
+    //    Rectangle(hdc, 300, 123, 315, 138);
+    //    EndPaint(hDlg, &ps);
+    //    //return (INT_PTR)TRUE;
+    //    return (INT_PTR)FALSE;
+    //} // eof WM_PAINT 
+    } // eof switch
     return (INT_PTR)FALSE;
 }
 
@@ -475,6 +535,7 @@ DWORD WINAPI TxRx(LPVOID lpVoid)
 BOOL transmit()
 {
     OutputDebugString(L"transmitting\n");
+    determineCmnd();
     sprintf_s((CHAR*)g_chBuffer, (size_t)BUFFER_MAX_SERIAL, "%c%c%c%c%c%c%c%c%c"
         , g_oFrame.soh
         , (g_oFrame.cmnd >> 8) & 0xFF
@@ -486,6 +547,13 @@ BOOL transmit()
         , g_oFrame.etb
         , g_oFrame.eot
     );
+    DWORD dwNofByteTransferred = 0;
+    WriteFile(g_hComm
+        , &g_chBuffer
+        , LEN_FRAME
+        , &dwNofByteTransferred
+        , NULL
+    );
     return EXIT_SUCCESS;
 }
 
@@ -495,15 +563,93 @@ BOOL transmit()
 BOOL receive(LPVOID lpVoid)
 {
     OutputDebugString(L"receiving\n");
+    DWORD dwNofByteTransferred = 0;
+    ReadFile(g_hComm
+        , &g_chBuffer
+        , LEN_FRAME
+        , &dwNofByteTransferred
+        , NULL
+    );
     g_oFrame.cmnd = (g_chBuffer[1] << 8) | (g_chBuffer[2]);
-    g_oFrame.payload  = (g_chBuffer[4] << 8) | (g_chBuffer[5]);
-    std::string str = std::to_string(g_oFrame.payload);
+    g_oFrame.payload = (g_chBuffer[4] << 8) | (g_chBuffer[5]);
+    std::string str = "";
+    if (g_bRead)
+    {
+        // expect a numerical value
+        str = std::to_string(g_oFrame.payload);
+    }
+    else
+    {
+        // expect a char string representing an 'OK'
+        str += g_chBuffer[4];
+        str += g_chBuffer[5];
+    }
     SendMessageA(GetDlgItem((HWND)lpVoid, IDC_RECEIVE)
         , WM_SETTEXT
         , (WPARAM)0
         , (LPARAM)str.c_str()
     );
     return EXIT_SUCCESS;
+}
+//****************************************************************************
+//*                     determineCmnd
+//****************************************************************************
+BOOL determineCmnd()
+{
+    // payload
+    CHAR chBuffer[10] = { 0 };
+    SendMessageA(GetDlgItem(g_hDlg, IDC_TRANSMIT)
+        , WM_GETTEXT
+        , (WPARAM)10
+        , (LPARAM)chBuffer
+    );
+    if (strlen(chBuffer) == 0)
+    {
+        g_oFrame.payload = 0;
+    }
+    else
+    {
+        g_oFrame.payload = atoi(chBuffer);
+    }
+
+    // cmnd
+    if (g_nReg == 0)
+    {
+        if (g_bRead)
+        {
+            g_oFrame.cmnd = RD_REG_0;
+        }
+        else
+        {
+            g_oFrame.cmnd = WR_REG_0;
+        }
+        return EXIT_SUCCESS;
+    }
+    if (g_nReg == 1)
+    {
+        if (g_bRead)
+        {
+            g_oFrame.cmnd = RD_REG_1;
+        }
+        else
+        {
+            g_oFrame.cmnd = WR_REG_1;
+        }
+        return EXIT_SUCCESS;
+    }
+    if (g_nReg == 2)
+    {
+        if (g_bRead)
+        {
+            g_oFrame.cmnd = RD_REG_2;
+        }
+        else
+        {
+            g_oFrame.cmnd = WR_REG_2;
+        }
+        return EXIT_SUCCESS;
+    }
+    return EXIT_FAILURE;
 }
 //****************************************************************************
 //*                     transmit
