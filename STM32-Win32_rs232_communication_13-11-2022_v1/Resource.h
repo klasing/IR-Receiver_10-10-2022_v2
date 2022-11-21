@@ -1,8 +1,31 @@
+#define SOH						1
+#define STX						2
+#define ETX						3
+#define ETB						23
+#define EOT						4
+
 #define BUFFER_MAX_SERIAL		512
+#define DELAY_DFLT_SERIAL		125
+
 // control
 #define IDC_CONNECT				33000
 #define IDC_DISCONNECT			33001
-#define IDC_STATUS				33002
+#define IDC_STATUS_SERIAL		33002
+#define IDC_CB_REGISTER			33603
+#define IDC_RB_WRITE			33604
+#define IDC_RB_READ				33605
+#define IDC_TRANSMIT			33606
+#define IDC_RECEIVE				33607
+
+// serial command
+// read commands
+#define RD_REG_0   				33600
+#define RD_REG_1   				33601
+#define RD_REG_2   				33602
+// write commands
+#define WR_REG_0   				33610
+#define WR_REG_1    			33611
+#define WR_REG_2   				33612
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

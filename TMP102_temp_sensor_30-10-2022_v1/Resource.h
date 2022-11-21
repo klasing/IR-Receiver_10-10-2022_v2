@@ -1,5 +1,6 @@
 #define BUFFER_MAX_SERIAL		512
 #define MAX_RETRY_SERIAL		3
+#define DELAY_4Hz				125
 // control
 #define IDC_STATUS_CONNECT		33000
 #define IDC_LV_CONFIGURATION	33001

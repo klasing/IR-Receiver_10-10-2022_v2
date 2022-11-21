@@ -264,7 +264,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		g_uSerialCommand = RD_REG_CNFG;
 		sprintf_s(g_chBufferTransmit, BUFFER_MAX_SERIAL, "%d", g_uSerialCommand);
 
-		// after 10 receives the g_uSerialCommand value will change to the next,
+		// after MAX_RETRY_SERIAL receives the g_uSerialCommand value will change to the next,
 		// ultimately the g_uSerialCommand value will be set to RD_REG_TEMP
 		// and the actual temperature will be received
 		
@@ -345,7 +345,7 @@ DWORD WINAPI transmit(LPVOID lpVoid)
 			);
 			OutputDebugStringA(g_chBufferTransmit);
 			OutputDebugString(L" ");
-			Sleep(125);
+			Sleep(DELAY_4Hz);
 			g_bTransmit = FALSE;
 		}
 	}
@@ -480,7 +480,7 @@ DWORD WINAPI receive(LPVOID lpVoid)
 				}
 				//updateBkColor(g_hDlg, val_lo, val_hi, val);
 			}
-			Sleep(125);
+			Sleep(DELAY_4Hz);
 			g_bTransmit = TRUE;
 		}
 	}

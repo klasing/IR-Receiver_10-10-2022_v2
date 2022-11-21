@@ -6,12 +6,38 @@
 
 #define MAX_LOADSTRING 100
 
+//****************************************************************************
+//*                     typedef
+//*
+//* when writing to the device, the device will respond with OK in the payload
+//* O=79 0x4F 0100 1111
+//* K=75 0x4B 0100 1011
+//* payload=0x4F4B
+//****************************************************************************
+typedef struct tagFRAME
+{
+    const CHAR soh;
+    UINT16 cmnd;
+    const CHAR stx;
+    INT16 payload;
+    const CHAR etx;
+    const CHAR etb;
+    const CHAR eot;
+} FRAME, *PFRAME;
+
 // Global Variables:
 HINSTANCE g_hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-HANDLE g_hComm = INVALID_HANDLE_VALUE;
-BOOL g_bTransmit = TRUE;
+
+HWND g_hDlg = { 0 };
+//HANDLE g_hComm = INVALID_HANDLE_VALUE;
+//BOOL g_bTransmit = TRUE;
+volatile BOOL g_bContinueTxRx = TRUE;
+volatile UINT16 g_iCommand = RD_REG_0;
+volatile BOOL g_bRead = TRUE;
+volatile FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT }; // RAII
+volatile CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -19,9 +45,12 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-DWORD WINAPI        transmit(LPVOID lpVoid);
-DWORD WINAPI        receive(LPVOID lpVoid);
-BOOL                connect();
+BOOL                connect(HANDLE& hComm);
+DWORD WINAPI        TxRx(LPVOID lpVoid);
+BOOL                transmit();
+BOOL                receive(LPVOID lpVoid);
+//DWORD WINAPI        transmit(LPVOID lpVoid);
+//DWORD WINAPI        receive(LPVOID lpVoid);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -51,6 +80,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
     {
+        if (IsDialogMessage(g_hDlg, &msg))
+        {
+            continue;
+        }
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
             TranslateMessage(&msg);
@@ -60,8 +93,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     return (int) msg.wParam;
 }
-
-
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -106,8 +137,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW
 	   , 15
 	   , 15
+	   , 370
 	   , 300
-	   , 200
 	   , nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
@@ -136,13 +167,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //****************************************************************************
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    static HWND hWndDlg = NULL;
     switch (message)
     {
     case WM_NCCREATE:
     {
         // create dialog
-        hWndDlg = CreateDialog(g_hInst, L"DLGPROCWINDOW", hWnd, DlgProc);
+        g_hDlg = CreateDialog(g_hInst, L"DLGPROCWINDOW", hWnd, DlgProc);
         return DefWindowProc(hWnd, message, wParam, lParam);
     } // eof WM_NCCREATE
     case WM_SIZE:
@@ -150,7 +180,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         RECT rect;
         GetClientRect(hWnd, &rect);
         // sset size dialog and show dialog
-        SetWindowPos(hWndDlg
+        SetWindowPos(g_hDlg
             , HWND_TOP
             , rect.left
             , rect.top
@@ -199,16 +229,47 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //****************************************************************************
 INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    static HANDLE hComm = INVALID_HANDLE_VALUE;
     switch (uMsg)
     {
     case WM_INITDIALOG:
     {
         // set text edit control IDC_STATUS
-        SendMessage(GetDlgItem(hDlg, IDC_STATUS)
+        SendMessage(GetDlgItem(hDlg, IDC_STATUS_SERIAL)
             , WM_SETTEXT
             , (WPARAM)0
             , (LPARAM)L"Disconnected"
         );
+        // populate combobox IDC_CB_REGISTER
+        SendMessage(GetDlgItem(hDlg, IDC_CB_REGISTER)
+            , CB_ADDSTRING
+            , (WPARAM)0
+            , (LPARAM)L"0"
+        );
+        SendMessage(GetDlgItem(hDlg, IDC_CB_REGISTER)
+            , CB_ADDSTRING
+            , (WPARAM)0
+            , (LPARAM)L"1"
+        );
+        SendMessage(GetDlgItem(hDlg, IDC_CB_REGISTER)
+            , CB_ADDSTRING
+            , (WPARAM)0
+            , (LPARAM)L"2"
+        );
+        // set the default value for the IDC_CB_REGISTER
+        SendMessage(GetDlgItem(hDlg, IDC_CB_REGISTER)
+            , CB_SETCURSEL
+            , (WPARAM)0
+            , (LPARAM)0
+        );
+        // check IDC_RB_READ
+        CheckRadioButton(hDlg
+            , IDC_RB_WRITE
+            , IDC_RB_READ
+            , IDC_RB_READ
+        );
+        // disable edit control IDC_TRANSMIT
+        EnableWindow(GetDlgItem(hDlg, IDC_TRANSMIT), FALSE);
         return (INT_PTR)FALSE;
     } // eof WM_INITDIALOG
     case WM_COMMAND:
@@ -217,10 +278,12 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
         case IDC_CONNECT:
         {
-            if (connect())
-            {
+            //if (connect(hComm) == EXIT_SUCCESS)
+            //{
+                g_bContinueTxRx = TRUE;
+
                 // set text edit control IDC_STATUS
-                SendMessage(GetDlgItem(hDlg, IDC_STATUS)
+                SendMessage(GetDlgItem(hDlg, IDC_STATUS_SERIAL)
                     , WM_SETTEXT
                     , (WPARAM)0
                     , (LPARAM)L"Connected"
@@ -229,37 +292,67 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 EnableWindow(GetDlgItem(hDlg, IDC_CONNECT), FALSE);
                 EnableWindow(GetDlgItem(hDlg, IDC_DISCONNECT), TRUE);
 
-                // create thread to transmit
-                DWORD dwThreadIdTransmit = 0;
-                HANDLE hTreadTransmit = CreateThread(NULL
-                    , 0
-                    , transmit
-                    , (LPVOID)hDlg
-                    , 0
-                    , &dwThreadIdTransmit
-                );
+                // set g_oFrame into the default state
+                g_oFrame.cmnd = 33600;
 
-                // create thread to receive
-                DWORD dwThreadIdReceive = 0;
-                HANDLE hTreadReceive = CreateThread(NULL
-                    , 0
-                    , receive
-                    , (LPVOID)hDlg
-                    , 0
-                    , &dwThreadIdReceive
-                );
-            }
+				// create/start thread to continuously transmit and receive
+				DWORD dwThreadIdTxRx = 0;
+				HANDLE hTreadTxRx = CreateThread(NULL
+					, 0
+					, TxRx
+					, (LPVOID)hDlg
+					, CREATE_SUSPENDED // wait until started
+					, &dwThreadIdTxRx
+				);
+                // start thread exact on this command
+                if (hTreadTxRx) ResumeThread(hTreadTxRx);
+                //// create thread to transmit
+                //DWORD dwThreadIdTransmit = 0;
+                //HANDLE hTreadTransmit = CreateThread(NULL
+                //    , 0
+                //    , transmit
+                //    , (LPVOID)hDlg
+                //    , 0
+                //    , &dwThreadIdTransmit
+                //);
+
+                //// create thread to receive
+                //DWORD dwThreadIdReceive = 0;
+                //HANDLE hTreadReceive = CreateThread(NULL
+                //    , 0
+                //    , receive
+                //    , (LPVOID)hDlg
+                //    , 0
+                //    , &dwThreadIdReceive
+                //);
+            //}
             return (INT_PTR)TRUE;
         } // eof IDC_CONNECT
+        case IDC_RB_WRITE:
+        {
+            g_bRead = FALSE;
+            // enable edit control IDC_TRANSMIT
+            EnableWindow(GetDlgItem(hDlg, IDC_TRANSMIT), TRUE);
+            return (INT_PTR)TRUE;
+        } // IDC_RB_WRITE;
+        case IDC_RB_READ:
+        {
+            g_bRead = TRUE;
+            // disable edit control IDC_TRANSMIT
+            EnableWindow(GetDlgItem(hDlg, IDC_TRANSMIT), FALSE);
+            return (INT_PTR)TRUE;
+        } // IDC_RB_READ;
         case IDC_DISCONNECT:
         {
-            if (g_hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
-            if (CloseHandle(g_hComm))
+            //if (hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
+            if (CloseHandle(hComm))
             {
-                g_hComm = INVALID_HANDLE_VALUE;
+                g_bContinueTxRx = FALSE;
+
+                hComm = INVALID_HANDLE_VALUE;
 
                 // set text edit control IDC_STATUS
-                SendMessage(GetDlgItem(hDlg, IDC_STATUS)
+                SendMessage(GetDlgItem(hDlg, IDC_STATUS_SERIAL)
                     , WM_SETTEXT
                     , (WPARAM)0
                     , (LPARAM)L"Disconnected"
@@ -274,74 +367,17 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         } // eof switch
         return (INT_PTR)FALSE;
     }  // eof WM_COMMAND
-    } // eof switch
+     } // eof switch
     return (INT_PTR)FALSE;
-}
-
-//****************************************************************************
-//*                     transmit
-//****************************************************************************
-DWORD WINAPI transmit(LPVOID lpVoid)
-{
-    CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
-    sprintf_s(chBuffer, BUFFER_MAX_SERIAL, "33603");
-    DWORD dwNofByteTransferred = 0;
-    BOOL bResult = FALSE;
-    // infinite loop
-    while (TRUE)
-    {
-        if (g_bTransmit)
-        {
-            bResult = WriteFile(g_hComm
-                , &chBuffer
-                , 5
-                , &dwNofByteTransferred
-                , NULL
-            );
-            OutputDebugStringA(chBuffer);
-            OutputDebugString(L" ");
-            Sleep(125);
-            g_bTransmit = FALSE;
-        }
-    }
-    return 0;
-}
-
-//****************************************************************************
-//*                     receive
-//****************************************************************************
-DWORD WINAPI receive(LPVOID lpVoid)
-{
-    CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
-    DWORD dwNofByteTransferred = 0;
-    BOOL bResult = FALSE;
-    // infinite loop
-    while (TRUE)
-    {
-        if (!g_bTransmit)
-        {
-            bResult = ReadFile(g_hComm
-                , &chBuffer
-                , 2//strlen(chBuffer)
-                , &dwNofByteTransferred
-                , NULL
-            );
-            OutputDebugStringA(chBuffer);
-            OutputDebugString(L"\n");
-            Sleep(125);
-            g_bTransmit = TRUE;
-        }
-    }
-    return 0;
 }
 
 //****************************************************************************
 //*                     connect
 //****************************************************************************
-BOOL connect()
+BOOL connect(HANDLE& hComm)
 {
     // create file
-    g_hComm = CreateFile(L"\\\\.\\COM3"
+    hComm = CreateFile(L"\\\\.\\COM3"
         , GENERIC_READ | GENERIC_WRITE
         , 0
         , NULL
@@ -349,9 +385,9 @@ BOOL connect()
         , FILE_ATTRIBUTE_NORMAL // synchronous I/O
         , NULL
     );
-    if (g_hComm == INVALID_HANDLE_VALUE)
+    if (hComm == INVALID_HANDLE_VALUE)
     {
-        return FALSE;
+        return EXIT_FAILURE;
     }
 
     // set structure to initialize the communication port
@@ -384,9 +420,9 @@ BOOL connect()
     dcb.ByteSize = 8;
     dcb.StopBits = 0;
     // initialize the communication port
-    if (!SetCommState(g_hComm, (LPDCB)&dcb))
+    if (!SetCommState(hComm, (LPDCB)&dcb))
     {
-        return FALSE;
+        return EXIT_FAILURE;
     }
 
     // set structure for the communication port timeout
@@ -397,25 +433,134 @@ BOOL connect()
     commtimeouts.WriteTotalTimeoutMultiplier = 0;
     commtimeouts.WriteTotalTimeoutConstant = 0;
     // set communication port timeout
-    if (!SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts))
+    if (!SetCommTimeouts(hComm, (LPCOMMTIMEOUTS)&commtimeouts))
     {
-        return FALSE;
+        return EXIT_FAILURE;
     }
 
     // set the communication port mask bit to capture event
-    if (!SetCommMask(g_hComm, EV_TXEMPTY | EV_RXCHAR))
+    if (!SetCommMask(hComm, EV_TXEMPTY | EV_RXCHAR))
     {
-        return FALSE;
+        return EXIT_FAILURE;
     }
 
     // set in/out queue buffers
-    if (!SetupComm(g_hComm, BUFFER_MAX_SERIAL, BUFFER_MAX_SERIAL))
+    if (!SetupComm(hComm, BUFFER_MAX_SERIAL, BUFFER_MAX_SERIAL))
     {
-        return FALSE;
+        return EXIT_FAILURE;
     }
 
-    return TRUE;
+    return EXIT_SUCCESS;
 }
+
+//****************************************************************************
+//*                     TxRx
+//****************************************************************************
+DWORD WINAPI TxRx(LPVOID lpVoid)
+{
+    // infinite loop
+    while (g_bContinueTxRx)
+    {
+        transmit();
+        Sleep(DELAY_DFLT_SERIAL);
+        receive(lpVoid);
+        Sleep(DELAY_DFLT_SERIAL);
+    }
+    return 0;
+}
+
+//****************************************************************************
+//*                     transmit
+//****************************************************************************
+BOOL transmit()
+{
+    OutputDebugString(L"transmitting\n");
+    sprintf_s((CHAR*)g_chBuffer, (size_t)BUFFER_MAX_SERIAL, "%c%c%c%c%c%c%c%c%c"
+        , g_oFrame.soh
+        , (g_oFrame.cmnd >> 8) & 0xFF
+        , (g_oFrame.cmnd & 0xFF)
+        , g_oFrame.stx
+        , (g_oFrame.payload >> 8) & 0xFF
+        , (g_oFrame.payload & 0xFF)
+        , g_oFrame.etx
+        , g_oFrame.etb
+        , g_oFrame.eot
+    );
+    return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     receive
+//****************************************************************************
+BOOL receive(LPVOID lpVoid)
+{
+    OutputDebugString(L"receiving\n");
+    g_oFrame.cmnd = (g_chBuffer[1] << 8) | (g_chBuffer[2]);
+    g_oFrame.payload  = (g_chBuffer[4] << 8) | (g_chBuffer[5]);
+    std::string str = std::to_string(g_oFrame.payload);
+    SendMessageA(GetDlgItem((HWND)lpVoid, IDC_RECEIVE)
+        , WM_SETTEXT
+        , (WPARAM)0
+        , (LPARAM)str.c_str()
+    );
+    return EXIT_SUCCESS;
+}
+//****************************************************************************
+//*                     transmit
+//****************************************************************************
+//DWORD WINAPI transmit(LPVOID lpVoid)
+//{
+//    CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+//    sprintf_s(chBuffer, BUFFER_MAX_SERIAL, "33603");
+//    DWORD dwNofByteTransferred = 0;
+//    BOOL bResult = FALSE;
+//    // infinite loop
+//    while (TRUE)
+//    {
+//        if (g_bTransmit)
+//        {
+//            bResult = WriteFile(g_hComm
+//                , &chBuffer
+//                , 5
+//                , &dwNofByteTransferred
+//                , NULL
+//            );
+//            OutputDebugStringA(chBuffer);
+//            OutputDebugString(L" ");
+//            Sleep(125);
+//            g_bTransmit = FALSE;
+//        }
+//    }
+//    return 0;
+//}
+
+//****************************************************************************
+//*                     receive
+//****************************************************************************
+//DWORD WINAPI receive(LPVOID lpVoid)
+//{
+//    CHAR chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+//    DWORD dwNofByteTransferred = 0;
+//    BOOL bResult = FALSE;
+//    // infinite loop
+//    while (TRUE)
+//    {
+//        if (!g_bTransmit)
+//        {
+//            bResult = ReadFile(g_hComm
+//                , &chBuffer
+//                , 2//strlen(chBuffer)
+//                , &dwNofByteTransferred
+//                , NULL
+//            );
+//            OutputDebugStringA(chBuffer);
+//            OutputDebugString(L"\n");
+//            Sleep(125);
+//            g_bTransmit = TRUE;
+//        }
+//    }
+//    return 0;
+//}
 
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
