@@ -1,3 +1,5 @@
+/*
+* waste
 #pragma once
 //****************************************************************************
 //*                     note
@@ -423,6 +425,7 @@ INT_PTR CALLBACK onWmCommand_DlgProc(const HINSTANCE& hInst
 	
 	return (INT_PTR)FALSE;
 }
+*/
 
 //****************************************************************************
 //*                     connect
@@ -506,6 +509,8 @@ BOOL connect(HANDLE& hComm)
 
 	return EXIT_SUCCESS;
 }
+
+/*
 //****************************************************************************
 //*                     updateRegister
 //****************************************************************************
@@ -812,4 +817,4 @@ BOOL updateTAlert(const HWND& hDlg
 	//	, (LPARAM)GetDlgItem(hDlg, IDC_T_HI_CLCS)
 	//);
 //}
-
+*/

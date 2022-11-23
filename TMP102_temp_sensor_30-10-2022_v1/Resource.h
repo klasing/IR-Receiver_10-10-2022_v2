@@ -1,3 +1,68 @@
+// frame
+#define SOH						1
+#define STX						2
+#define ETX						3
+#define ETB						23
+#define EOT						4
+
+// serial communication
+#define LEN_FRAME				9
+#define DELAY_4HZ_SERIAL		125
+#define BUFFER_MAX_SERIAL		512
+
+// control
+#define IDC_STATUS_CONNECT		33000
+#define IDC_LV_CONFIGURATION	33001
+#define IDC_LV_T_LO				33002
+#define IDC_T_LO_CLCS			33003
+#define IDC_LV_T_HI				33004
+#define IDC_T_HI_CLCS			33005
+#define IDC_LV_TREG				33006
+#define IDC_T_CLCS				33007
+#define IDC_T_ALERT				33008
+
+// message
+#define CONNECT_SERIAL			33100
+#define DISCONNECT_SERIAL		33101
+
+// string
+#define IDS_LVCONFIG_COL0		33500
+#define IDS_LVCONFIG_COL1		33501
+#define IDS_LVCONFIG_COL2		33502
+#define IDS_LVCONFIG_COL3		33503
+#define IDS_LVCONFIG_COL4		33504
+#define IDS_LVCONFIG_COL5		33505
+#define IDS_LVCONFIG_COL6		33506
+#define IDS_LVCONFIG_COL7		33507
+#define IDS_LVCONFIG_COL8		33508
+#define IDS_LVCONFIG_COL9		33509
+#define IDS_LVCONFIG_COL10		33510
+#define IDS_LVCONFIG_COL11		33511
+
+#define IDS_LVTEMP_COL0			33512
+#define IDS_LVTEMP_COL1			33513
+#define IDS_LVTEMP_COL2			33514
+#define IDS_LVTEMP_COL3			33515
+#define IDS_LVTEMP_COL4			33516
+#define IDS_LVTEMP_COL5			33517
+#define IDS_LVTEMP_COL6			33518
+#define IDS_LVTEMP_COL7			33519
+
+#define IDS_DEGREE_SYMBOL		33520
+
+// command serial communication
+// read command
+#define RD_REG_CNFG				33600 // address to approach two bytes with 12 bits data
+#define RD_REG_T_LO				33601 // address to approach two bytes with 12/13 bits data
+#define RD_REG_T_HI				33602 // address to approach two bytes with 12/13 bits data
+#define RD_REG_TEMP				33603 // address to approach two bytes with 12/13 bits data (with 13 bits data LSB=1 in second byte)
+// write command
+#define WR_REG_CNFG				33610 // address to approach two bytes with 12 bits data
+#define WR_REG_T_LO				33611 // address to approach two bytes with 12/13 bits data
+#define WR_REG_T_HI				33612 // address to approach two bytes with 12/13 bits data
+
+/*
+* waste
 #define BUFFER_MAX_SERIAL		512
 #define MAX_RETRY_SERIAL		3
 #define DELAY_4Hz				125
@@ -59,6 +124,7 @@
 #define WR_REG_CNFG				33610 // address to approach two bytes with 12 bits data
 #define WR_REG_T_LO				33611 // address to approach two bytes with 12/13 bits data
 #define WR_REG_T_HI				33612 // address to approach two bytes with 12/13 bits data
+*/
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
