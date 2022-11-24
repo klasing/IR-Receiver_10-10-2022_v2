@@ -6,6 +6,7 @@
 #define EOT						4
 
 // serial communication
+#define MAX_RETRY_SERIAL		3
 #define LEN_FRAME				9
 #define DELAY_4HZ_SERIAL		125
 #define BUFFER_MAX_SERIAL		512

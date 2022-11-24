@@ -1,5 +1,7 @@
 #pragma once
-
+//****************************************************************************
+//*                     include
+//****************************************************************************
 #include "resource.h"
 #include "ListView.h"				// -Proj: Common_Cotrol -Sln: StaticLib
 #include "StaticLib.h"				// -Proj: StaticLib		-Sln: StaticLib
