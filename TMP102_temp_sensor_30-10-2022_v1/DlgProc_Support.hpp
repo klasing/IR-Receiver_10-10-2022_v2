@@ -533,11 +533,22 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			if (g_bContinueTxRx)
 			{
 				// hThreadTxRx is running
-				// 1) comparator mode and polarity active low: 
-				// alert-bit is not active (high) under temp low, i.d. greenBrush
-				// alert-bit is active (low) above temp low, i.d. redBrush
-				brush = (!g_bPolarity & g_alert_bit) ? greenBrush : redBrush;
-				// 2) in thermostat mode things will be slightly different!
+				// comparator mode
+				if (g_bPolarity)
+				{
+					// active high
+					brush = (g_alert_bit) ? redBrush : greenBrush;
+				}
+				else
+				{
+					// active low
+					brush = (g_alert_bit) ? greenBrush : redBrush;
+				}
+
+				// thermostat mode
+				// TODO
+
+				// adjust color indicator
 				InvalidateRect(hDlg, &rect, TRUE);
 			}
 			return (INT_PTR)TRUE;
@@ -889,6 +900,21 @@ BOOL receive(LPVOID lpVoid)
 			, (LPARAM)chBufferTempInCelcius
 		);
 
+		std::wstring wstrStateAlert = L"";
+		if (g_bPolarity)
+		{
+			wstrStateAlert = (g_alert_bit) ? L"Active" : L"Not active";
+		}
+		else
+		{
+			wstrStateAlert = (g_alert_bit) ? L"Not active" : L"Active";
+		}
+		SendMessage(GetDlgItem((HWND)lpVoid, IDC_ALERT)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)wstrStateAlert.c_str()
+		);
+
 		if (iTempTimes100 < g_iTempLoTimes100)
 		{
 			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
@@ -968,6 +994,7 @@ VOID updateListViewItemEx(const HWND& hWndLV
 //****************************************************************************
 BOOL getSetting(const HWND& hDlg)
 {
+	UINT8 hiByte = 0, loByte = 0;
 	return EXIT_SUCCESS;
 }
 
@@ -1080,15 +1107,13 @@ BOOL updateSetting(const HWND& hDlg
 	);
 	// update IDC_ALERT //////////////////////////////////////////////////////
 	std::wstring wstrStateAlert = L"";
-	if (!g_bPolarity & !(loByte & 0x20))
+	if (g_bPolarity)
 	{
-		// alert active
-		wstrStateAlert = L"Active";
+		wstrStateAlert = (loByte & 0x20) ? L"Active" : L"Not active";
 	}
 	else
 	{
-		// alert not active
-		wstrStateAlert = L"Not active";
+		wstrStateAlert = (loByte & 0x20) ? L"Not active" : L"Active";
 	}
 	SendMessage(GetDlgItem(hDlg, IDC_ALERT)
 		, WM_SETTEXT
