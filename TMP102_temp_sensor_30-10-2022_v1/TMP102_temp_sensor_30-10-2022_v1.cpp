@@ -11,6 +11,9 @@
 //* for now I will focus on method two (interrupt)
 //* this C++ code is written following the text at:
 //* https://www.tetraedre.ch/advanced/files/msdn_serial.htm
+//*
+//* reset the TMP102, second byte is:
+//* 0000 0110
 //****************************************************************************
 
 //****************************************************************************

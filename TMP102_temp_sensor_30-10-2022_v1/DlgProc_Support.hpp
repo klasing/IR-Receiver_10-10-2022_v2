@@ -2,6 +2,10 @@
 //****************************************************************************
 //*                     note
 //*
+//* TODO: adjust the delay when changing the conversion rate
+//* TODO: modify the temperature conversion to degrees Celsius when changing 
+//*       to 13-bit extended mode
+//* TODO: see command from button TMP102_RESET
 //*****************************************************************************
 //*****************************************************************************
 //*                     include
@@ -46,10 +50,12 @@ INT16 g_iTempLo = 0;
 INT16 g_iTempHi = 0;
 INT16 g_iTempLoTimes100 = 0;
 INT16 g_iTempHiTimes100 = 0;
+//BOOL g_bModeThermostat = FALSE;
 BOOL g_bCheckedStateChbOneshot = FALSE;
 BOOL g_bCheckedStateChbShutdown = FALSE;
 BOOL g_bCheckedStateChbExtended = FALSE;
 BOOL g_bPolarity = FALSE;
+UINT8 g_hiByteCnfg = 0, g_loByteCnfg = 0;
 
 //*****************************************************************************
 //*                     prototype
@@ -419,10 +425,21 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		}
 		return (INT_PTR)TRUE;
 	} // eof DISCONNECT_SERIAL
+	case TMP102_RESET:
+	{
+		//TODO: TMP102_RESET implementation
+		return (INT_PTR)TRUE;
+	} // eof TMP102_RESET
 	case APPLY_SETTING:
 	{
 		// get setting for the configuration register
-		getSetting(hDlg);
+		// this func will fail when not connected,
+		// when this func fails: return
+		if (getSetting(hDlg) == EXIT_FAILURE) return (INT_PTR)TRUE;
+
+		// write the configuration to STM32
+		g_oFrame.cmnd = WR_REG_CNFG;
+		
 		// convert the value of IDC_T_LO_CLCS
 		CHAR chBuffer[8] = { 0 };
 		std::string str = "";
@@ -437,9 +454,6 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		fTemp /= 0.0625;
 		g_iTempLo = (INT16)fTemp << 4;
 		// write iTempLo to STM32
-		g_oFrame.cmnd = WR_REG_T_LO; // 33611
-		//g_oFrame.payload = iTempLo;
-		//g_val_t_lo = iTempLo >> 4;
 
 		// convert the value of IDC_T_HI_CLCS
 		SendMessageA(GetDlgItem(hDlg, IDC_T_HI_CLCS)
@@ -452,9 +466,6 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		fTemp /= 0.0625;
 		g_iTempHi = (INT16)fTemp << 4;
 		// write iTempHi to STM32
-		//g_oFrame.cmnd = WR_REG_T_HI; // 33612
-		//g_oFrame.payload = iTempHi;
-		//g_val_t_hi = iTempHi >> 4;
 
 		return (INT_PTR)TRUE;
 	} // eof APPLY_SETTING
@@ -682,6 +693,12 @@ DWORD WINAPI TxRx(LPVOID lpVoid)
 BOOL transmit()
 {
 	OutputDebugString(L"transmitting\n");
+
+	if (g_oFrame.cmnd == WR_REG_CNFG)
+	{
+		g_oFrame.payload = (g_hiByteCnfg << 8) | g_loByteCnfg;
+	}
+
 	if (g_oFrame.cmnd == WR_REG_T_LO)
 	{
 		g_oFrame.payload = g_iTempLo;
@@ -727,6 +744,17 @@ BOOL receive(LPVOID lpVoid)
 		, &dwNofByteTransferred
 		, NULL
 	);
+
+	// write CONFIGURATION ///////////////////////////////////////
+	if (g_oFrame.cmnd == WR_REG_CNFG)
+	{
+		++g_cReceive;
+		if (g_cReceive == MAX_RETRY_SERIAL)
+		{
+			g_cReceive = 0;
+			g_oFrame.cmnd = WR_REG_T_LO;
+		}
+	}
 
 	// write TEMPERATURE LOW /////////////////////////////////////
 	if (g_oFrame.cmnd == WR_REG_T_LO)
@@ -994,7 +1022,48 @@ VOID updateListViewItemEx(const HWND& hWndLV
 //****************************************************************************
 BOOL getSetting(const HWND& hDlg)
 {
-	UINT8 hiByte = 0, loByte = 0;
+	// return when not connected
+	if (!g_bContinueTxRx) return EXIT_FAILURE;
+
+	UINT8 bit_field = 0;
+	g_hiByteCnfg = g_loByteCnfg = 0;
+
+	// get IDC_CHB_ONESHOT ///////////////////////////////////////////////////
+	if (g_bCheckedStateChbOneshot) g_hiByteCnfg |= 0x80;
+
+	// get IDC_CB_FAULT_QUEUE ////////////////////////////////////////////////
+	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+		, CB_GETCURSEL
+		, (WPARAM)0
+		, (LPARAM)0
+	);
+	g_hiByteCnfg |= (bit_field << 3);
+
+	// get IDC_CB_POLARITY_ALERT /////////////////////////////////////////////
+	if (g_bPolarity) g_hiByteCnfg |= 0x04;
+
+	// get IDC_CB_MODE_THERMOSTAT ////////////////////////////////////////////
+	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
+		, CB_GETCURSEL
+		, (WPARAM)0
+		, (LPARAM)0
+	);
+	g_hiByteCnfg |= (bit_field << 1);
+
+	// get IDC_CHB_SHUTDOWN //////////////////////////////////////////////////
+	if (g_bCheckedStateChbShutdown) g_hiByteCnfg |= 0x01;
+
+	// get IDC_CB_RATE_CONVERSION ////////////////////////////////////////////
+	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+		, CB_GETCURSEL
+		, (WPARAM)0
+		, (LPARAM)0
+	);
+	g_loByteCnfg |= (bit_field << 6);
+
+	// get IDC_CHB_EXTENDED //////////////////////////////////////////////////
+	if (g_bCheckedStateChbExtended) g_loByteCnfg |= 0x10;
+
 	return EXIT_SUCCESS;
 }
 
@@ -1026,7 +1095,7 @@ BOOL updateSetting(const HWND& hDlg
 		);
 		g_bCheckedStateChbOneshot = FALSE;
 	}
-	// update IDC_RESOLUTION //////////////////////////////////////////////////
+	// update IDC_RESOLUTION /////////////////////////////////////////////////
 	std::wstring wstrResolution = L"";
 	bit_field = (hiByte & 0x60) >> 5; // note precedence!
 	switch (bit_field)
@@ -1049,7 +1118,7 @@ BOOL updateSetting(const HWND& hDlg
 		, (WPARAM)0
 		, (LPARAM)wstrResolution.c_str()
 	);
-	// update IDC_CB_FAULT_QUEUE ////////////////////////////////////////////////
+	// update IDC_CB_FAULT_QUEUE /////////////////////////////////////////////
 	bit_field = (hiByte & 0x18) >> 3; // note precedence!
 	// 00 - 1
 	// 01 - 2
@@ -1075,6 +1144,7 @@ BOOL updateSetting(const HWND& hDlg
 		, (WPARAM)bit_field
 		, (LPARAM)0
 	);
+	//g_bModeThermostat = bit_field;
 	// update IDC_CHB_SHUTDOWN ///////////////////////////////////////////////
 	if (hiByte & 1)
 	{

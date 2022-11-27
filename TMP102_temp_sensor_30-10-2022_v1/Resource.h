@@ -34,7 +34,8 @@
 // message
 #define CONNECT_SERIAL			33100
 #define DISCONNECT_SERIAL		33101
-#define APPLY_SETTING			33102
+#define TMP102_RESET			33102
+#define APPLY_SETTING			33103
 
 // string
 #define IDS_LVCONFIG_COL0		33500
