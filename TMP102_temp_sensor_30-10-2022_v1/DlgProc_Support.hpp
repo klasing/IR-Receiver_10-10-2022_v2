@@ -29,7 +29,171 @@ typedef struct tagFRAME
 	const CHAR etx;
 	const CHAR etb;
 	const CHAR eot;
-} FRAME, * PFRAME;
+} FRAME, *PFRAME;
+
+// bitfield CONFIGURATION ////////////////////////////////////////////////////
+typedef struct tagCONFIGURATION
+{
+	UINT8 oneShot : 1;
+	UINT8 resolution : 2;
+	UINT8 faultQueue : 2;
+	UINT8 polarity : 1;
+	UINT8 modeThermostat : 1;
+	UINT8 shutDown : 1;
+	UINT8 conversionRate : 2;
+	UINT8 alert : 1;
+	UINT8 modeExtended : 1;
+	UINT8 : 4;
+	VOID setHiByte(const UINT8& byte)
+	{
+		oneShot = (byte & 0x80) >> 7;
+		resolution = (byte & 0x60) >> 5;
+		faultQueue = (byte & 0x18) >> 3;
+		polarity = (byte & 0x04) >> 2;
+		modeThermostat = (byte & 0x02) >> 1;
+		shutDown = byte & 0x01;
+	}
+	UINT16 getHiByte()
+	{
+		UINT16 word = 0;
+		word = (oneShot << 7)
+			| (resolution << 5)
+			| (faultQueue << 3)
+			| (polarity << 2)
+			| (modeThermostat << 1)
+			| shutDown;
+		return word;
+	}
+	VOID setLoByte(const UINT8& byte)
+	{
+		conversionRate = (byte & 0xC0) >> 6;
+		alert = (byte & 0x20) >> 5;
+		modeExtended = (byte & 0x10) >> 4;
+	}
+	UINT16 getLoByte()
+	{
+		UINT16 word = 0;
+		word = (conversionRate << 6)
+			| (alert << 5)
+			| (modeExtended << 4);
+		return word;
+	}
+	VOID setOneShot(const BOOL& b)
+	{
+		oneShot = (b) ? TRUE : FALSE;
+	}
+	BOOL getOneShot()
+	{
+		return oneShot;
+	}
+	// read only
+	//VOID setResolution(const CHAR& byte)
+	//{
+	//	resolution = byte & 0x03;
+	//}
+	UINT8 getResolution()
+	{
+		return resolution;
+	}
+	VOID setFaultQueue(const UINT8& byte)
+	{
+		faultQueue = byte & 0x03;
+	}
+	UINT8 getFaultQueue()
+	{
+		return faultQueue;
+	}
+	VOID setPolarity(const BOOL& b)
+	{
+		polarity = (b) ? TRUE : FALSE;
+	}
+	BOOL getPolarity()
+	{
+		return polarity;
+	}
+	VOID setModeThermostat(const BOOL& b)
+	{
+		modeThermostat = (b) ? TRUE : FALSE;
+	}
+	BOOL getModeThermostat()
+	{
+		return modeThermostat;
+	}
+	VOID setConversionRate(const UINT8& byte)
+	{
+		conversionRate = byte & 0x03;
+	}
+	UINT8 getConversionRate()
+	{
+		return conversionRate;
+	}
+	// read only
+	//VOID setAlert(const BOOL& b)
+	//{
+	//	alert = (b) ? TRUE : FALSE;
+	//}
+	BOOL getAlert()
+	{
+		return alert;
+	}
+	VOID setModeExtended(const BOOL& b)
+	{
+		modeExtended = (b) ? TRUE : FALSE;
+	}
+	BOOL getModeExtended()
+	{
+		return modeExtended;
+	}
+} CONFIGURATION, *PCONFIGURATION;
+
+// 12-bit bitfield TEMPERATURE ///////////////////////////////////////////////
+typedef struct tagBIT12TEMP
+{
+	INT16 temp : 12;
+	FLOAT fTempInClcs = 0.;
+	FLOAT fTempInClcsTimes100 = 0.;
+	CHAR chBufferTempInCelcius[LEN_TEMP_IN_CLCS] = { 0 };
+	VOID setHiByte(INT8 byte)
+	{
+		// must be called before setLoByte is called
+		temp = byte << 4;
+	}
+	VOID setLoByte(UINT8 byte)
+	{
+		temp |= byte >> 4;
+	}
+	// this member func will also set:
+	// fTempInClcs, 
+	// fTempInClcsTimes100, and
+	// chBufferTempInCelcius
+	CHAR* getTempInClcs_toStringA()
+	{
+		INT16 val = temp;
+		if (val & 0x8000)
+		{
+			val = ~val;
+			val += 1;
+		}
+		fTempInClcs = val * 0.0625;
+		fTempInClcsTimes100 = fTempInClcs * 100;
+		sprintf_s(chBufferTempInCelcius
+			, LEN_TEMP_IN_CLCS
+			, "%d.%02d"
+			, ((UINT)fTempInClcsTimes100 / 100)
+			, ((UINT)fTempInClcsTimes100 % 100)
+		);
+		return chBufferTempInCelcius;
+	}
+} BIT12TEMP, *PBIT12TEMP;
+
+// 12-bit bitfield MEASURED TEMPERATURE //////////////////////////////////////
+typedef struct tagBIT12MSRDTEMP : tagBIT12TEMP
+{
+	UINT8 alert : 1;
+	UINT8 mode_extended : 1;
+} BIT12MSRDTEMP, *PBIT12MSRDTEMP;
+
+// 13-bit bitfield TEMPERATURE ///////////////////////////////////////////////
 
 //****************************************************************************
 //*                     extern
@@ -57,6 +221,13 @@ BOOL g_bCheckedStateChbExtended = FALSE;
 BOOL g_bPolarity = FALSE;
 UINT8 g_hiByteCnfg = 0, g_loByteCnfg = 0;
 
+CONFIGURATION g_oConfiguration{ 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+BIT12TEMP g_oTempLo{ 0 };
+BIT12TEMP g_oTempHi{ 0 };
+BIT12MSRDTEMP g_oMsrdTemp;
+FRAME g_oFrameEx = { SOH, 0, STX, 0, ETX, ETB, EOT };
+std::queue<tagFRAME> g_queue;
+
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
@@ -64,6 +235,9 @@ BOOL				connect(HANDLE& hComm);
 DWORD WINAPI		TxRx(LPVOID lpVoid);
 BOOL                transmit();
 BOOL                receive(LPVOID lpVoid);
+//FLOAT bit12toclcs(const INT8& hiByte
+//	, const UINT8& loByte
+//);
 VOID updateListViewItemEx(const HWND& hWndLV
 	, const INT& iItem
 	, const INT& iSubItem
@@ -369,15 +543,12 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
 
-			// TEST start by checking receiving a temperature continuously
-			// set g_oFrame into the default state
-			//g_oFrame.cmnd = RD_REG_TEMP;
-			//------------------------------------------------------------
-			// set g_oFrame into the default state, i.d. capturing the
-			// CONFIGURATION register
-			// and trickling down towards continuously capturing the
-			// TEMPERATURE register
-			g_oFrame.cmnd = RD_REG_CNFG;
+			g_oFrameEx.cmnd = RD_REG_CNFG;
+			g_queue.push(g_oFrameEx);
+			g_oFrameEx.cmnd = RD_REG_T_LO;
+			g_queue.push(g_oFrameEx);
+			g_oFrameEx.cmnd = RD_REG_T_HI;
+			g_queue.push(g_oFrameEx);
 
 			// enable infinite loop
 			g_bContinueTxRx = TRUE;
@@ -397,6 +568,48 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		}
 		return (INT_PTR)TRUE;
 	} // eof CONNECT_SERIAL
+	//case CONNECT_SERIAL:
+	//{
+	//	if (connect(g_hComm) == EXIT_SUCCESS)
+	//	{
+	//		// set text edit control IDC_STATUS
+	//		SendMessage(GetDlgItem(hDlg, IDC_STATUS_CONNECT)
+	//			, WM_SETTEXT
+	//			, (WPARAM)0
+	//			, (LPARAM)L"Connected"
+	//		);
+	//		// enable/disable button
+	//		EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
+	//		EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
+
+	//		// TEST start by checking receiving a temperature continuously
+	//		// set g_oFrame into the default state
+	//		//g_oFrame.cmnd = RD_REG_TEMP;
+	//		//------------------------------------------------------------
+	//		// set g_oFrame into the default state, i.d. capturing the
+	//		// CONFIGURATION register
+	//		// and trickling down towards continuously capturing the
+	//		// TEMPERATURE register
+	//		g_oFrame.cmnd = RD_REG_CNFG;
+
+	//		// enable infinite loop
+	//		g_bContinueTxRx = TRUE;
+
+	//		// create thread to continuously transmit and receive
+	//		DWORD dwThreadIdTxRx = 0;
+	//		HANDLE hTreadTxRx = CreateThread(NULL
+	//			, 0
+	//			, TxRx
+	//			, (LPVOID)hDlg
+	//			, CREATE_SUSPENDED // wait until started
+	//			, &dwThreadIdTxRx
+	//		);
+
+	//		// start thread exact on this command
+	//		if (hTreadTxRx) ResumeThread(hTreadTxRx);
+	//	}
+	//	return (INT_PTR)TRUE;
+	//} // eof CONNECT_SERIAL
 	case DISCONNECT_SERIAL:
 	{
 		// terminate thread
@@ -694,31 +907,18 @@ BOOL transmit()
 {
 	OutputDebugString(L"transmitting\n");
 
-	if (g_oFrame.cmnd == WR_REG_CNFG)
-	{
-		g_oFrame.payload = (g_hiByteCnfg << 8) | g_loByteCnfg;
-	}
-
-	if (g_oFrame.cmnd == WR_REG_T_LO)
-	{
-		g_oFrame.payload = g_iTempLo;
-	}
-
-	if (g_oFrame.cmnd == WR_REG_T_HI)
-	{
-		g_oFrame.payload = g_iTempHi;
-	}
+	FRAME oFrameEx = g_queue.front();
 
 	sprintf_s((CHAR*)g_chBuffer, (size_t)BUFFER_MAX_SERIAL, "%c%c%c%c%c%c%c%c%c"
-		, g_oFrame.soh
-		, (g_oFrame.cmnd >> 8) & 0xFF
-		, (g_oFrame.cmnd & 0xFF)
-		, g_oFrame.stx
-		, (g_oFrame.payload >> 8) & 0xFF
-		, (g_oFrame.payload & 0xFF)
-		, g_oFrame.etx
-		, g_oFrame.etb
-		, g_oFrame.eot
+		, oFrameEx.soh
+		, (oFrameEx.cmnd >> 8) & 0xFF
+		, (oFrameEx.cmnd & 0xFF)
+		, oFrameEx.stx
+		, (oFrameEx.payload >> 8) & 0xFF
+		, (oFrameEx.payload & 0xFF)
+		, oFrameEx.etx
+		, oFrameEx.etb
+		, oFrameEx.eot
 	);
 	DWORD dwNofByteTransferred = 0;
 	WriteFile(g_hComm
@@ -729,6 +929,48 @@ BOOL transmit()
 	);
 	return EXIT_SUCCESS;
 }
+////****************************************************************************
+////*                     transmit
+////****************************************************************************
+//BOOL transmit()
+//{
+//	OutputDebugString(L"transmitting\n");
+//
+//	if (g_oFrame.cmnd == WR_REG_CNFG)
+//	{
+//		g_oFrame.payload = (g_hiByteCnfg << 8) | g_loByteCnfg;
+//	}
+//
+//	if (g_oFrame.cmnd == WR_REG_T_LO)
+//	{
+//		g_oFrame.payload = g_iTempLo;
+//	}
+//
+//	if (g_oFrame.cmnd == WR_REG_T_HI)
+//	{
+//		g_oFrame.payload = g_iTempHi;
+//	}
+//
+//	sprintf_s((CHAR*)g_chBuffer, (size_t)BUFFER_MAX_SERIAL, "%c%c%c%c%c%c%c%c%c"
+//		, g_oFrame.soh
+//		, (g_oFrame.cmnd >> 8) & 0xFF
+//		, (g_oFrame.cmnd & 0xFF)
+//		, g_oFrame.stx
+//		, (g_oFrame.payload >> 8) & 0xFF
+//		, (g_oFrame.payload & 0xFF)
+//		, g_oFrame.etx
+//		, g_oFrame.etb
+//		, g_oFrame.eot
+//	);
+//	DWORD dwNofByteTransferred = 0;
+//	WriteFile(g_hComm
+//		, &g_chBuffer
+//		, LEN_FRAME
+//		, &dwNofByteTransferred
+//		, NULL
+//	);
+//	return EXIT_SUCCESS;
+//}
 
 //****************************************************************************
 //*                     receive
@@ -745,42 +987,18 @@ BOOL receive(LPVOID lpVoid)
 		, NULL
 	);
 
-	// write CONFIGURATION ///////////////////////////////////////
-	if (g_oFrame.cmnd == WR_REG_CNFG)
-	{
-		++g_cReceive;
-		if (g_cReceive == MAX_RETRY_SERIAL)
-		{
-			g_cReceive = 0;
-			g_oFrame.cmnd = WR_REG_T_LO;
-		}
-	}
+	++g_cReceive;
+	if (g_cReceive < MAX_RETRY_SERIAL) return EXIT_SUCCESS;
+	g_cReceive = 0;
 
-	// write TEMPERATURE LOW /////////////////////////////////////
-	if (g_oFrame.cmnd == WR_REG_T_LO)
+	FRAME g_oFrameEx = g_queue.front();
+	switch (g_oFrameEx.cmnd)
 	{
-		++g_cReceive;
-		if (g_cReceive == MAX_RETRY_SERIAL)
-		{
-			g_cReceive = 0;
-			g_oFrame.cmnd = WR_REG_T_HI;
-		}
-	}
+	case RD_REG_CNFG:
+	{
+		g_oConfiguration.setHiByte(g_chBuffer[4]);
+		g_oConfiguration.setLoByte(g_chBuffer[5]);
 
-	// write TEMPERATURE HIGH ////////////////////////////////////
-	if (g_oFrame.cmnd == WR_REG_T_HI)
-	{
-		++g_cReceive;
-		if (g_cReceive == MAX_RETRY_SERIAL)
-		{
-			g_cReceive = 0;
-			g_oFrame.cmnd = RD_REG_TEMP;
-		}
-	}
-
-	// set CONFIGURATION /////////////////////////////////////////
-	if (g_oFrame.cmnd == RD_REG_CNFG)
-	{
 		updateRegister(GetDlgItem(g_hDlg, IDC_LV_CONFIGURATION)
 			, g_chBuffer[4]
 			, g_chBuffer[5]
@@ -792,185 +1010,319 @@ BOOL receive(LPVOID lpVoid)
 			, g_chBuffer[5]
 		);
 
-		++g_cReceive;
-		if (g_cReceive == MAX_RETRY_SERIAL)
-		{
-			g_cReceive = 0;
-			g_oFrame.cmnd = RD_REG_T_LO;
-		}
-	}
-
-	// set TEMPERATURE LOW ///////////////////////////////////////
-	if (g_oFrame.cmnd == RD_REG_T_LO)
+		break;
+	} // eof RD_REG_CNFG
+	case RD_REG_T_LO:
 	{
+		g_oTempLo.setHiByte(g_chBuffer[4]);
+		g_oTempLo.setLoByte(g_chBuffer[5]);
+
 		updateRegister(GetDlgItem(g_hDlg, IDC_LV_T_LO)
 			, g_chBuffer[4]
 			, g_chBuffer[5]
 		);
 
-		// do not use
-		//val = ((INT16)g_chBufferReceive[0] << 4) | (g_chBufferReceive[1] >> 4);
-		// use this correct statement
-		INT16 val = ((INT8)g_chBuffer[4] << 4 | (UINT8)g_chBuffer[5] >> 4);
-		// do not use
-		//if (val > 0x7FF) val |= 0xF000;
-		// use the traditional definition of a two'2 complement
-		// logical not operator ! or bitwise operator ~ can be used
-		if (val & 0x8000)
-		{
-			val = ~val;
-			val += 1;
-		}
-		FLOAT temp_c = val * 0.0625;
-		g_iTempLoTimes100 = temp_c *= 100;
-		sprintf_s(chBufferTempInCelcius
-			, BUFFER_MAX_SERIAL
-			, "%d.%02d"
-			, ((UINT)temp_c / 100)
-			, ((UINT)temp_c % 100)
-		);
-
 		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_LO_CLCS)
 			, WM_SETTEXT
 			, (WPARAM)0
-			, (LPARAM)chBufferTempInCelcius
+			, (LPARAM)g_oTempLo.getTempInClcs_toStringA()
 		);
 
-		++g_cReceive;
-		if (g_cReceive == MAX_RETRY_SERIAL)
-		{
-			g_cReceive = 0;
-			g_oFrame.cmnd = RD_REG_T_HI;
-		}
-	}
-
-	// set TEMPERATURE HIGH //////////////////////////////////////
-	if (g_oFrame.cmnd == RD_REG_T_HI)
+		break;
+	} // eof RD_REG_T_LO
+	case RD_REG_T_HI:
 	{
+		g_oTempHi.setHiByte(g_chBuffer[4]);
+		g_oTempHi.setLoByte(g_chBuffer[5]);
+
 		updateRegister(GetDlgItem(g_hDlg, IDC_LV_T_HI)
 			, g_chBuffer[4]
 			, g_chBuffer[5]
 		);
 
-		// do not use
-		//val = ((INT16)g_chBufferReceive[0] << 4) | (g_chBufferReceive[1] >> 4);
-		// use this correct statement
-		INT16 val = ((INT8)g_chBuffer[4] << 4 | (UINT8)g_chBuffer[5] >> 4);
-		// do not use
-		//if (val > 0x7FF) val |= 0xF000;
-		// use the traditional definition of a two'2 complement
-		// logical not operator ! or bitwise operator ~ can be used
-		if (val & 0x8000)
-		{
-			val = ~val;
-			val += 1;
-		}
-		FLOAT temp_c = val * 0.0625;
-		g_iTempHiTimes100 = temp_c *= 100;
-		sprintf_s(chBufferTempInCelcius
-			, BUFFER_MAX_SERIAL
-			, "%d.%02d"
-			, ((UINT)temp_c / 100)
-			, ((UINT)temp_c % 100)
-		);
-
 		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_HI_CLCS)
 			, WM_SETTEXT
 			, (WPARAM)0
-			, (LPARAM)chBufferTempInCelcius
+			, (LPARAM)g_oTempHi.getTempInClcs_toStringA()
 		);
 
-		++g_cReceive;
-		if (g_cReceive == MAX_RETRY_SERIAL)
-		{
-			g_cReceive = 0;
-			g_oFrame.cmnd = RD_REG_TEMP;
-		}
-	}
+		break;
+	} // eof RD_REG_T_HI
+	} // eof switch
 
-	// set TEMPERATURE REGISTER //////////////////////////////////
-	if (g_oFrame.cmnd == RD_REG_TEMP)
+	if (g_queue.size() > 1)
 	{
-		// update register
-		updateRegister(GetDlgItem(g_hDlg, IDC_LV_TREG)
-			, g_chBuffer[4]
-			, g_chBuffer[5]
-		);
-
-		// isolate alert bit
-		g_alert_bit = (g_chBuffer[5] & 0x02) >> 1;
-
-		// do not use
-		//val = ((INT16)g_chBufferReceive[0] << 4) | (g_chBufferReceive[1] >> 4);
-		// use this correct statement
-		INT16 val = ((INT8)g_chBuffer[4] << 4 | (UINT8)g_chBuffer[5] >> 4);
-		// do not use
-		//if (val > 0x7FF) val |= 0xF000;
-		// use the traditional definition of a two'2 complement
-		// logical not operator ! or bitwise operator ~ can be used
-		if (val & 0x8000)
-		{
-			val = ~val;
-			val += 1;
-		}
-		FLOAT temp_c = val * 0.0625;
-		INT16 iTempTimes100 = temp_c *= 100;
-		sprintf_s(chBufferTempInCelcius
-			, BUFFER_MAX_SERIAL
-			, "%d.%02d"
-			, ((UINT)temp_c / 100)
-			, ((UINT)temp_c % 100)
-		);
-
-		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_CLCS)
-			, WM_SETTEXT
-			, (WPARAM)0
-			, (LPARAM)chBufferTempInCelcius
-		);
-
-		std::wstring wstrStateAlert = L"";
-		if (g_bPolarity)
-		{
-			wstrStateAlert = (g_alert_bit) ? L"Active" : L"Not active";
-		}
-		else
-		{
-			wstrStateAlert = (g_alert_bit) ? L"Not active" : L"Active";
-		}
-		SendMessage(GetDlgItem((HWND)lpVoid, IDC_ALERT)
-			, WM_SETTEXT
-			, (WPARAM)0
-			, (LPARAM)wstrStateAlert.c_str()
-		);
-
-		if (iTempTimes100 < g_iTempLoTimes100)
-		{
-			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
-				, WM_SETTEXT
-				, (WPARAM)0
-				, (LPARAM)"too low"
-			);
-		}
-		else if (iTempTimes100 > g_iTempHiTimes100)
-		{
-			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
-				, WM_SETTEXT
-				, (WPARAM)0
-				, (LPARAM)"too high"
-			);
-		}
-		else
-		{
-			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
-				, WM_SETTEXT
-				, (WPARAM)0
-				, (LPARAM)"in range"
-			);
-		}
+		// last frame stays in the queue
+		g_queue.pop();
 	}
 
 	return EXIT_SUCCESS;
 }
+
+//*****************************************************************************
+//*
+//*****************************************************************************
+//FLOAT bit12toclcs(const INT8& hiByte
+//	, const UINT8& loByte
+//)
+//{
+//	// do not use
+//	//val = ((INT16)g_chBufferReceive[0] << 4) | (g_chBufferReceive[1] >> 4);
+//	// use this correct statement
+//	INT16 val = ((INT8)g_chBuffer[4] << 4 | (UINT8)g_chBuffer[5] >> 4);
+//	// do not use
+//	//if (val > 0x7FF) val |= 0xF000;
+//	// use the traditional definition of a two'2 complement
+//	// logical not operator ! or bitwise operator ~ can be used
+//	if (val & 0x8000)
+//	{
+//		val = ~val;
+//		val += 1;
+//	}
+//	return val * 0.0625;
+//}
+
+////****************************************************************************
+////*                     receive
+////****************************************************************************
+//BOOL receive(LPVOID lpVoid)
+//{
+//	OutputDebugString(L"receiving\n");
+//	CHAR chBufferTempInCelcius[BUFFER_MAX_SERIAL] = { 0 };
+//	DWORD dwNofByteTransferred = 0;
+//	ReadFile(g_hComm
+//		, &g_chBuffer
+//		, LEN_FRAME
+//		, &dwNofByteTransferred
+//		, NULL
+//	);
+//
+//	// write CONFIGURATION ///////////////////////////////////////
+//	if (g_oFrame.cmnd == WR_REG_CNFG)
+//	{
+//		++g_cReceive;
+//		if (g_cReceive == MAX_RETRY_SERIAL)
+//		{
+//			g_cReceive = 0;
+//			g_oFrame.cmnd = WR_REG_T_LO;
+//		}
+//	}
+//
+//	// write TEMPERATURE LOW /////////////////////////////////////
+//	if (g_oFrame.cmnd == WR_REG_T_LO)
+//	{
+//		++g_cReceive;
+//		if (g_cReceive == MAX_RETRY_SERIAL)
+//		{
+//			g_cReceive = 0;
+//			g_oFrame.cmnd = WR_REG_T_HI;
+//		}
+//	}
+//
+//	// write TEMPERATURE HIGH ////////////////////////////////////
+//	if (g_oFrame.cmnd == WR_REG_T_HI)
+//	{
+//		++g_cReceive;
+//		if (g_cReceive == MAX_RETRY_SERIAL)
+//		{
+//			g_cReceive = 0;
+//			g_oFrame.cmnd = RD_REG_TEMP;
+//		}
+//	}
+//
+//	// set CONFIGURATION /////////////////////////////////////////
+//	if (g_oFrame.cmnd == RD_REG_CNFG)
+//	{
+//		updateRegister(GetDlgItem(g_hDlg, IDC_LV_CONFIGURATION)
+//			, g_chBuffer[4]
+//			, g_chBuffer[5]
+//			, 12
+//		);
+//
+//		updateSetting(g_hDlg
+//			, g_chBuffer[4]
+//			, g_chBuffer[5]
+//		);
+//
+//		++g_cReceive;
+//		if (g_cReceive == MAX_RETRY_SERIAL)
+//		{
+//			g_cReceive = 0;
+//			g_oFrame.cmnd = RD_REG_T_LO;
+//		}
+//	}
+//
+//	// set TEMPERATURE LOW ///////////////////////////////////////
+//	if (g_oFrame.cmnd == RD_REG_T_LO)
+//	{
+//		updateRegister(GetDlgItem(g_hDlg, IDC_LV_T_LO)
+//			, g_chBuffer[4]
+//			, g_chBuffer[5]
+//		);
+//
+//		// do not use
+//		//val = ((INT16)g_chBufferReceive[0] << 4) | (g_chBufferReceive[1] >> 4);
+//		// use this correct statement
+//		INT16 val = ((INT8)g_chBuffer[4] << 4 | (UINT8)g_chBuffer[5] >> 4);
+//		// do not use
+//		//if (val > 0x7FF) val |= 0xF000;
+//		// use the traditional definition of a two'2 complement
+//		// logical not operator ! or bitwise operator ~ can be used
+//		if (val & 0x8000)
+//		{
+//			val = ~val;
+//			val += 1;
+//		}
+//		FLOAT temp_c = val * 0.0625;
+//		g_iTempLoTimes100 = temp_c *= 100;
+//		sprintf_s(chBufferTempInCelcius
+//			, BUFFER_MAX_SERIAL
+//			, "%d.%02d"
+//			, ((UINT)temp_c / 100)
+//			, ((UINT)temp_c % 100)
+//		);
+//
+//		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_LO_CLCS)
+//			, WM_SETTEXT
+//			, (WPARAM)0
+//			, (LPARAM)chBufferTempInCelcius
+//		);
+//
+//		++g_cReceive;
+//		if (g_cReceive == MAX_RETRY_SERIAL)
+//		{
+//			g_cReceive = 0;
+//			g_oFrame.cmnd = RD_REG_T_HI;
+//		}
+//	}
+//
+//	// set TEMPERATURE HIGH //////////////////////////////////////
+//	if (g_oFrame.cmnd == RD_REG_T_HI)
+//	{
+//		updateRegister(GetDlgItem(g_hDlg, IDC_LV_T_HI)
+//			, g_chBuffer[4]
+//			, g_chBuffer[5]
+//		);
+//
+//		// do not use
+//		//val = ((INT16)g_chBufferReceive[0] << 4) | (g_chBufferReceive[1] >> 4);
+//		// use this correct statement
+//		INT16 val = ((INT8)g_chBuffer[4] << 4 | (UINT8)g_chBuffer[5] >> 4);
+//		// do not use
+//		//if (val > 0x7FF) val |= 0xF000;
+//		// use the traditional definition of a two'2 complement
+//		// logical not operator ! or bitwise operator ~ can be used
+//		if (val & 0x8000)
+//		{
+//			val = ~val;
+//			val += 1;
+//		}
+//		FLOAT temp_c = val * 0.0625;
+//		g_iTempHiTimes100 = temp_c *= 100;
+//		sprintf_s(chBufferTempInCelcius
+//			, BUFFER_MAX_SERIAL
+//			, "%d.%02d"
+//			, ((UINT)temp_c / 100)
+//			, ((UINT)temp_c % 100)
+//		);
+//
+//		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_HI_CLCS)
+//			, WM_SETTEXT
+//			, (WPARAM)0
+//			, (LPARAM)chBufferTempInCelcius
+//		);
+//
+//		++g_cReceive;
+//		if (g_cReceive == MAX_RETRY_SERIAL)
+//		{
+//			g_cReceive = 0;
+//			g_oFrame.cmnd = RD_REG_TEMP;
+//		}
+//	}
+//
+//	// set TEMPERATURE REGISTER //////////////////////////////////
+//	if (g_oFrame.cmnd == RD_REG_TEMP)
+//	{
+//		// update register
+//		updateRegister(GetDlgItem(g_hDlg, IDC_LV_TREG)
+//			, g_chBuffer[4]
+//			, g_chBuffer[5]
+//		);
+//
+//		// isolate alert bit
+//		g_alert_bit = (g_chBuffer[5] & 0x02) >> 1;
+//
+//		// do not use
+//		//val = ((INT16)g_chBufferReceive[0] << 4) | (g_chBufferReceive[1] >> 4);
+//		// use this correct statement
+//		INT16 val = ((INT8)g_chBuffer[4] << 4 | (UINT8)g_chBuffer[5] >> 4);
+//		// do not use
+//		//if (val > 0x7FF) val |= 0xF000;
+//		// use the traditional definition of a two'2 complement
+//		// logical not operator ! or bitwise operator ~ can be used
+//		if (val & 0x8000)
+//		{
+//			val = ~val;
+//			val += 1;
+//		}
+//		FLOAT temp_c = val * 0.0625;
+//		INT16 iTempTimes100 = temp_c *= 100;
+//		sprintf_s(chBufferTempInCelcius
+//			, BUFFER_MAX_SERIAL
+//			, "%d.%02d"
+//			, ((UINT)temp_c / 100)
+//			, ((UINT)temp_c % 100)
+//		);
+//
+//		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_CLCS)
+//			, WM_SETTEXT
+//			, (WPARAM)0
+//			, (LPARAM)chBufferTempInCelcius
+//		);
+//
+//		std::wstring wstrStateAlert = L"";
+//		if (g_bPolarity)
+//		{
+//			wstrStateAlert = (g_alert_bit) ? L"Active" : L"Not active";
+//		}
+//		else
+//		{
+//			wstrStateAlert = (g_alert_bit) ? L"Not active" : L"Active";
+//		}
+//		SendMessage(GetDlgItem((HWND)lpVoid, IDC_ALERT)
+//			, WM_SETTEXT
+//			, (WPARAM)0
+//			, (LPARAM)wstrStateAlert.c_str()
+//		);
+//
+//		if (iTempTimes100 < g_iTempLoTimes100)
+//		{
+//			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+//				, WM_SETTEXT
+//				, (WPARAM)0
+//				, (LPARAM)"too low"
+//			);
+//		}
+//		else if (iTempTimes100 > g_iTempHiTimes100)
+//		{
+//			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+//				, WM_SETTEXT
+//				, (WPARAM)0
+//				, (LPARAM)"too high"
+//			);
+//		}
+//		else
+//		{
+//			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+//				, WM_SETTEXT
+//				, (WPARAM)0
+//				, (LPARAM)"in range"
+//			);
+//		}
+//	}
+//
+//	return EXIT_SUCCESS;
+//}
 
 //****************************************************************************
 //*                     updateListViewItemEx

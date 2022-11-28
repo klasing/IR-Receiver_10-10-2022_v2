@@ -57,14 +57,6 @@ WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 HWND g_hDlg = { 0 };
-/*
-HANDLE g_hComm = INVALID_HANDLE_VALUE;
-// Resource Aquisition Is Initialisation RAII 
-FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT }; 
-BOOL g_bContinueTxRx = FALSE;
-CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
-UINT8 g_alert_bit = 0;
-*/
 
 //****************************************************************************
 //*                     prototype
@@ -75,13 +67,6 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
-/*
-BOOL				connect();
-DWORD WINAPI        TxRx(LPVOID lpVoid);
-BOOL                transmit();
-BOOL                receive(LPVOID lpVoid);
-*/
 
 //****************************************************************************
 //*                     wWinMain
@@ -337,20 +322,20 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	return (INT_PTR)FALSE;
 }
 
-	//case WM_CTLCOLOREDIT:
-	//{
-	//	if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_LO_CLCS))
-	//	{
-	//		SetBkColor((HDC)wParam, g_crT_Lo_Clcs);
-	//		SetDCBrushColor((HDC)wParam, g_crT_Lo_Clcs);
-	//		return (LRESULT)GetStockObject(DC_BRUSH);
-	//	}
-	//	if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_HI_CLCS))
-	//	{
-	//		SetBkColor((HDC)wParam, g_crT_Hi_Clcs);
-	//		SetDCBrushColor((HDC)wParam, g_crT_Hi_Clcs);
-	//		return (LRESULT)GetStockObject(DC_BRUSH);
-	//	}
-	//	return (INT_PTR)FALSE;
-	//} // eof WM_CTLCOLOREDIT
+//case WM_CTLCOLOREDIT:
+//{
+//	if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_LO_CLCS))
+//	{
+//		SetBkColor((HDC)wParam, g_crT_Lo_Clcs);
+//		SetDCBrushColor((HDC)wParam, g_crT_Lo_Clcs);
+//		return (LRESULT)GetStockObject(DC_BRUSH);
+//	}
+//	if ((HWND)lParam == GetDlgItem(hDlg, IDC_T_HI_CLCS))
+//	{
+//		SetBkColor((HDC)wParam, g_crT_Hi_Clcs);
+//		SetDCBrushColor((HDC)wParam, g_crT_Hi_Clcs);
+//		return (LRESULT)GetStockObject(DC_BRUSH);
+//	}
+//	return (INT_PTR)FALSE;
+//} // eof WM_CTLCOLOREDIT
 
