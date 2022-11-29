@@ -119,6 +119,14 @@ typedef struct tagCONFIGURATION
 	{
 		return modeThermostat;
 	}
+	VOID setShutDown(const BOOL& b)
+	{
+		shutDown = (b) ? TRUE : FALSE;
+	}
+	BOOL getShutDown()
+	{
+		return shutDown;
+	}
 	VOID setConversionRate(const UINT8& byte)
 	{
 		conversionRate = byte & 0x03;
@@ -190,7 +198,23 @@ typedef struct tagBIT12TEMP
 typedef struct tagBIT12MSRDTEMP : tagBIT12TEMP
 {
 	UINT8 alert : 1;
-	UINT8 mode_extended : 1;
+	UINT8 modeExtended : 1;
+	VOID setAlert(UINT8 byte)
+	{
+		alert = (byte & 0x02) >> 1;
+	}
+	BOOL getAlert()
+	{
+		return alert;
+	}
+	VOID setModeExtended(UINT8 byte)
+	{
+		modeExtended = byte & 0x01;
+	}
+	BOOL getModeExtended()
+	{
+		return modeExtended;
+	}
 } BIT12MSRDTEMP, *PBIT12MSRDTEMP;
 
 // 13-bit bitfield TEMPERATURE ///////////////////////////////////////////////
@@ -208,22 +232,23 @@ HANDLE g_hComm = INVALID_HANDLE_VALUE;
 FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT };
 BOOL g_bContinueTxRx = FALSE;
 CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
-UINT8 g_alert_bit = 0;
+//UINT8 g_alert_bit = 0;
 UINT8 g_cReceive = 0;
-INT16 g_iTempLo = 0;
-INT16 g_iTempHi = 0;
-INT16 g_iTempLoTimes100 = 0;
-INT16 g_iTempHiTimes100 = 0;
+//INT16 g_iTempLo = 0;
+//INT16 g_iTempHi = 0;
+//INT16 g_iTempLoTimes100 = 0;
+//INT16 g_iTempHiTimes100 = 0;
 //BOOL g_bModeThermostat = FALSE;
-BOOL g_bCheckedStateChbOneshot = FALSE;
-BOOL g_bCheckedStateChbShutdown = FALSE;
-BOOL g_bCheckedStateChbExtended = FALSE;
-BOOL g_bPolarity = FALSE;
-UINT8 g_hiByteCnfg = 0, g_loByteCnfg = 0;
+//BOOL g_bCheckedStateChbOneshot = FALSE;
+//BOOL g_bCheckedStateChbShutdown = FALSE;
+//BOOL g_bCheckedStateChbExtended = FALSE;
+//BOOL g_bPolarity = FALSE;
+//UINT8 g_hiByteCnfg = 0, g_loByteCnfg = 0;
 
 CONFIGURATION g_oConfiguration{ 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 BIT12TEMP g_oTempLo{ 0 };
 BIT12TEMP g_oTempHi{ 0 };
+// TODO: initializing not yet under control
 BIT12MSRDTEMP g_oMsrdTemp;
 FRAME g_oFrameEx = { SOH, 0, STX, 0, ETX, ETB, EOT };
 std::queue<tagFRAME> g_queue;
@@ -520,6 +545,7 @@ BOOL onWmSize_DlgProc(const HWND& hWndLV_Cnfg
 //*****************************************************************************
 INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	, const WPARAM& wParam
+	, HANDLE& hThreadTxRx
 	, RECT& rect
 	, HBRUSH& brush
 	, const HBRUSH& bkColorDlgBrush
@@ -543,11 +569,24 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
 
+			// enable setting
+			EnableWindow(GetDlgItem(hDlg, TMP102_RESET), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_EXTENDED), TRUE);
+			EnableWindow(GetDlgItem(hDlg, APPLY_SETTING), TRUE);
+			
 			g_oFrameEx.cmnd = RD_REG_CNFG;
 			g_queue.push(g_oFrameEx);
 			g_oFrameEx.cmnd = RD_REG_T_LO;
 			g_queue.push(g_oFrameEx);
 			g_oFrameEx.cmnd = RD_REG_T_HI;
+			g_queue.push(g_oFrameEx);
+			g_oFrameEx.cmnd = RD_REG_TEMP;
 			g_queue.push(g_oFrameEx);
 
 			// enable infinite loop
@@ -555,7 +594,7 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 
 			// create thread to continuously transmit and receive
 			DWORD dwThreadIdTxRx = 0;
-			HANDLE hTreadTxRx = CreateThread(NULL
+			hThreadTxRx = CreateThread(NULL
 				, 0
 				, TxRx
 				, (LPVOID)hDlg
@@ -564,7 +603,7 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			);
 
 			// start thread exact on this command
-			if (hTreadTxRx) ResumeThread(hTreadTxRx);
+			if (hThreadTxRx) ResumeThread(hThreadTxRx);
 		}
 		return (INT_PTR)TRUE;
 	} // eof CONNECT_SERIAL
@@ -614,6 +653,7 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	{
 		// terminate thread
 		g_bContinueTxRx = FALSE;
+		hThreadTxRx = INVALID_HANDLE_VALUE;
 
 		if (g_hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
 
@@ -632,6 +672,27 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), TRUE);
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
 
+			// disable setting
+			EnableWindow(GetDlgItem(hDlg, TMP102_RESET), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), FALSE);
+			SendMessage(GetDlgItem(hDlg, IDC_RESOLUTION)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)L"Read only"
+			);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION), FALSE);
+			SendMessage(GetDlgItem(hDlg, IDC_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)L"Read only"
+			);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_EXTENDED), FALSE);
+			EnableWindow(GetDlgItem(hDlg, APPLY_SETTING), FALSE);
+
 			// erase alert bit indicator
 			brush = bkColorDlgBrush;
 			InvalidateRect(hDlg, &rect, TRUE);
@@ -645,48 +706,79 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	} // eof TMP102_RESET
 	case APPLY_SETTING:
 	{
-		// get setting for the configuration register
-		// this func will fail when not connected,
-		// when this func fails: return
-		if (getSetting(hDlg) == EXIT_FAILURE) return (INT_PTR)TRUE;
+		// g_bContinueTxRx is TRUE when connected
+		// if not connected: return
+		if (!g_bContinueTxRx) return (INT_PTR)TRUE;
 
-		// write the configuration to STM32
-		g_oFrame.cmnd = WR_REG_CNFG;
+		// kill thread
 		
-		// convert the value of IDC_T_LO_CLCS
-		CHAR chBuffer[8] = { 0 };
-		std::string str = "";
-		FLOAT fTemp = 0.;
-		SendMessageA(GetDlgItem(hDlg, IDC_T_LO_CLCS)
-			, WM_GETTEXT
-			, (WPARAM)8
-			, (LPARAM)chBuffer
-		);
-		str = chBuffer;
-		fTemp = std::stof(str);
-		fTemp /= 0.0625;
-		g_iTempLo = (INT16)fTemp << 4;
-		// write iTempLo to STM32
+		// does not work
+		// suspend thread
+		//SuspendThread(hThreadTxRx);
 
-		// convert the value of IDC_T_HI_CLCS
-		SendMessageA(GetDlgItem(hDlg, IDC_T_HI_CLCS)
-			, WM_GETTEXT
-			, (WPARAM)8
-			, (LPARAM)chBuffer
-		);
-		str = chBuffer;
-		fTemp = std::stof(str);
-		fTemp /= 0.0625;
-		g_iTempHi = (INT16)fTemp << 4;
-		// write iTempHi to STM32
+		// empty queue
+		g_queue = {};
+		// push queue with write command, and finish with RD_REG_TEMP
+		g_oFrameEx.cmnd = WR_REG_CNFG;
+		g_oFrameEx.payload = g_oConfiguration.getHiByte() << 8;
+		g_oFrameEx.payload |= g_oConfiguration.getLoByte();
+		g_queue.push(g_oFrameEx);
+
+		g_oFrameEx.cmnd = WR_REG_T_LO;
+		g_queue.push(g_oFrameEx);
+
+		g_oFrameEx.cmnd = WR_REG_T_HI;
+		g_queue.push(g_oFrameEx);
+
+		g_oFrameEx.cmnd = RD_REG_TEMP;
+		g_queue.push(g_oFrameEx);
+
+		// create thread to continuously transmit and receive
+		
+		// start thread exact on this command
+		 
+		// does not work
+		// resume thread
+		//ResumeThread(hThreadTxRx);
 
 		return (INT_PTR)TRUE;
 	} // eof APPLY_SETTING
+		//// write the configuration to STM32
+		//g_oFrame.cmnd = WR_REG_CNFG;
+		//
+		//// convert the value of IDC_T_LO_CLCS
+		//CHAR chBuffer[8] = { 0 };
+		//std::string str = "";
+		//FLOAT fTemp = 0.;
+		//SendMessageA(GetDlgItem(hDlg, IDC_T_LO_CLCS)
+		//	, WM_GETTEXT
+		//	, (WPARAM)8
+		//	, (LPARAM)chBuffer
+		//);
+		//str = chBuffer;
+		//fTemp = std::stof(str);
+		//fTemp /= 0.0625;
+		//g_iTempLo = (INT16)fTemp << 4;
+		//// write iTempLo to STM32
+
+		//// convert the value of IDC_T_HI_CLCS
+		//SendMessageA(GetDlgItem(hDlg, IDC_T_HI_CLCS)
+		//	, WM_GETTEXT
+		//	, (WPARAM)8
+		//	, (LPARAM)chBuffer
+		//);
+		//str = chBuffer;
+		//fTemp = std::stof(str);
+		//fTemp /= 0.0625;
+		//g_iTempHi = (INT16)fTemp << 4;
+		//// write iTempHi to STM32
 	case IDC_CHB_ONESHOT:
 	{
-		if (g_bCheckedStateChbOneshot)
+		if (g_oConfiguration.oneShot)
+		//if (g_bCheckedStateChbOneshot)
 		{
-			g_bCheckedStateChbOneshot = FALSE;
+			g_oConfiguration.oneShot = FALSE;
+			//g_bCheckedStateChbOneshot = FALSE;
 			SendMessage(GetDlgItem(hDlg, IDC_CHB_ONESHOT)
 				, BM_SETCHECK
 				, (WPARAM)BST_UNCHECKED
@@ -695,7 +787,8 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		}
 		else
 		{
-			g_bCheckedStateChbOneshot = TRUE;
+			g_oConfiguration.oneShot = TRUE;
+			//g_bCheckedStateChbOneshot = TRUE;
 			SendMessage(GetDlgItem(hDlg, IDC_CHB_ONESHOT)
 				, BM_SETCHECK
 				, (WPARAM)BST_CHECKED
@@ -706,9 +799,11 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	} // eof IDC_CHB_ONESHOT
 	case IDC_CHB_SHUTDOWN:
 	{
-		if (g_bCheckedStateChbShutdown)
+		if (g_oConfiguration.shutDown)
+		//if (g_bCheckedStateChbShutdown)
 		{
-			g_bCheckedStateChbShutdown = FALSE;
+			g_oConfiguration.shutDown = FALSE;
+			//g_bCheckedStateChbShutdown = FALSE;
 			SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
 				, BM_SETCHECK
 				, (WPARAM)BST_UNCHECKED
@@ -717,7 +812,8 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		}
 		else
 		{
-			g_bCheckedStateChbShutdown = TRUE;
+			g_oConfiguration.shutDown = TRUE;
+			//g_bCheckedStateChbShutdown = TRUE;
 			SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
 				, BM_SETCHECK
 				, (WPARAM)BST_CHECKED
@@ -728,9 +824,11 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	} // eof IDC_CHB_SHUTDOWN
 	case IDC_CHB_EXTENDED:
 	{
-		if (g_bCheckedStateChbExtended)
+		if (g_oConfiguration.modeExtended)
+		//if (g_bCheckedStateChbExtended)
 		{
-			g_bCheckedStateChbExtended = FALSE;
+			g_oConfiguration.modeExtended = FALSE;
+			//g_bCheckedStateChbExtended = FALSE;
 			SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
 				, BM_SETCHECK
 				, (WPARAM)BST_UNCHECKED
@@ -739,7 +837,8 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		}
 		else
 		{
-			g_bCheckedStateChbExtended = TRUE;
+			g_oConfiguration.modeExtended = TRUE;
+			//g_bCheckedStateChbExtended = TRUE;
 			SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
 				, BM_SETCHECK
 				, (WPARAM)BST_CHECKED
@@ -758,15 +857,15 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			{
 				// hThreadTxRx is running
 				// comparator mode
-				if (g_bPolarity)
+				if (g_oConfiguration.polarity)
 				{
 					// active high
-					brush = (g_alert_bit) ? redBrush : greenBrush;
+					brush = (g_oMsrdTemp.alert) ? redBrush : greenBrush;
 				}
 				else
 				{
 					// active low
-					brush = (g_alert_bit) ? greenBrush : redBrush;
+					brush = (g_oMsrdTemp.alert) ? greenBrush : redBrush;
 				}
 
 				// thermostat mode
@@ -1048,6 +1147,60 @@ BOOL receive(LPVOID lpVoid)
 
 		break;
 	} // eof RD_REG_T_HI
+	case RD_REG_TEMP:
+	{
+		g_oMsrdTemp.setHiByte(g_chBuffer[4]);
+		g_oMsrdTemp.setLoByte(g_chBuffer[5]);
+		g_oMsrdTemp.setAlert(g_chBuffer[5]);
+		g_oMsrdTemp.setModeExtended(g_chBuffer[5]);
+
+		updateRegister(GetDlgItem(g_hDlg, IDC_LV_TREG)
+			, g_chBuffer[4]
+			, g_chBuffer[5]
+		);
+
+		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_CLCS)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)g_oMsrdTemp.getTempInClcs_toStringA()
+		);
+
+		std::wstring wstrStateAlert = L"";
+		if (g_oConfiguration.polarity)
+		{
+			wstrStateAlert = (g_oMsrdTemp.alert) ? L"Active" : L"Not active";
+		}
+		else
+		{
+			wstrStateAlert = (g_oMsrdTemp.alert) ? L"Not active" : L"Active";
+		}
+
+		if (g_oMsrdTemp.fTempInClcsTimes100 < g_oTempLo.fTempInClcsTimes100)
+		{
+			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)"too low"
+			);
+		}
+		else if (g_oMsrdTemp.fTempInClcsTimes100 > g_oTempHi.fTempInClcsTimes100)
+		{
+			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)"too high"
+			);
+		}
+		else
+		{
+			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)"in range"
+			);
+		}
+		break;
+	} // eof RD_REG_TEMP
 	} // eof switch
 
 	if (g_queue.size() > 1)
@@ -1369,55 +1522,55 @@ VOID updateListViewItemEx(const HWND& hWndLV
 	);
 }
 
-//****************************************************************************
-//*                     getSetting
-//****************************************************************************
-BOOL getSetting(const HWND& hDlg)
-{
-	// return when not connected
-	if (!g_bContinueTxRx) return EXIT_FAILURE;
-
-	UINT8 bit_field = 0;
-	g_hiByteCnfg = g_loByteCnfg = 0;
-
-	// get IDC_CHB_ONESHOT ///////////////////////////////////////////////////
-	if (g_bCheckedStateChbOneshot) g_hiByteCnfg |= 0x80;
-
-	// get IDC_CB_FAULT_QUEUE ////////////////////////////////////////////////
-	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
-		, CB_GETCURSEL
-		, (WPARAM)0
-		, (LPARAM)0
-	);
-	g_hiByteCnfg |= (bit_field << 3);
-
-	// get IDC_CB_POLARITY_ALERT /////////////////////////////////////////////
-	if (g_bPolarity) g_hiByteCnfg |= 0x04;
-
-	// get IDC_CB_MODE_THERMOSTAT ////////////////////////////////////////////
-	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
-		, CB_GETCURSEL
-		, (WPARAM)0
-		, (LPARAM)0
-	);
-	g_hiByteCnfg |= (bit_field << 1);
-
-	// get IDC_CHB_SHUTDOWN //////////////////////////////////////////////////
-	if (g_bCheckedStateChbShutdown) g_hiByteCnfg |= 0x01;
-
-	// get IDC_CB_RATE_CONVERSION ////////////////////////////////////////////
-	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
-		, CB_GETCURSEL
-		, (WPARAM)0
-		, (LPARAM)0
-	);
-	g_loByteCnfg |= (bit_field << 6);
-
-	// get IDC_CHB_EXTENDED //////////////////////////////////////////////////
-	if (g_bCheckedStateChbExtended) g_loByteCnfg |= 0x10;
-
-	return EXIT_SUCCESS;
-}
+////****************************************************************************
+////*                     getSetting
+////****************************************************************************
+//BOOL getSetting(const HWND& hDlg)
+//{
+//	// return when not connected
+//	if (!g_bContinueTxRx) return EXIT_FAILURE;
+//
+//	UINT8 bit_field = 0;
+//	g_hiByteCnfg = g_loByteCnfg = 0;
+//
+//	// get IDC_CHB_ONESHOT ///////////////////////////////////////////////////
+//	if (g_bCheckedStateChbOneshot) g_hiByteCnfg |= 0x80;
+//
+//	// get IDC_CB_FAULT_QUEUE ////////////////////////////////////////////////
+//	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+//		, CB_GETCURSEL
+//		, (WPARAM)0
+//		, (LPARAM)0
+//	);
+//	g_hiByteCnfg |= (bit_field << 3);
+//
+//	// get IDC_CB_POLARITY_ALERT /////////////////////////////////////////////
+//	if (g_bPolarity) g_hiByteCnfg |= 0x04;
+//
+//	// get IDC_CB_MODE_THERMOSTAT ////////////////////////////////////////////
+//	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
+//		, CB_GETCURSEL
+//		, (WPARAM)0
+//		, (LPARAM)0
+//	);
+//	g_hiByteCnfg |= (bit_field << 1);
+//
+//	// get IDC_CHB_SHUTDOWN //////////////////////////////////////////////////
+//	if (g_bCheckedStateChbShutdown) g_hiByteCnfg |= 0x01;
+//
+//	// get IDC_CB_RATE_CONVERSION ////////////////////////////////////////////
+//	bit_field = SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+//		, CB_GETCURSEL
+//		, (WPARAM)0
+//		, (LPARAM)0
+//	);
+//	g_loByteCnfg |= (bit_field << 6);
+//
+//	// get IDC_CHB_EXTENDED //////////////////////////////////////////////////
+//	if (g_bCheckedStateChbExtended) g_loByteCnfg |= 0x10;
+//
+//	return EXIT_SUCCESS;
+//}
 
 //****************************************************************************
 //*                     updateSetting
@@ -1436,7 +1589,8 @@ BOOL updateSetting(const HWND& hDlg
 			, (WPARAM)BST_CHECKED
 			, (LPARAM)0
 		);
-		g_bCheckedStateChbOneshot = TRUE;
+		g_oConfiguration.oneShot = TRUE;
+		//g_bCheckedStateChbOneshot = TRUE;
 	}
 	else
 	{
@@ -1445,7 +1599,8 @@ BOOL updateSetting(const HWND& hDlg
 			, (WPARAM)BST_UNCHECKED
 			, (LPARAM)0
 		);
-		g_bCheckedStateChbOneshot = FALSE;
+		g_oConfiguration.oneShot = FALSE;
+		//g_bCheckedStateChbOneshot = FALSE;
 	}
 	// update IDC_RESOLUTION /////////////////////////////////////////////////
 	std::wstring wstrResolution = L"";
@@ -1488,7 +1643,8 @@ BOOL updateSetting(const HWND& hDlg
 		, (WPARAM)bit_field
 		, (LPARAM)0
 	);
-	g_bPolarity = bit_field;
+	g_oConfiguration.polarity = bit_field;
+	//g_bPolarity = bit_field;
 	// update IDC_CB_MODE_THERMOSTAT /////////////////////////////////////////
 	bit_field = (hiByte & 0x02) >> 1; // note precedence!
 	SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
@@ -1496,6 +1652,7 @@ BOOL updateSetting(const HWND& hDlg
 		, (WPARAM)bit_field
 		, (LPARAM)0
 	);
+	g_oConfiguration.modeThermostat = bit_field;
 	//g_bModeThermostat = bit_field;
 	// update IDC_CHB_SHUTDOWN ///////////////////////////////////////////////
 	if (hiByte & 1)
@@ -1505,7 +1662,8 @@ BOOL updateSetting(const HWND& hDlg
 			, (WPARAM)BST_CHECKED
 			, (LPARAM)0
 		);
-		g_bCheckedStateChbShutdown = TRUE;
+		g_oConfiguration.shutDown = TRUE;
+		//g_bCheckedStateChbShutdown = TRUE;
 	}
 	else
 	{
@@ -1514,7 +1672,8 @@ BOOL updateSetting(const HWND& hDlg
 			, (WPARAM)BST_UNCHECKED
 			, (LPARAM)0
 		);
-		g_bCheckedStateChbShutdown = FALSE;
+		g_oConfiguration.shutDown = FALSE;
+		//g_bCheckedStateChbShutdown = FALSE;
 	}
 	// update IDC_CB_RATE_CONVERSION /////////////////////////////////////////
 	// 00 - 0.25 Hz
@@ -1529,7 +1688,8 @@ BOOL updateSetting(const HWND& hDlg
 	);
 	// update IDC_ALERT //////////////////////////////////////////////////////
 	std::wstring wstrStateAlert = L"";
-	if (g_bPolarity)
+	if (g_oConfiguration.polarity)
+	//if (g_bPolarity)
 	{
 		wstrStateAlert = (loByte & 0x20) ? L"Active" : L"Not active";
 	}
@@ -1550,7 +1710,8 @@ BOOL updateSetting(const HWND& hDlg
 			, (WPARAM)BST_CHECKED
 			, (LPARAM)0
 		);
-		g_bCheckedStateChbExtended = TRUE;
+		g_oConfiguration.modeExtended = TRUE;
+		//g_bCheckedStateChbExtended = TRUE;
 	}
 	else
 	{
@@ -1559,7 +1720,8 @@ BOOL updateSetting(const HWND& hDlg
 			, (WPARAM)BST_UNCHECKED
 			, (LPARAM)0
 		);
-		g_bCheckedStateChbExtended = FALSE;
+		g_oConfiguration.modeExtended = FALSE;
+		//g_bCheckedStateChbExtended = FALSE;
 	}
 
 	return EXIT_SUCCESS;

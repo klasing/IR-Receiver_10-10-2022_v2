@@ -245,6 +245,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	static HWND hWndLV_T_lo = { 0 };
 	static HWND hWndLV_T_hi = { 0 };
 	static HWND hWndLV_Treg = { 0 };
+	static HANDLE hThread = INVALID_HANDLE_VALUE;
 	static HBRUSH brush = { 0 };
 	static HBRUSH redBrush = CreateSolidBrush(RGB(0xFF, 0, 0));
 	static HBRUSH greenBrush = CreateSolidBrush(RGB(0, 0xFF, 0));
@@ -281,6 +282,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		onWmCommand_DlgProc(hDlg
 			, wParam
+			, hThread
 			, rect
 			, brush
 			, bkColorDlgBrush

@@ -73,6 +73,7 @@
 #define WR_REG_CNFG				33610 // address to approach two bytes with 12 bits data
 #define WR_REG_T_LO				33611 // address to approach two bytes with 12/13 bits data
 #define WR_REG_T_HI				33612 // address to approach two bytes with 12/13 bits data
+#define WR_TMP102_RESET			33620 // reset TMP102
 
 /*
 * waste
