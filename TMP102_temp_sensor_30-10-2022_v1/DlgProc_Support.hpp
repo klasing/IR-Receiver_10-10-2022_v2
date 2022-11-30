@@ -507,6 +507,16 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 	g_rc = g_oSqlite.createTable(IDR_MEASUREMENT, "measurement");
 	g_rc = g_oSqlite.createTable(IDR_VALUE_MEASUREMENT, "value_measurement");
 
+	// TEST create tuple in table measurement: name is measurement1
+	std::initializer_list<std::string> list{ "measurement1" };
+	// this will be done only once,
+	// every second time the func insertTuple() will return 19 (g_rc = 19)
+	// SQLite Error 19: 'UNIQUE constraint failed'
+	g_rc = g_oSqlite.insertTuple(IDR_MEASUREMENT
+		, "measurement"
+		, list
+	);
+
 	return EXIT_SUCCESS;
 }
 
@@ -899,6 +909,10 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 
 				// adjust color indicator
 				InvalidateRect(hDlg, &rect, TRUE);
+
+				// TEST insert value into database:
+				// name table....: value_measurement
+				// foreign key...: 1 (referencing measurement1)
 			}
 			return (INT_PTR)TRUE;
 		} // eof EN_CHANGE

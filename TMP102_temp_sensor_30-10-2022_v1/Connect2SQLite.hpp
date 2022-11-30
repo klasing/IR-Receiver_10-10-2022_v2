@@ -32,7 +32,7 @@ public:
 	//*                 createTable
 	//************************************************************************
 	int createTable(const UINT& resourceIdTable
-		, const std::string strNameTable
+		, const std::string& strNameTable
 	)
 	{
 		switch (resourceIdTable)
@@ -60,6 +60,52 @@ public:
 			break;
 		} // eof IDR_VALUE_MEASUREMENT
 		} // eof switch
+		rc = execute(pdb, strSql, nullptr);
+		return rc;
+	}
+	//************************************************************************
+	//*                 insertTuple
+	//************************************************************************
+	int insertTuple(const UINT& resourceIdTable
+		, const std::string& strNameTable
+		, std::initializer_list<std::string>& list
+	)
+	{
+		std::vector<std::string> vector_list{ list };
+		switch (resourceIdTable)
+		{
+		case IDR_MEASUREMENT:
+		{
+			strSql = "INSERT INTO "
+				+ strNameTable
+				+ "(name) VALUES('"
+				+ vector_list[0]
+				+ "');";
+			break;
+		} // eof IDR_MEASUREMENT
+		case IDR_VALUE_MEASUREMENT:
+		{
+			strSql = "INSERT INTO "
+				+ strNameTable
+				+ "(timestamp, value, fk_measurement) VALUES('"
+				+ vector_list[0] + "', '"
+				+ vector_list[1] + "', '"
+				+ vector_list[2]
+				+ "');";
+			break;
+		} // eof IDR_VALUE_MEASUREMENT
+		} // eof switch
+		rc = execute(pdb, strSql, nullptr);
+		return rc;
+	}
+	//************************************************************************
+	//*                 closeDb
+	//*
+	//* not yet in use, because it is unclear where to close the database
+	//************************************************************************
+	int closeDb()
+	{
+		rc = sqlite3_close(pdb);
 		return rc;
 	}
 private:
