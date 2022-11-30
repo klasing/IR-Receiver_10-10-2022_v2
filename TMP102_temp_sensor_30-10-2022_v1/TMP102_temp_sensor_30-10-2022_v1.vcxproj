@@ -141,6 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Connect2SQLite.hpp" />
     <ClInclude Include="DlgProc_Support.hpp" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />

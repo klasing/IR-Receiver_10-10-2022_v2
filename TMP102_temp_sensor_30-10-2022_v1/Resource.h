@@ -75,6 +75,10 @@
 #define WR_REG_T_HI				33612 // address to approach two bytes with 12/13 bits data
 #define WR_TMP102_RESET			33620 // reset TMP102
 
+// resource database
+#define IDR_MEASUREMENT			33700
+#define IDR_VALUE_MEASUREMENT	33701
+
 /*
 * waste
 #define BUFFER_MAX_SERIAL		512

@@ -11,6 +11,7 @@
 //*                     include
 //*****************************************************************************
 #include "framework.h"
+//#include "TMP102_temp_sensor_30-10-2022_v1.h"
 
 //****************************************************************************
 //*                     typedef
@@ -248,10 +249,13 @@ UINT8 g_cReceive = 0;
 CONFIGURATION g_oConfiguration{ 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 BIT12TEMP g_oTempLo{ 0 };
 BIT12TEMP g_oTempHi{ 0 };
-// TODO: initializing not yet under control
+// TODO: initializing is not yet under control
 BIT12MSRDTEMP g_oMsrdTemp;
 FRAME g_oFrameEx = { SOH, 0, STX, 0, ETX, ETB, EOT };
 std::queue<tagFRAME> g_queue;
+
+Connect2SQLite g_oSqlite;
+int g_rc = 0;
 
 //*****************************************************************************
 //*                     prototype
@@ -496,6 +500,12 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 
 	// default brush color
 	brush = bkColorDlgBrush;
+
+	// open database
+	g_rc = g_oSqlite.openDb("Resource\\tmp102.db");
+	// if not exists: create table
+	g_rc = g_oSqlite.createTable(IDR_MEASUREMENT, "measurement");
+	g_rc = g_oSqlite.createTable(IDR_VALUE_MEASUREMENT, "value_measurement");
 
 	return EXIT_SUCCESS;
 }
