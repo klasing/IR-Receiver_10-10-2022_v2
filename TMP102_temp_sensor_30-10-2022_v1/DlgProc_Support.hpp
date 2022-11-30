@@ -182,7 +182,7 @@ typedef struct tagBIT12TEMP
 			val = ~val;
 			val += 1;
 		}
-		fTempInClcs = val * 0.0625;
+		fTempInClcs = (FLOAT)(val * 0.0625);
 		fTempInClcsTimes100 = fTempInClcs * 100;
 		sprintf_s(chBufferTempInCelcius
 			, LEN_TEMP_IN_CLCS
@@ -256,6 +256,7 @@ std::queue<tagFRAME> g_queue;
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
+UINT16				clcsToBit12(const HWND& hWnd, BIT12TEMP& bit12Temp);
 BOOL				connect(HANDLE& hComm);
 DWORD WINAPI		TxRx(LPVOID lpVoid);
 BOOL                transmit();
@@ -569,9 +570,14 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
 
+			// enable lo/hi
+			EnableWindow(GetDlgItem(hDlg, IDC_T_LO_CLCS), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_T_HI_CLCS), TRUE);
+
 			// enable setting
 			EnableWindow(GetDlgItem(hDlg, TMP102_RESET), TRUE);
-			EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), TRUE);
+			// hold disabled untill IDC_CHB_SHUTDOWN is checked
+			//EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), TRUE);
 			EnableWindow(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE), TRUE);
 			EnableWindow(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT), TRUE);
 			EnableWindow(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT), TRUE);
@@ -672,6 +678,10 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), TRUE);
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
 
+			// disable lo/hi
+			EnableWindow(GetDlgItem(hDlg, IDC_T_LO_CLCS), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_T_HI_CLCS), FALSE);
+
 			// disable setting
 			EnableWindow(GetDlgItem(hDlg, TMP102_RESET), FALSE);
 			EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), FALSE);
@@ -725,9 +735,15 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		g_queue.push(g_oFrameEx);
 
 		g_oFrameEx.cmnd = WR_REG_T_LO;
+		g_oFrameEx.payload = clcsToBit12(GetDlgItem(hDlg, IDC_T_LO_CLCS)
+			, g_oTempLo
+		);
 		g_queue.push(g_oFrameEx);
 
 		g_oFrameEx.cmnd = WR_REG_T_HI;
+		g_oFrameEx.payload = clcsToBit12(GetDlgItem(hDlg, IDC_T_HI_CLCS)
+			, g_oTempHi
+		);
 		g_queue.push(g_oFrameEx);
 
 		g_oFrameEx.cmnd = RD_REG_TEMP;
@@ -898,6 +914,28 @@ BOOL onWmPaint_DlgProc(const HWND& hDlg
 	EndPaint(hDlg, &ps);
 
 	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     clcsToBit12
+//****************************************************************************
+UINT16 clcsToBit12(const HWND& hWnd, BIT12TEMP& oBit12Temp)
+{
+	CHAR chBuffer[LEN_TEMP_IN_CLCS] = { 0 };
+	std::string str = "";
+	FLOAT fTemp = 0.;
+	// get value from edittext control
+	SendMessageA(hWnd
+		, WM_GETTEXT
+		, (WPARAM)8
+		, (LPARAM)chBuffer
+	);
+	str = chBuffer;
+	fTemp = std::stof(str);
+	fTemp /= 0.0625;
+	oBit12Temp.fTempInClcs = fTemp;
+	oBit12Temp.fTempInClcsTimes100 = fTemp * 100;
+	return (UINT16)fTemp << 4;
 }
 
 //****************************************************************************
