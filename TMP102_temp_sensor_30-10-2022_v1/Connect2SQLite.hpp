@@ -52,10 +52,10 @@ public:
 				"CREATE TABLE IF NOT EXISTS value_measurement("
 				"id INTEGER PRIMARY KEY, "
 				"timestamp TEXT NOT NULL, "
-				"value FLOAT, "
+				"value REAL, "
 				"fk_measurement INTEGER, "
 				"CONSTRAINT cnstrnt "
-				"FOREIGN KEY(fk_measurement) REFERENCES mesurement(id)"
+				"FOREIGN KEY(fk_measurement) REFERENCES measurement(id)"
 				");";
 			break;
 		} // eof IDR_VALUE_MEASUREMENT
@@ -85,13 +85,16 @@ public:
 		} // eof IDR_MEASUREMENT
 		case IDR_VALUE_MEASUREMENT:
 		{
+			//insert into value_measurement(timestamp, value, fk_measurement) 
+			//values('bla', 'bla', (select id from measurement where name = 'measurement1'));			
 			strSql = "INSERT INTO "
 				+ strNameTable
 				+ "(timestamp, value, fk_measurement) VALUES('"
-				+ vector_list[0] + "', '"
-				+ vector_list[1] + "', '"
-				+ vector_list[2]
-				+ "');";
+				+ vector_list[0] + "', "
+				+ vector_list[1] + ", ("
+				+ "SELECT id FROM measurement WHERE name='"
+				+ vector_list[2] + "')"
+				+ ");";
 			break;
 		} // eof IDR_VALUE_MEASUREMENT
 		} // eof switch

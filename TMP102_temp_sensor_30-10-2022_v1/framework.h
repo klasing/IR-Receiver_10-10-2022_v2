@@ -16,3 +16,5 @@
 #include <tchar.h>
 #include <list>
 #include <queue>
+#include <sstream>
+#include <iomanip>

@@ -193,6 +193,16 @@ typedef struct tagBIT12TEMP
 		);
 		return chBufferTempInCelcius;
 	}
+	CHAR* getTempInClcs_toStringA_()
+	{
+		sprintf_s(chBufferTempInCelcius
+			, LEN_TEMP_IN_CLCS
+			, "%d.%02d"
+			, ((UINT)fTempInClcsTimes100 / 100)
+			, ((UINT)fTempInClcsTimes100 % 100)
+		);
+		return chBufferTempInCelcius;
+	}
 } BIT12TEMP, *PBIT12TEMP;
 
 // 12-bit bitfield MEASURED TEMPERATURE //////////////////////////////////////
@@ -260,6 +270,7 @@ int g_rc = 0;
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
+std::string			date_for_http_responseA();
 UINT16				clcsToBit12(const HWND& hWnd, BIT12TEMP& bit12Temp);
 BOOL				connect(HANDLE& hComm);
 DWORD WINAPI		TxRx(LPVOID lpVoid);
@@ -910,9 +921,17 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 				// adjust color indicator
 				InvalidateRect(hDlg, &rect, TRUE);
 
+				std::initializer_list<std::string> list{ date_for_http_responseA()
+					, g_oMsrdTemp.getTempInClcs_toStringA_()
+					, "measurement1"
+				};
 				// TEST insert value into database:
 				// name table....: value_measurement
 				// foreign key...: 1 (referencing measurement1)
+				g_rc = g_oSqlite.insertTuple(IDR_VALUE_MEASUREMENT
+					, "value_measurement"
+					, list
+				);
 			}
 			return (INT_PTR)TRUE;
 		} // eof EN_CHANGE
@@ -938,6 +957,32 @@ BOOL onWmPaint_DlgProc(const HWND& hDlg
 	EndPaint(hDlg, &ps);
 
 	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     date_for_http_responseA
+//****************************************************************************
+std::string
+date_for_http_responseA()
+{
+	const std::string dow[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+	const std::string month[] = { "Jan","Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+	time_t tt;
+	time(&tt);
+	tm t;
+	localtime_s(&t, &tt);
+	struct tm gmt;
+	gmtime_s(&gmt, &tt);
+	std::ostringstream oss;
+	oss << dow[gmt.tm_wday] << ", "
+		<< std::setw(2) << std::setfill('0') << gmt.tm_mday << " "
+		<< month[gmt.tm_mon] << " "
+		<< gmt.tm_year + 1900 << " "
+		<< std::setw(2) << std::setfill('0') << gmt.tm_hour << ":"
+		<< std::setw(2) << std::setfill('0') << gmt.tm_min << ":"
+		<< std::setw(2) << std::setfill('0') << gmt.tm_sec << " "
+		<< "GMT";
+	return oss.str();
 }
 
 //****************************************************************************
