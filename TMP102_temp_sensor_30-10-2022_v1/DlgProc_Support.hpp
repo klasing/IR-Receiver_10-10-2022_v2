@@ -742,7 +742,32 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	} // eof DISCONNECT_SERIAL
 	case TMP102_RESET:
 	{
-		//TODO: TMP102_RESET implementation
+		// g_bContinueTxRx is TRUE when connected
+		// if not connected: return
+		if (!g_bContinueTxRx) return (INT_PTR)TRUE;
+
+		// kill thread
+
+		// empty queue
+		g_queue = {};
+
+		// push queue with write command, and finish with RD_REG_TEMP
+		g_oFrameEx.cmnd = WR_TMP102_RESET;
+		g_queue.push(g_oFrameEx);
+
+		g_oFrameEx.cmnd = RD_REG_CNFG;
+		g_queue.push(g_oFrameEx);
+		g_oFrameEx.cmnd = RD_REG_T_LO;
+		g_queue.push(g_oFrameEx);
+		g_oFrameEx.cmnd = RD_REG_T_HI;
+		g_queue.push(g_oFrameEx);
+		g_oFrameEx.cmnd = RD_REG_TEMP;
+		g_queue.push(g_oFrameEx);
+
+		// create thread to continuously transmit and receive
+
+		// start thread exact on this command
+
 		return (INT_PTR)TRUE;
 	} // eof TMP102_RESET
 	case APPLY_SETTING:
@@ -777,6 +802,12 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		);
 		g_queue.push(g_oFrameEx);
 
+		g_oFrameEx.cmnd = RD_REG_CNFG;
+		g_queue.push(g_oFrameEx);
+		g_oFrameEx.cmnd = RD_REG_T_LO;
+		g_queue.push(g_oFrameEx);
+		g_oFrameEx.cmnd = RD_REG_T_HI;
+		g_queue.push(g_oFrameEx);
 		g_oFrameEx.cmnd = RD_REG_TEMP;
 		g_queue.push(g_oFrameEx);
 
