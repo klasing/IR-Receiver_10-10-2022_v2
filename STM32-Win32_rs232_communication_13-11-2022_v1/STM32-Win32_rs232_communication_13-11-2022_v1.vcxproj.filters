@@ -27,6 +27,9 @@
     <ClInclude Include="STM32-Win32_rs232_communication_13-11-2022_v1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DlgProc_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="STM32-Win32_rs232_communication_13-11-2022_v1.cpp">
