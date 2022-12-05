@@ -57,6 +57,223 @@ BOOL onWmInitDialog_DlgProc(const HWND& hDlg
 	return EXIT_SUCCESS;
 }
 
+VOID tryCalcCrcAn()
+{
+	UINT8 inp_data = 0xC1;
+	UINT8 crc_init = 0xFF;
+	UINT8 crc_poly = 0xCB;
+	UINT8 bindex = 0;
+	UINT8 crc_val = 0;
+
+	crc_val = crc_init ^ inp_data;
+	while (bindex < 8)
+	{
+		if ((crc_val & 0x80) == 0x80)
+		{
+			crc_val <<= 1;
+			crc_val ^= crc_poly;
+			++bindex;
+		}
+		else
+		{
+			crc_val <<= 1;
+			++bindex;
+		}
+	}
+
+	OutputDebugString(L"bla\n");
+}
+
+
+VOID tryCalcCrc32()
+{
+	g_chBuffer[0] = 0x01;
+	g_chBuffer[1] = 0x00;
+	g_chBuffer[2] = 0x00;
+	g_chBuffer[3] = 0x02;
+	g_chBuffer[4] = 0x00;
+	g_chBuffer[5] = 0x00;
+	g_chBuffer[6] = 0x03;
+	g_chBuffer[7] = 0x17;
+	g_chBuffer[8] = 0x04;
+	UINT32 inp_data = g_chBuffer[0] << 24
+		| g_chBuffer[1] << 16
+		| g_chBuffer[2] << 8
+		| g_chBuffer[3];
+
+	UINT32 crc_init = 0xFFFFFFFF;
+	UINT32 crc_poly = 0x04C11DB7;
+	UINT8 bindex = 0;
+	UINT32 crc_val = 0;
+
+	crc_val = crc_init ^ inp_data;
+	while (bindex < 32)
+	{
+		if ((crc_val & 0x80000000) == 0x80000000)
+		{
+			crc_val <<= 1;
+			crc_val ^= crc_poly;
+			++bindex;
+		}
+		else
+		{
+			crc_val <<= 1;
+			++bindex;
+		}
+	}
+
+	OutputDebugString(L"bla\n");
+}
+
+VOID tryCalcCrc64()
+{
+	g_chBuffer[0] = 0x01;
+	g_chBuffer[1] = 0x00;
+	g_chBuffer[2] = 0x00;
+	g_chBuffer[3] = 0x02;
+	g_chBuffer[4] = 0x00;
+	g_chBuffer[5] = 0x00;
+	g_chBuffer[6] = 0x03;
+	g_chBuffer[7] = 0x17;
+	g_chBuffer[8] = 0x04;
+	UINT32 inp_data = g_chBuffer[0] << 24
+		| g_chBuffer[1] << 16
+		| g_chBuffer[2] << 8
+		| g_chBuffer[3];
+
+	UINT32 crc_init = 0xFFFFFFFF;
+	UINT32 crc_poly = 0x04C11DB7;
+	UINT8 bindex = 0;
+	UINT32 crc_val = 0;
+
+	crc_val = crc_init ^ inp_data;
+	while (bindex < 32)
+	{
+		if ((crc_val & 0x80000000) == 0x80000000)
+		{
+			crc_val <<= 1;
+			crc_val ^= crc_poly;
+			++bindex;
+		}
+		else
+		{
+			crc_val <<= 1;
+			++bindex;
+		}
+	}
+
+	inp_data = g_chBuffer[4] << 24
+		| g_chBuffer[5] << 16
+		| g_chBuffer[6] << 8
+		| g_chBuffer[7];
+
+	crc_init = crc_val;
+	bindex = 0;
+
+	crc_val = crc_init ^ inp_data;
+	while (bindex < 32)
+	{
+		if ((crc_val & 0x80000000) == 0x80000000)
+		{
+			crc_val <<= 1;
+			crc_val ^= crc_poly;
+			++bindex;
+		}
+		else
+		{
+			crc_val <<= 1;
+			++bindex;
+		}
+	}
+
+	OutputDebugString(L"bla\n");
+}
+
+VOID tryCalcCrc72()
+{
+	g_chBuffer[0] = 0x01;
+	g_chBuffer[1] = 0x00;
+	g_chBuffer[2] = 0x00;
+	g_chBuffer[3] = 0x02;
+	g_chBuffer[4] = 0x00;
+	g_chBuffer[5] = 0x00;
+	g_chBuffer[6] = 0x03;
+	g_chBuffer[7] = 0x17;
+	g_chBuffer[8] = 0x04;
+	UINT32 inp_data = g_chBuffer[0] << 24
+		| g_chBuffer[1] << 16
+		| g_chBuffer[2] << 8
+		| g_chBuffer[3];
+
+	UINT32 crc_init = 0xFFFFFFFF;
+	UINT32 crc_poly = 0x04C11DB7;
+	UINT8 bindex = 0;
+	UINT32 crc_val = 0;
+
+	crc_val = crc_init ^ inp_data;
+	while (bindex < 32)
+	{
+		if ((crc_val & 0x80000000) == 0x80000000)
+		{
+			crc_val <<= 1;
+			crc_val ^= crc_poly;
+			++bindex;
+		}
+		else
+		{
+			crc_val <<= 1;
+			++bindex;
+		}
+	}
+
+	inp_data = g_chBuffer[4] << 24
+		| g_chBuffer[5] << 16
+		| g_chBuffer[6] << 8
+		| g_chBuffer[7];
+
+	crc_init = crc_val;
+	bindex = 0;
+
+	crc_val = crc_init ^ inp_data;
+	while (bindex < 32)
+	{
+		if ((crc_val & 0x80000000) == 0x80000000)
+		{
+			crc_val <<= 1;
+			crc_val ^= crc_poly;
+			++bindex;
+		}
+		else
+		{
+			crc_val <<= 1;
+			++bindex;
+		}
+	}
+
+	inp_data = g_chBuffer[8] << 24;
+
+	crc_init = crc_val;
+	bindex = 0;
+
+	crc_val = crc_init ^ inp_data;
+	while (bindex < 8)
+	{
+		if ((crc_val & 0x80000000) == 0x80000000)
+		{
+			crc_val <<= 1;
+			crc_val ^= crc_poly;
+			++bindex;
+		}
+		else
+		{
+			crc_val <<= 1;
+			++bindex;
+		}
+	}
+
+	OutputDebugString(L"bla\n");
+}
+
 //*****************************************************************************
 //*                     onWmCommand_DlgProc
 //*****************************************************************************
@@ -80,6 +297,13 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			// enable/disable button
 			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
+
+			// try calculate CRC 32-bit
+			tryCalcCrc32();
+			// try calculate CRC 2 x 32-bit
+			tryCalcCrc64();
+			// try calculate CRC (2 x 32-bit + 8-bit)
+			tryCalcCrc72();
 
 			// place a frame into the queue
 			g_queue.push(g_oFrame);
