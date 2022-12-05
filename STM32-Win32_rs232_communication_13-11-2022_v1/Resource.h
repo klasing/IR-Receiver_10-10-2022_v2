@@ -7,6 +7,7 @@
 
 // serial communication
 #define LEN_FRAME				9
+#define LEN_CRC					4
 #define DELAY_4HZ_SERIAL		125
 #define BUFFER_MAX_SERIAL		512
 
