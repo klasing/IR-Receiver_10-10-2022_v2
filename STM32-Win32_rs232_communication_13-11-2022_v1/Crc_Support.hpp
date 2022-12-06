@@ -7,7 +7,7 @@
 //*****************************************************************************
 //*                     calcCrc8
 //*****************************************************************************
-BOOL calcCrc8(const CHAR ch
+BOOL calcCrc8(const CHAR& ch
 	, UINT32& valCrc
 )
 {
@@ -16,6 +16,35 @@ BOOL calcCrc8(const CHAR ch
 	valCrc = initCrc ^ inpData;
 	UINT8 bindex = 0;
 	while (bindex < 8)
+	{
+		if (valCrc & 0x80000000)
+		{
+			valCrc <<= 1;
+			valCrc ^= POLY_CRC;
+		}
+		else
+		{
+			valCrc <<= 1;
+		}
+		++bindex;
+	}
+	return EXIT_SUCCESS;
+}
+
+//*****************************************************************************
+//*                     calcCrc16
+//*****************************************************************************
+BOOL calcCrc16(const CHAR& ch1
+	, const CHAR& ch2
+	, UINT32& valCrc
+)
+{
+	UINT32 inpData = ch1 << 24
+		| ch2 << 16;
+	UINT32 initCrc = valCrc;
+	valCrc = initCrc ^ inpData;
+	UINT8 bindex = 0;
+	while (bindex < 16)
 	{
 		if (valCrc & 0x80000000)
 		{
@@ -84,6 +113,10 @@ BOOL calcCrcEx(const CHAR* chBuffer
 	case 2:
 	{
 		// TODO: calcCrc16();
+		calcCrc16(chBuffer[i * 4 + 0]
+			, chBuffer[i * 4 + 1]
+			, valCrc
+		);
 		break;
 
 	} // eof 2
@@ -91,7 +124,14 @@ BOOL calcCrcEx(const CHAR* chBuffer
 	{
 		// TODO:
 		// 1) calcCrc16(); 
+		calcCrc16(chBuffer[i * 4 + 0]
+			, chBuffer[i * 4 + 1]
+			, valCrc
+		);
 		// 2) calcCrc8();
+		calcCrc8(chBuffer[i * 4 + 2]
+			, valCrc
+		);
 		break;
 
 	} // eof 3

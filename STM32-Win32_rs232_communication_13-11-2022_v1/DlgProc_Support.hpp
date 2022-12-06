@@ -372,6 +372,8 @@ BOOL transmit()
 		, NULL
 	);
 
+	if (dwNofByteTransferred == 0); // connection is lost
+
 	return EXIT_SUCCESS;
 }
 
@@ -388,6 +390,8 @@ BOOL receive(LPVOID lpVoid)
 		, &dwNofByteTransferred
 		, NULL
 	);
+
+	if (dwNofByteTransferred == 0); // connection is lost
 
 	// isolate received crc from g_chBuffer
 	// the g_buffer char must be cast to UCHAR
