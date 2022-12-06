@@ -29,7 +29,11 @@ FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT };
 BOOL g_bContinueTxRx = FALSE;
 CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 std::queue<tagFRAME> g_queue;
-UINT32 g_crc_val;
+//UINT32 g_crc_val;
+UINT32 g_valCrc = 0;
+UINT g_cTransmission = 0;
+UINT g_cErrorCrc = 0;
+CHAR g_chTextBuffer[8] = { 0 };
 
 //*****************************************************************************
 //*                     prototype
@@ -58,402 +62,86 @@ BOOL onWmInitDialog_DlgProc(const HWND& hDlg
 	return EXIT_SUCCESS;
 }
 
-/*
-VOID tryCalcCrcAn()
-{
-	UINT8 inp_data = 0xC1;
-	UINT8 crc_init = 0xFF;
-	UINT8 crc_poly = 0xCB;
-	UINT8 bindex = 0;
-	UINT8 crc_val = 0;
-
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 8)
-	{
-		if ((crc_val & 0x80) == 0x80)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	OutputDebugString(L"bla\n");
-}
-
-
-VOID tryCalcCrc32()
-{
-	g_chBuffer[0] = 0x01;
-	g_chBuffer[1] = 0x00;
-	g_chBuffer[2] = 0x00;
-	g_chBuffer[3] = 0x02;
-	g_chBuffer[4] = 0x00;
-	g_chBuffer[5] = 0x00;
-	g_chBuffer[6] = 0x03;
-	g_chBuffer[7] = 0x17;
-	g_chBuffer[8] = 0x04;
-	UINT32 inp_data = g_chBuffer[0] << 24
-		| g_chBuffer[1] << 16
-		| g_chBuffer[2] << 8
-		| g_chBuffer[3];
-
-	UINT32 crc_init = 0xFFFFFFFF;
-	UINT32 crc_poly = 0x04C11DB7;
-	UINT8 bindex = 0;
-	UINT32 crc_val = 0;
-
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	OutputDebugString(L"bla\n");
-}
-
-VOID tryCalcCrc64()
-{
-	g_chBuffer[0] = 0x01;
-	g_chBuffer[1] = 0x00;
-	g_chBuffer[2] = 0x00;
-	g_chBuffer[3] = 0x02;
-	g_chBuffer[4] = 0x00;
-	g_chBuffer[5] = 0x00;
-	g_chBuffer[6] = 0x03;
-	g_chBuffer[7] = 0x17;
-	g_chBuffer[8] = 0x04;
-	UINT32 inp_data = g_chBuffer[0] << 24
-		| g_chBuffer[1] << 16
-		| g_chBuffer[2] << 8
-		| g_chBuffer[3];
-
-	UINT32 crc_init = 0xFFFFFFFF;
-	UINT32 crc_poly = 0x04C11DB7;
-	UINT8 bindex = 0;
-	UINT32 crc_val = 0;
-
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	inp_data = g_chBuffer[4] << 24
-		| g_chBuffer[5] << 16
-		| g_chBuffer[6] << 8
-		| g_chBuffer[7];
-
-	crc_init = crc_val;
-	bindex = 0;
-
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	OutputDebugString(L"bla\n");
-}
-
-VOID tryCalcCrc72()
-{
-	g_chBuffer[0] = 0x01;
-	g_chBuffer[1] = 0x00;
-	g_chBuffer[2] = 0x00;
-	g_chBuffer[3] = 0x02;
-	g_chBuffer[4] = 0x00;
-	g_chBuffer[5] = 0x00;
-	g_chBuffer[6] = 0x03;
-	g_chBuffer[7] = 0x17;
-	g_chBuffer[8] = 0x04;
-	UINT32 inp_data = g_chBuffer[0] << 24
-		| g_chBuffer[1] << 16
-		| g_chBuffer[2] << 8
-		| g_chBuffer[3];
-
-	UINT32 crc_init = 0xFFFFFFFF;
-	const UINT32 crc_poly = 0x04C11DB7;
-	UINT8 bindex = 0;
-	UINT32 crc_val = 0;
-
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	inp_data = g_chBuffer[4] << 24
-		| g_chBuffer[5] << 16
-		| g_chBuffer[6] << 8
-		| g_chBuffer[7];
-
-	crc_init = crc_val;
-	bindex = 0;
-
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	inp_data = g_chBuffer[8] << 24;
-
-	crc_init = crc_val;
-	bindex = 0;
-
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 8)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	OutputDebugString(L"bla\n");
-}
-
-BOOL calcCrc72()
-{
-	UINT32 crc_init = 0xFFFFFFFF;
-	const UINT32 crc_poly = 0x04C11DB7;
-	UINT8 bindex = 0;
-	UINT32 crc_val = 0;
-
-	UINT32 inp_data = g_chBuffer[0] << 24
-		| g_chBuffer[1] << 16
-		| g_chBuffer[2] << 8
-		| g_chBuffer[3];
-
-	// A) first 4 byte
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	crc_init = crc_val;
-	bindex = 0;
-
-	inp_data = g_chBuffer[4] << 24
-		| g_chBuffer[5] << 16
-		| g_chBuffer[6] << 8
-		| g_chBuffer[7];
-
-	// B) second 4 byte
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	crc_init = crc_val;
-	bindex = 0;
-
-	inp_data = g_chBuffer[8] << 24;
-
-	// C) last byte
-	crc_val = crc_init ^ inp_data;
-	while (bindex < 8)
-	{
-		if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			crc_val <<= 1;
-			crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	return EXIT_SUCCESS;
-}
-*/
-
-//*****************************************************************************
-//*                     calcCrc
-//*****************************************************************************
-BOOL calcCrc()
-{
-	UINT32 crc_init = 0xFFFFFFFF;
-	const UINT32 crc_poly = 0x04C11DB7;
-	UINT8 bindex = 0;
-	//UINT32 crc_val = 0;
-
-	UINT32 inp_data = g_chBuffer[0] << 24
-		| g_chBuffer[1] << 16
-		| g_chBuffer[2] << 8
-		| g_chBuffer[3];
-
-	// A) first 4 byte
-	g_crc_val = crc_init ^ inp_data;
-	//crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((g_crc_val & 0x80000000) == 0x80000000)
-		//if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			g_crc_val <<= 1;
-			g_crc_val ^= crc_poly;
-			//crc_val <<= 1;
-			//crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			g_crc_val <<= 1;
-			//crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	crc_init = g_crc_val;
-	//crc_init = crc_val;
-	bindex = 0;
-
-	inp_data = g_chBuffer[4] << 24
-		| g_chBuffer[5] << 16
-		| g_chBuffer[6] << 8
-		| g_chBuffer[7];
-
-	// B) second 4 byte
-	g_crc_val = crc_init ^ inp_data;
-	//crc_val = crc_init ^ inp_data;
-	while (bindex < 32)
-	{
-		if ((g_crc_val & 0x80000000) == 0x80000000)
-		//if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			g_crc_val <<= 1;
-			g_crc_val ^= crc_poly;
-			//crc_val <<= 1;
-			//crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			g_crc_val <<= 1;
-			//crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	crc_init = g_crc_val;
-	//crc_init = crc_val;
-	bindex = 0;
-
-	inp_data = g_chBuffer[8] << 24;
-
-	// C) last byte
-	g_crc_val = crc_init ^ inp_data;
-	//crc_val = crc_init ^ inp_data;
-	while (bindex < 8)
-	{
-		if ((g_crc_val & 0x80000000) == 0x80000000)
-		//if ((crc_val & 0x80000000) == 0x80000000)
-		{
-			g_crc_val <<= 1;
-			g_crc_val ^= crc_poly;
-			//crc_val <<= 1;
-			//crc_val ^= crc_poly;
-			++bindex;
-		}
-		else
-		{
-			g_crc_val <<= 1;
-			//crc_val <<= 1;
-			++bindex;
-		}
-	}
-
-	return EXIT_SUCCESS;
-}
+////*****************************************************************************
+////*                     calcCrc
+////*****************************************************************************
+//BOOL calcCrc()
+//{
+//	UINT32 crc_init = 0xFFFFFFFF;
+//	const UINT32 crc_poly = 0x04C11DB7;
+//	UINT8 bindex = 0;
+//
+//	UINT32 inp_data = g_chBuffer[0] << 24
+//		| g_chBuffer[1] << 16
+//		| g_chBuffer[2] << 8
+//		| g_chBuffer[3];
+//
+//	// A) first 4 byte
+//	g_crc_val = crc_init ^ inp_data;
+//	while (bindex < 32)
+//	{
+//		if ((g_crc_val & 0x80000000) == 0x80000000)
+//		{
+//			g_crc_val <<= 1;
+//			g_crc_val ^= crc_poly;
+//			++bindex;
+//		}
+//		else
+//		{
+//			g_crc_val <<= 1;
+//			++bindex;
+//		}
+//	}
+//
+//	crc_init = g_crc_val;
+//	bindex = 0;
+//
+//	inp_data = g_chBuffer[4] << 24
+//		| g_chBuffer[5] << 16
+//		| g_chBuffer[6] << 8
+//		| g_chBuffer[7];
+//
+//	// B) second 4 byte
+//	g_crc_val = crc_init ^ inp_data;
+//	while (bindex < 32)
+//	{
+//		if ((g_crc_val & 0x80000000) == 0x80000000)
+//		{
+//			g_crc_val <<= 1;
+//			g_crc_val ^= crc_poly;
+//			++bindex;
+//		}
+//		else
+//		{
+//			g_crc_val <<= 1;
+//			++bindex;
+//		}
+//	}
+//
+//	crc_init = g_crc_val;
+//	bindex = 0;
+//
+//	inp_data = g_chBuffer[8] << 24;
+//
+//	// C) last byte
+//	g_crc_val = crc_init ^ inp_data;
+//	while (bindex < 8)
+//	{
+//		if ((g_crc_val & 0x80000000) == 0x80000000)
+//		{
+//			g_crc_val <<= 1;
+//			g_crc_val ^= crc_poly;
+//			++bindex;
+//		}
+//		else
+//		{
+//			g_crc_val <<= 1;
+//			++bindex;
+//		}
+//	}
+//
+//	return EXIT_SUCCESS;
+//}
 
 //*****************************************************************************
 //*                     onWmCommand_DlgProc
@@ -480,14 +168,9 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
 
 			
-			// try calculate CRC 32-bit
-			//tryCalcCrc32();
-			// try calculate CRC 2 x 32-bit
-			//tryCalcCrc64();
-			// try calculate CRC (2 x 32-bit + 8-bit)
-			//tryCalcCrc72();			
-			//calcCrc72();
-			calcCrc();
+			// calculate crc from 9 byte (2 x 32 bit + 8 bit = 72 bit)
+			//calcCrc();
+			calcCrcEx(g_chBuffer, 9, g_valCrc);
 
 			// place a frame into the queue
 			g_queue.push(g_oFrame);
@@ -630,6 +313,12 @@ DWORD WINAPI TxRx(LPVOID lpVoid)
 	// infinite loop
 	while (g_bContinueTxRx)
 	{
+		++g_cTransmission;
+		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_TRANSMISSION)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)std::to_string(g_cTransmission).c_str()
+		);
 		transmit();
 		Sleep(DELAY_4HZ_SERIAL);
 		receive(lpVoid);
@@ -660,11 +349,17 @@ BOOL transmit()
 	);
 
 	// calculate crc and feed into chBuffer
-	calcCrc();
-	g_chBuffer[9] = (g_crc_val & 0xFF000000) >> 24;
-	g_chBuffer[10] = (g_crc_val & 0x00FF0000) >> 16;
-	g_chBuffer[11] = (g_crc_val & 0x0000FF00) >> 8;
-	g_chBuffer[12] = (g_crc_val & 0x000000FF);
+	//calcCrc();
+	//g_chBuffer[9] = (g_crc_val & 0xFF000000) >> 24;
+	//g_chBuffer[10] = (g_crc_val & 0x00FF0000) >> 16;
+	//g_chBuffer[11] = (g_crc_val & 0x0000FF00) >> 8;
+	//g_chBuffer[12] = (g_crc_val & 0x000000FF);
+	//g_chBuffer[13] = '\0';
+	calcCrcEx(g_chBuffer, 9, g_valCrc);
+	g_chBuffer[9] = (g_valCrc & 0xFF000000) >> 24;
+	g_chBuffer[10] = (g_valCrc & 0x00FF0000) >> 16;
+	g_chBuffer[11] = (g_valCrc & 0x0000FF00) >> 8;
+	g_chBuffer[12] = (g_valCrc & 0x000000FF);
 	g_chBuffer[13] = '\0';
 
 
@@ -695,19 +390,28 @@ BOOL receive(LPVOID lpVoid)
 	);
 
 	// isolate received crc from g_chBuffer
+	// the g_buffer char must be cast to UCHAR
 	UINT32 rxValCrc = ((UCHAR)g_chBuffer[9] << 24)
 		| ((UCHAR)g_chBuffer[10] << 16)
 		| ((UCHAR)g_chBuffer[11] << 8)
 		| ((UCHAR)g_chBuffer[12]);
 	
 	// calculate crc
-	calcCrc();
+	//calcCrc();
+	calcCrcEx(g_chBuffer, 9, g_valCrc);
 
 	// compare received CRC with calculated CRC
-	if (rxValCrc != g_crc_val)
+	if (rxValCrc != g_valCrc)
+	//if (rxValCrc != g_crc_val)
 	{
 		// crc error
-		OutputDebugString(L"crc error\n");
+		OutputDebugString(L"CRC ERROR *****************************************************\n");
+		++g_cErrorCrc;
+		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_ERROR_CRC)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)std::to_string(g_cErrorCrc).c_str()
+		);
 	}
 
 

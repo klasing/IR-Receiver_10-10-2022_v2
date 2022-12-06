@@ -1,3 +1,7 @@
+// crc
+#define INIT_CRC				0xFFFFFFFF
+#define POLY_CRC				0x04C11DB7
+
 // frame
 #define SOH						1
 #define STX						2
@@ -13,6 +17,8 @@
 
 // control
 #define IDC_STATUS_CONNECT		33000
+#define IDC_NOF_TRANSMISSION	33001
+#define IDC_NOF_ERROR_CRC		33002
 
 // message
 #define CONNECT_SERIAL			33100
@@ -47,6 +53,7 @@
 //#define WR_REG_0   				33610
 //#define WR_REG_1    			33611
 //#define WR_REG_2   				33612
+#define ERROR_CRC_STM32				33690	// STM32 sends this command when it detected a crc error
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
