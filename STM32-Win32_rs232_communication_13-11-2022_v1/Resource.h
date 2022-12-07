@@ -19,10 +19,13 @@
 #define IDC_STATUS_CONNECT		33000
 #define IDC_NOF_TRANSMISSION	33001
 #define IDC_NOF_ERROR_CRC		33002
+#define IDC_STATUSBAR			33003
 
 // message
 #define CONNECT_SERIAL			33100
 #define DISCONNECT_SERIAL		33101
+#define RESTART_SERIAL			33102
+#define SET_TEXT_STATUSBAR		33103
 
 //#define SOH						1
 //#define STX						2

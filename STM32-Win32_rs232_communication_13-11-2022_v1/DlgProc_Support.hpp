@@ -29,7 +29,6 @@ FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT };
 BOOL g_bContinueTxRx = FALSE;
 CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 std::queue<tagFRAME> g_queue;
-//UINT32 g_crc_val;
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
@@ -40,13 +39,15 @@ CHAR g_chTextBuffer[8] = { 0 };
 //*****************************************************************************
 BOOL				connect(HANDLE& hComm);
 DWORD WINAPI		TxRx(LPVOID lpVoid);
-BOOL                transmit();
+BOOL                transmit(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
 
 //*****************************************************************************
 //*                     onWmInitDialog_DlgProc
 //*****************************************************************************
-BOOL onWmInitDialog_DlgProc(const HWND& hDlg
+BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
+	, const HWND& hDlg
+	, HWND& hWndStatusbar
 )
 {
 	// set edit control IDC_STATUS_CONNECT text
@@ -56,92 +57,46 @@ BOOL onWmInitDialog_DlgProc(const HWND& hDlg
 		, (LPARAM)L"Disconnected"
 	);
 
-	// disable button DISCONNECT_SERIAL
+	// disable button DISCONNECT_SERIAL, RESTART_SERIAL
 	EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
+	EnableWindow(GetDlgItem(hDlg, RESTART_SERIAL), FALSE);
+
+	hWndStatusbar = DoCreateStatusBar(hInst
+		, hDlg
+		, IDC_STATUSBAR
+		, 1
+	);
+
 
 	return EXIT_SUCCESS;
 }
 
-////*****************************************************************************
-////*                     calcCrc
-////*****************************************************************************
-//BOOL calcCrc()
-//{
-//	UINT32 crc_init = 0xFFFFFFFF;
-//	const UINT32 crc_poly = 0x04C11DB7;
-//	UINT8 bindex = 0;
-//
-//	UINT32 inp_data = g_chBuffer[0] << 24
-//		| g_chBuffer[1] << 16
-//		| g_chBuffer[2] << 8
-//		| g_chBuffer[3];
-//
-//	// A) first 4 byte
-//	g_crc_val = crc_init ^ inp_data;
-//	while (bindex < 32)
-//	{
-//		if ((g_crc_val & 0x80000000) == 0x80000000)
-//		{
-//			g_crc_val <<= 1;
-//			g_crc_val ^= crc_poly;
-//			++bindex;
-//		}
-//		else
-//		{
-//			g_crc_val <<= 1;
-//			++bindex;
-//		}
-//	}
-//
-//	crc_init = g_crc_val;
-//	bindex = 0;
-//
-//	inp_data = g_chBuffer[4] << 24
-//		| g_chBuffer[5] << 16
-//		| g_chBuffer[6] << 8
-//		| g_chBuffer[7];
-//
-//	// B) second 4 byte
-//	g_crc_val = crc_init ^ inp_data;
-//	while (bindex < 32)
-//	{
-//		if ((g_crc_val & 0x80000000) == 0x80000000)
-//		{
-//			g_crc_val <<= 1;
-//			g_crc_val ^= crc_poly;
-//			++bindex;
-//		}
-//		else
-//		{
-//			g_crc_val <<= 1;
-//			++bindex;
-//		}
-//	}
-//
-//	crc_init = g_crc_val;
-//	bindex = 0;
-//
-//	inp_data = g_chBuffer[8] << 24;
-//
-//	// C) last byte
-//	g_crc_val = crc_init ^ inp_data;
-//	while (bindex < 8)
-//	{
-//		if ((g_crc_val & 0x80000000) == 0x80000000)
-//		{
-//			g_crc_val <<= 1;
-//			g_crc_val ^= crc_poly;
-//			++bindex;
-//		}
-//		else
-//		{
-//			g_crc_val <<= 1;
-//			++bindex;
-//		}
-//	}
-//
-//	return EXIT_SUCCESS;
-//}
+//*****************************************************************************
+//*                     onWmSize_DlgProc
+//*****************************************************************************
+BOOL onWmSize_DlgProc(const HWND& hDlg
+	, const HWND& hWndStatusbar
+)
+{
+	// get the client coordinates of the parent window's client area
+	RECT rectClient;
+	GetClientRect(hDlg, &rectClient);
+	// set parts on status bar
+	int nParts[1] = { rectClient.right };
+	SendMessage(hWndStatusbar, SB_SETPARTS, 1, (LPARAM)&nParts);
+	// give the statusbar a theoretical size
+	MoveWindow(hWndStatusbar
+		, rectClient.left
+		, rectClient.top
+		, rectClient.right
+		, rectClient.bottom
+		, TRUE
+	);
+	ShowWindow(hWndStatusbar
+		, SW_SHOWNORMAL
+	);
+	return EXIT_SUCCESS;
+}
 
 //*****************************************************************************
 //*                     onWmCommand_DlgProc
@@ -149,6 +104,7 @@ BOOL onWmInitDialog_DlgProc(const HWND& hDlg
 INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	, const WPARAM& wParam
 	, HANDLE& hThreadTxRx
+	, const HWND& hWndStatusbar
 )
 {
 	switch (LOWORD(wParam))
@@ -157,6 +113,11 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	{
 		if (connect(g_hComm) == EXIT_SUCCESS)
 		{
+			SendMessage(hWndStatusbar
+				, SB_SETTEXT
+				, (WPARAM)0 | SBT_POPOUT // not clear what SBT_POPOUT means
+				, (LPARAM)L""
+			);
 			// set text edit control IDC_STATUS
 			SendMessage(GetDlgItem(hDlg, IDC_STATUS_CONNECT)
 				, WM_SETTEXT
@@ -166,10 +127,10 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			// enable/disable button
 			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
+			EnableWindow(GetDlgItem(hDlg, RESTART_SERIAL), TRUE);
 
 			
 			// calculate crc from 9 byte (2 x 32 bit + 8 bit = 72 bit)
-			//calcCrc();
 			calcCrcEx(g_chBuffer, 9, g_valCrc);
 
 			// place a frame into the queue
@@ -190,6 +151,15 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 
 			// start thread exact on this command
 			if (hThreadTxRx) ResumeThread(hThreadTxRx);
+		}
+		else
+		{
+			// can't connect with STM32, probably the connect cable is loose
+			SendMessage(hWndStatusbar
+				, SB_SETTEXT
+				, (WPARAM)0 | SBT_POPOUT // not clear what SBT_POPOUT means
+				, (LPARAM)L"can't connect"
+			);
 		}
 		return (INT_PTR)TRUE;
 	} // eof CONNECT_SERIAL
@@ -215,10 +185,48 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			// enable/disable button
 			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), TRUE);
 			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
+			EnableWindow(GetDlgItem(hDlg, RESTART_SERIAL), FALSE);
 		}
 		return (INT_PTR)TRUE;
 	} // eof DISCONNECT_SERIAL
+	case RESTART_SERIAL:
+	{
+		// reset g_cTransmission
+		g_cTransmission = 0;
+		// clear edittext IDC_NOF_TRANSMISSION
+		SendMessageA(GetDlgItem(hDlg, IDC_NOF_TRANSMISSION)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)""
+		);
+		// clear edittext IDC_NOF_ERROR_CRC
+		SendMessageA(GetDlgItem(hDlg, IDC_NOF_ERROR_CRC)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)""
+		);
+		// send message DISCONNECT_SERIAL
+		SendMessage(hDlg
+			, WM_COMMAND
+			, (WPARAM)DISCONNECT_SERIAL
+			, (LPARAM)0
+		);
+		// hold for two second
+		Sleep(2000);
+		// send message CONNECT_SERIAL
+		SendMessage(hDlg
+			, WM_COMMAND
+			, (WPARAM)CONNECT_SERIAL
+			, (LPARAM)0
+		);
+		return (INT_PTR)TRUE;
+	} // eof RESTART_SERIAL
+	default:
+	{
+		return (INT_PTR)FALSE;
+	}
 	} // eof switch
+
 	return (INT_PTR)FALSE;
 }
 
@@ -319,7 +327,7 @@ DWORD WINAPI TxRx(LPVOID lpVoid)
 			, (WPARAM)0
 			, (LPARAM)std::to_string(g_cTransmission).c_str()
 		);
-		transmit();
+		transmit(lpVoid);
 		Sleep(DELAY_4HZ_SERIAL);
 		receive(lpVoid);
 		Sleep(DELAY_4HZ_SERIAL);
@@ -330,7 +338,7 @@ DWORD WINAPI TxRx(LPVOID lpVoid)
 //****************************************************************************
 //*                     transmit
 //****************************************************************************
-BOOL transmit()
+BOOL transmit(LPVOID lpVoid)
 {
 	OutputDebugString(L"transmitting\n");
 
@@ -349,12 +357,6 @@ BOOL transmit()
 	);
 
 	// calculate crc and feed into chBuffer
-	//calcCrc();
-	//g_chBuffer[9] = (g_crc_val & 0xFF000000) >> 24;
-	//g_chBuffer[10] = (g_crc_val & 0x00FF0000) >> 16;
-	//g_chBuffer[11] = (g_crc_val & 0x0000FF00) >> 8;
-	//g_chBuffer[12] = (g_crc_val & 0x000000FF);
-	//g_chBuffer[13] = '\0';
 	calcCrcEx(g_chBuffer, 9, g_valCrc);
 	g_chBuffer[9] = (g_valCrc & 0xFF000000) >> 24;
 	g_chBuffer[10] = (g_valCrc & 0x00FF0000) >> 16;
@@ -372,7 +374,18 @@ BOOL transmit()
 		, NULL
 	);
 
-	if (dwNofByteTransferred == 0); // connection is lost
+	// connection is lost
+	if (dwNofByteTransferred == 0)
+	{
+		// kill thread
+		g_bContinueTxRx = FALSE;
+
+		SendMessage((HWND)lpVoid
+			, SET_TEXT_STATUSBAR
+			, (WPARAM)0
+			, (LPARAM)L"connection is lost"
+		);
+	}
 
 	return EXIT_SUCCESS;
 }
@@ -391,7 +404,18 @@ BOOL receive(LPVOID lpVoid)
 		, NULL
 	);
 
-	if (dwNofByteTransferred == 0); // connection is lost
+	// connection is lost
+	if (dwNofByteTransferred == 0)
+	{
+		// kill thread
+		g_bContinueTxRx = FALSE;
+
+		SendMessage((HWND)lpVoid
+			, SET_TEXT_STATUSBAR
+			, (WPARAM)0
+			, (LPARAM)L"connection is lost"
+		);
+	}
 
 	// isolate received crc from g_chBuffer
 	// the g_buffer char must be cast to UCHAR
@@ -401,12 +425,10 @@ BOOL receive(LPVOID lpVoid)
 		| ((UCHAR)g_chBuffer[12]);
 	
 	// calculate crc
-	//calcCrc();
 	calcCrcEx(g_chBuffer, 9, g_valCrc);
 
 	// compare received CRC with calculated CRC
 	if (rxValCrc != g_valCrc)
-	//if (rxValCrc != g_crc_val)
 	{
 		// crc error
 		OutputDebugString(L"CRC ERROR *****************************************************\n");
@@ -417,7 +439,6 @@ BOOL receive(LPVOID lpVoid)
 			, (LPARAM)std::to_string(g_cErrorCrc).c_str()
 		);
 	}
-
 
 	return EXIT_SUCCESS;
 }

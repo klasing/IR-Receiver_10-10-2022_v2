@@ -20,6 +20,7 @@ WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 HWND g_hDlg = { 0 };
+HWND g_hWndStatusbar = { 0 };
 
 //****************************************************************************
 //*                     prototype
@@ -43,6 +44,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(lpCmdLine);
 
     // TODO: Place code here.
+    // load common controls: tab, listview, header, toolbar, statusbar,
+    // and tooltip
+    INITCOMMONCONTROLSEX ic = { 0 };
+    ic.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    ic.dwICC = ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES;
+    BOOL bSuccessInit = InitCommonControlsEx(&ic);
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -143,7 +150,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         RECT rect;
         GetClientRect(hWnd, &rect);
-        // sset size dialog and show dialog
+        // set size dialog and show dialog
         SetWindowPos(g_hDlg
             , HWND_TOP
             , rect.left
@@ -152,6 +159,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             , rect.bottom
             , SWP_SHOWWINDOW
         );
+
         return (INT_PTR)TRUE;
     } // eof WM_SIZE
     case WM_COMMAND:
@@ -199,19 +207,41 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_INITDIALOG:
 	{
-		onWmInitDialog_DlgProc(hDlg
+		onWmInitDialog_DlgProc(g_hInst
+            , hDlg
+            , g_hWndStatusbar
 		);
 
 		return (INT_PTR)FALSE;
 	} // eof WM_INITDIALOG
+    case WM_SIZE:
+    {
+        onWmSize_DlgProc(hDlg, g_hWndStatusbar);
+        return (INT_PTR)TRUE;
+    } // eof WM_SIZE
     case WM_COMMAND:
     {
         onWmCommand_DlgProc(hDlg
             , wParam
             , hThread
+            , g_hWndStatusbar
         );
+        // this break is vital, otherwise a WM_COMMAND falls
+        // through in the SET_TEXT_STATUSBAR message handler!
+        break;
     } // eof WM_COMMAND
+    case SET_TEXT_STATUSBAR:
+    {
+        // set message from thread into statusbar
+        SendMessage(g_hWndStatusbar
+            , SB_SETTEXT
+            , (WPARAM)0 | SBT_POPOUT // don't care about SBT_POPOUT
+            , (LPARAM)lParam
+        );
+        return (INT_PTR)TRUE;
+    } // eof SET_TEXT_STATUSBAR
     } // eof switch
+
 	return (INT_PTR)FALSE;
 }
 
