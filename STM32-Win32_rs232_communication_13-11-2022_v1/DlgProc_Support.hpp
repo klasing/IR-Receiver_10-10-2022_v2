@@ -377,14 +377,17 @@ BOOL transmit(LPVOID lpVoid)
 	// connection is lost
 	if (dwNofByteTransferred == 0)
 	{
-		// kill thread
-		g_bContinueTxRx = FALSE;
+		// disregard and simply return with EXIT_FAILURE
+		return EXIT_FAILURE;
+		// this gives too much interruption
+		//// kill thread
+		//g_bContinueTxRx = FALSE;
 
-		SendMessage((HWND)lpVoid
-			, SET_TEXT_STATUSBAR
-			, (WPARAM)0
-			, (LPARAM)L"connection is lost"
-		);
+		//SendMessage((HWND)lpVoid
+		//	, SET_TEXT_STATUSBAR
+		//	, (WPARAM)0
+		//	, (LPARAM)L"connection is lost"
+		//);
 	}
 
 	return EXIT_SUCCESS;
@@ -407,14 +410,17 @@ BOOL receive(LPVOID lpVoid)
 	// connection is lost
 	if (dwNofByteTransferred == 0)
 	{
-		// kill thread
-		g_bContinueTxRx = FALSE;
+		// disregard and simply return with EXIT_FAILURE
+		return EXIT_FAILURE;
+		// this gives too much interruption
+		//// kill thread
+		//g_bContinueTxRx = FALSE;
 
-		SendMessage((HWND)lpVoid
-			, SET_TEXT_STATUSBAR
-			, (WPARAM)0
-			, (LPARAM)L"connection is lost"
-		);
+		//SendMessage((HWND)lpVoid
+		//	, SET_TEXT_STATUSBAR
+		//	, (WPARAM)0
+		//	, (LPARAM)L"connection is lost"
+		//);
 	}
 
 	// isolate received crc from g_chBuffer

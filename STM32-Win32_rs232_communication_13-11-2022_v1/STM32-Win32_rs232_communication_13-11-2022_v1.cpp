@@ -227,7 +227,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             , g_hWndStatusbar
         );
         // this break is vital, otherwise a WM_COMMAND falls
-        // through in the SET_TEXT_STATUSBAR message handler!
+        // through into the SET_TEXT_STATUSBAR message handler!
         break;
     } // eof WM_COMMAND
     case SET_TEXT_STATUSBAR:
