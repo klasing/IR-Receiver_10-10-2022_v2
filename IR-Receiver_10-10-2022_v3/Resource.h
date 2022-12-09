@@ -10,8 +10,8 @@
 #define EOT						4
 
 // serial communication
-#define LEN_ENTRY_MAX			31
-#define LEN_FRAME				40
+#define LEN_MAX_ENTRY			31
+#define LEN_FRAME				38
 #define LEN_CRC					4
 #define DELAY_4HZ_SERIAL		125
 #define BUFFER_MAX_SERIAL		512

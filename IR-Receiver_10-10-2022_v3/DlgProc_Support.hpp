@@ -12,7 +12,7 @@ typedef struct tagFRAME
 	const CHAR soh;
 	UINT16 cmnd;
 	const CHAR stx;
-	CHAR payload[LEN_ENTRY_MAX];
+	CHAR payload[LEN_MAX_ENTRY];
 	const CHAR etx;
 	const CHAR etb;
 	const CHAR eot;
@@ -27,7 +27,7 @@ HANDLE g_hComm = INVALID_HANDLE_VALUE;
 FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
 
 BOOL g_bContinueRx = FALSE;
-CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
@@ -180,6 +180,42 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 		}
 		return (INT_PTR)TRUE;
 	} // eof DISCONNECT_SERIAL
+	case RESTART_SERIAL:
+	{
+		// reset g_cTransmission
+		g_cTransmission = 0;
+		// clear edittext IDC_NOF_TRANSMISSION
+		SendMessageA(GetDlgItem(hDlg, IDC_NOF_TRANSMISSION)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)""
+		);
+		// clear edittext IDC_NOF_ERROR_CRC
+		SendMessageA(GetDlgItem(hDlg, IDC_NOF_ERROR_CRC)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)""
+		);
+		// send message DISCONNECT_SERIAL
+		SendMessage(hDlg
+			, WM_COMMAND
+			, (WPARAM)DISCONNECT_SERIAL
+			, (LPARAM)0
+		);
+		// hold for two second
+		Sleep(2000);
+		// send message CONNECT_SERIAL
+		SendMessage(hDlg
+			, WM_COMMAND
+			, (WPARAM)CONNECT_SERIAL
+			, (LPARAM)0
+		);
+		return (INT_PTR)TRUE;
+	} // eof RESTART_SERIAL
+	default:
+	{
+		return (INT_PTR)FALSE;
+	}
 	} // eof switch
 
 	return (INT_PTR)FALSE;
@@ -320,11 +356,10 @@ BOOL receive(LPVOID lpVoid)
 	else if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
 	{
 		// isolate received crc from g_chBuffer
-		// the g_buffer char must be cast to UCHAR
-		UINT32 rxValCrc = ((UCHAR)g_chBuffer[40] << 24)
-			| ((UCHAR)g_chBuffer[41] << 16)
-			| ((UCHAR)g_chBuffer[42] << 8)
-			| ((UCHAR)g_chBuffer[43]);
+		UINT32 rxValCrc = (g_chBuffer[38] << 24)
+			| (g_chBuffer[39] << 16)
+			| (g_chBuffer[40] << 8)
+			| (g_chBuffer[41]);
 
 		// calculate crc
 		calcCrcEx(g_chBuffer, LEN_FRAME, g_valCrc);
@@ -344,13 +379,15 @@ BOOL receive(LPVOID lpVoid)
 		else
 		{
 			// set content g_chBuffer into frame
-			g_oFrame.cmnd = (g_chBuffer[1] << 24)
-				| (g_chBuffer[2] << 16)
-				| (g_chBuffer[3] << 8)
-				| (g_chBuffer[4]);
-			for (UINT8 i = 0; i < LEN_ENTRY_MAX; i++)
+			g_oFrame.cmnd = (g_chBuffer[1] & 0x0F) << 8
+				| g_chBuffer[2];
+			//g_oFrame.cmnd = (g_chBuffer[1] << 24)
+			//	| (g_chBuffer[2] << 16)
+			//	| (g_chBuffer[3] << 8)
+			//	| (g_chBuffer[4]);
+			for (UINT8 i = 0; i < LEN_MAX_ENTRY; i++)
 			{
-				g_oFrame.payload[i] = g_chBuffer[i + 6];
+				g_oFrame.payload[i] = g_chBuffer[i + 4];
 			}
 			// set g_oFrame.cmnd in edittext IDC_CODE
 			sprintf_s(g_chTextBuffer, 8, "0x%X", g_oFrame.cmnd);

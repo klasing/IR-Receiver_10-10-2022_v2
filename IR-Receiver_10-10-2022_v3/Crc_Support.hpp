@@ -7,7 +7,7 @@
 //*****************************************************************************
 //*                     calcCrc8
 //*****************************************************************************
-BOOL calcCrc8(const CHAR& ch
+BOOL calcCrc8(const UCHAR& ch
 	, UINT32& valCrc
 )
 {
@@ -34,8 +34,8 @@ BOOL calcCrc8(const CHAR& ch
 //*****************************************************************************
 //*                     calcCrc16
 //*****************************************************************************
-BOOL calcCrc16(const CHAR& ch1
-	, const CHAR& ch2
+BOOL calcCrc16(const UCHAR& ch1
+	, const UCHAR& ch2
 	, UINT32& valCrc
 )
 {
@@ -63,7 +63,7 @@ BOOL calcCrc16(const CHAR& ch1
 //*****************************************************************************
 //*                     calcCrcEx
 //*****************************************************************************
-BOOL calcCrcEx(const CHAR* chBuffer
+BOOL calcCrcEx(const UCHAR* chBuffer
 	, const UINT& lengthBuffer
 	, UINT32& valCrc
 )
