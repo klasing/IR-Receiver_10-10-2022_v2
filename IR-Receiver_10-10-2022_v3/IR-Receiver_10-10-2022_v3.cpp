@@ -224,6 +224,11 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
     {
 
+        onWmCommand_DlgProc(hDlg
+            , wParam
+            , hThread
+            , g_hWndStatusbar
+        );
         // this break is vital, otherwise a WM_COMMAND falls
         // through into the underlying message handler!
         break;
