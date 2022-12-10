@@ -23,3 +23,6 @@
 #include <tchar.h>
 
 #include <string>
+#include <vector>
+#include <utility>
+#include <tuple>

@@ -65,6 +65,13 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 		, 1
 	);
 
+	// create a timer
+	SetTimer(hDlg
+		, IDT_TIMER
+		, 2000
+		, (TIMERPROC)NULL
+	);
+
 	return EXIT_SUCCESS;
 }
 

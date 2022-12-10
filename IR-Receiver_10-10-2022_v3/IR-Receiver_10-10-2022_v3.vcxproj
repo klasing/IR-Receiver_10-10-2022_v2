@@ -146,6 +146,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Statusbar.hpp" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="Timer_Support.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IR-Receiver_10-10-2022_v3.cpp" />

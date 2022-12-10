@@ -24,11 +24,13 @@
 #define IDC_DESCRIPTION			33004
 #define IDC_STATUSBAR			33005
 
-
 // message
 #define CONNECT_SERIAL			33100
 #define DISCONNECT_SERIAL		33101
 #define RESTART_SERIAL			33102
+
+// timer
+#define IDT_TIMER				33200
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
