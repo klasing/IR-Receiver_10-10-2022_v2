@@ -33,12 +33,41 @@ UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
 CHAR g_chTextBuffer[8] = { 0 };
 
+std::vector<CHAR> v0 = { '0', ' ' };
+std::vector<CHAR> v1 = { '1', ';', '@', '?', '!' };
+std::vector<CHAR> v2 = { '2', 'a', 'b', 'c' };
+std::vector<CHAR> v3 = { '3', 'd', 'e', 'f' };
+std::vector<CHAR> v4 = { '4', '6', 'g', 'h', 'i', 'm', 'n', 'o' }; // 4 = 6
+std::vector<CHAR> v5 = { '5', 'j', 'k', 'l' };
+std::vector<CHAR> v6 = { '4', '6', 'g', 'h', 'i', 'm', 'n', 'o' }; // 6 = 4
+std::vector<CHAR> v7 = { '7', 'p', 'q', 'r', 's' };
+std::vector<CHAR> v8 = { '8', 't', 'u', 'v' };
+std::vector<CHAR> v9 = { '9', 'w', 'x', 'y', 'z' };
+std::pair<UINT16, std::vector<CHAR>> p0 = { 0xFAB, v0 };
+std::pair<UINT16, std::vector<CHAR>> p1 = { 0xFFE, v1 };
+std::pair<UINT16, std::vector<CHAR>> p2 = { 0xFFA, v2 };
+std::pair<UINT16, std::vector<CHAR>> p3 = { 0xFFB, v3 };
+std::pair<UINT16, std::vector<CHAR>> p4 = { 0xFEE, v4 };
+std::pair<UINT16, std::vector<CHAR>> p5 = { 0xFEB, v5 };
+std::pair<UINT16, std::vector<CHAR>> p6 = { 0xFEE, v6 };
+std::pair<UINT16, std::vector<CHAR>> p7 = { 0xFEF, v7 };
+std::pair<UINT16, std::vector<CHAR>> p8 = { 0xFBE, v8 };
+std::pair<UINT16, std::vector<CHAR>> p9 = { 0xFBB, v9 };
+std::vector<std::pair<UINT16, std::vector<CHAR>>> g_vKey =
+{ p0, p1, p2, p3, p4, p5, p6, p7, p8, p9 };
+
+//BOOL g_bChoose = FALSE;
+//UINT8 g_idxvKey = 0;
+
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
 BOOL				connect(HANDLE& hComm);
 DWORD WINAPI		Rx(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
+BOOL				evaluate(UINT8& nvKey, CHAR& ch);
+BOOL				appendTextToEditControlA(const HWND& hWndEditControl
+						, const std::string str);
 
 //*****************************************************************************
 //*                     onWmInitDialog_DlgProc
@@ -46,6 +75,7 @@ BOOL                receive(LPVOID lpVoid);
 BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 	, const HWND& hDlg
 	, HWND& hWndStatusbar
+	//, BOOL& bChoose
 )
 {
 	// set edit control IDC_STATUS_CONNECT text
@@ -65,12 +95,18 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 		, 1
 	);
 
-	// create a timer
-	SetTimer(hDlg
-		, IDT_TIMER
-		, 2000
-		, (TIMERPROC)NULL
-	);
+	//// create a timer
+	//SetTimer(hDlg
+	//	, IDT_TIMER
+	//	, 2000
+	//	, (TIMERPROC)NULL
+	//);
+	//bChoose = TRUE;
+	//SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
+	//	, BM_SETCHECK
+	//	, (WPARAM)BST_CHECKED
+	//	, (LPARAM)0
+	//);
 
 	return EXIT_SUCCESS;
 }
@@ -226,6 +262,23 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	} // eof switch
 
 	return (INT_PTR)FALSE;
+}
+
+//****************************************************************************
+//*                     onWmTimer_DlgProc
+//****************************************************************************
+BOOL onWmTimer_DlgProc(const HWND& hDlg)
+{
+	OutputDebugString(L"timer triggered\n");
+	//g_bChoose = FALSE;
+	SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
+		, BM_SETCHECK
+		, (WPARAM)BST_UNCHECKED
+		, (LPARAM)0
+	);
+	KillTimer(hDlg, IDT_TIMER);
+
+	return EXIT_SUCCESS;
 }
 
 //****************************************************************************
@@ -385,13 +438,10 @@ BOOL receive(LPVOID lpVoid)
 		}
 		else
 		{
-			// set content g_chBuffer into frame
+			// transfer command from g_chBuffer to g_oFrame.cmnd
 			g_oFrame.cmnd = (g_chBuffer[1] & 0x0F) << 8
 				| g_chBuffer[2];
-			//g_oFrame.cmnd = (g_chBuffer[1] << 24)
-			//	| (g_chBuffer[2] << 16)
-			//	| (g_chBuffer[3] << 8)
-			//	| (g_chBuffer[4]);
+			// transfer payload from g_chBuffer to g_oFrame.payload
 			for (UINT8 i = 0; i < LEN_MAX_ENTRY; i++)
 			{
 				g_oFrame.payload[i] = g_chBuffer[i + 4];
@@ -409,8 +459,86 @@ BOOL receive(LPVOID lpVoid)
 				, (WPARAM)0
 				, (LPARAM)g_oFrame.payload
 			);
+			// evaluate g_oFrame.cmnd for choosing numeric/alphanumeric character
+			//UINT8 nvKey = 0;
+			//CHAR ch;
+			//if (evaluate(nvKey, ch) == EXIT_SUCCESS)
+			//{
+			//	// the character is a numeric/alphanumeric character, so place it
+			//	// in the edit control IDC_EDT
+			//	std::string str = "";
+			//	str.push_back(ch);
+			//	appendTextToEditControlA(GetDlgItem((HWND)lpVoid, IDC_EDT)
+			//		, str
+			//	);
+			//	// create a timer
+			//	SetTimer((HWND)lpVoid
+			//		, IDT_TIMER
+			//		, 2000
+			//		, (TIMERPROC)NULL
+			//	);
+			//	g_bChoose = TRUE;
+			//	SendMessage(GetDlgItem((HWND)lpVoid, IDC_CHB_CHOOSE)
+			//		, BM_SETCHECK
+			//		, (WPARAM)BST_CHECKED
+			//		, (LPARAM)0
+			//	);
+			//}
 		}
 	}
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     evaluate
+//****************************************************************************
+//BOOL evaluate(UINT8& nvKey, CHAR& ch)
+//{
+//	std::pair<UINT16, std::vector<CHAR>> p = { 0, { 0 } };
+//	auto ite = g_vKey.begin();
+//	for (; ite != g_vKey.end(); ++ite)
+//	{
+//		p = *ite;
+//		//std::pair<UINT16, std::vector<CHAR>> p = *ite;
+//		if (g_oFrame.cmnd == std::get<UINT16>(p))
+//		{
+//			break;
+//		}
+//	}
+//	if (ite == g_vKey.end())
+//	{
+//		// key not found
+//		return EXIT_FAILURE;
+//	}
+//	// key found, assign character
+//	std::vector<CHAR> v = std::get<std::vector<CHAR>>(p);
+//	nvKey = v.size();
+//	ch = v.at(g_idxvKey);
+//	return EXIT_SUCCESS;
+//}
+
+//****************************************************************************
+//*                     appendTextToEditControlA
+//****************************************************************************
+BOOL appendTextToEditControlA(const HWND& hWndEditControl
+	, const std::string str
+)
+{
+	if (hWndEditControl == NULL) return EXIT_FAILURE;
+	INT i = GetWindowTextLength(hWndEditControl);
+	// set the selection at the end of the present text
+	SendMessage(hWndEditControl
+		, EM_SETSEL
+		, (WPARAM)i
+		, (LPARAM)i
+	);
+	// replace the selection with the to be appended text
+	SendMessageA(hWndEditControl
+		, EM_REPLACESEL
+		, (WPARAM)0
+		, (LPARAM)str.c_str()
+	);
 
 	return EXIT_SUCCESS;
 }

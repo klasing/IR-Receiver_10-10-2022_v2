@@ -7,30 +7,6 @@
 #include "framework.h"
 #include "IR-Receiver_10-10-2022_v3.h"
 
-// semi typedef
-std::vector<CHAR> v0 = { '0', ' ' };
-std::vector<CHAR> v1 = { '1', ';', '@', '?', '!' };
-std::vector<CHAR> v2 = { '2', 'a', 'b', 'c' };
-std::vector<CHAR> v3 = { '3', 'd', 'e', 'f' };
-std::vector<CHAR> v4 = { '4', '6', 'g', 'h', 'i', 'm', 'n', 'o' }; // 4 = 6
-std::vector<CHAR> v5 = { '5', 'j', 'k', 'l' };
-std::vector<CHAR> v6 = { '4', '6', 'g', 'h', 'i', 'm', 'n', 'o' }; // 6 = 4
-std::vector<CHAR> v7 = { '7', 'p', 'q', 'r', 's' };
-std::vector<CHAR> v8 = { '8', 't', 'u', 'v' };
-std::vector<CHAR> v9 = { '9', 'w', 'x', 'y', 'z' };
-std::pair<UINT16, std::vector<CHAR>> p0 = { 0xFAB, v0 };
-std::pair<UINT16, std::vector<CHAR>> p1 = { 0xFFE, v1 };
-std::pair<UINT16, std::vector<CHAR>> p2 = { 0xFFA, v2 };
-std::pair<UINT16, std::vector<CHAR>> p3 = { 0xFFB, v3 };
-std::pair<UINT16, std::vector<CHAR>> p4 = { 0xFEE, v4 };
-std::pair<UINT16, std::vector<CHAR>> p5 = { 0xFEB, v5 };
-std::pair<UINT16, std::vector<CHAR>> p6 = { 0xFEE, v6 };
-std::pair<UINT16, std::vector<CHAR>> p7 = { 0xFEF, v7 };
-std::pair<UINT16, std::vector<CHAR>> p8 = { 0xFBE, v8 };
-std::pair<UINT16, std::vector<CHAR>> p9 = { 0xFBB, v9 };
-std::vector<std::pair<UINT16, std::vector<CHAR>>> vKey = 
-    { p0, p1, p2, p3, p4, p5, p6, p7, p8, p9 };
-
 //****************************************************************************
 //*                     define
 //****************************************************************************
@@ -143,7 +119,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	   , 15
 	   , 15
 	   , 370
-	   , 300
+	   , 310
 	   , nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
@@ -227,6 +203,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     static HANDLE hThread = INVALID_HANDLE_VALUE;
+    //static BOOL bChoose = FALSE;
     switch (uMsg)
     {
     case WM_INITDIALOG:
@@ -234,6 +211,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         onWmInitDialog_DlgProc(g_hInst
             , hDlg
             , g_hWndStatusbar
+            //, bChoose
         );
 
         return (INT_PTR)FALSE;
@@ -259,13 +237,33 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } // eof WM_COMMAND
     case WM_TIMER:
     {
-        OutputDebugString(L"timer triggered\n");
+        onWmTimer_DlgProc(hDlg);
         return (INT_PTR)TRUE;
     } // eof WM_TIMER
     } // eof switch
 
     return (INT_PTR)FALSE;
 }
+
+//    OutputDebugString(L"timer triggered\n");
+//    bChoose = !bChoose;
+//    if (bChoose)
+//    {
+//        SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
+//            , BM_SETCHECK
+//            , (WPARAM)BST_CHECKED
+//            , (LPARAM)0
+//        );
+//    }
+//    else
+//    {
+//        SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
+//            , BM_SETCHECK
+//            , (WPARAM)BST_UNCHECKED
+//            , (LPARAM)0
+//        );
+//    }
+//    return (INT_PTR)TRUE;
 
 // Message handler for about box.
 //****************************************************************************

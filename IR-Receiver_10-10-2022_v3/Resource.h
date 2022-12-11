@@ -22,7 +22,9 @@
 #define IDC_NOF_ERROR_CRC		33002
 #define IDC_CODE				33003
 #define IDC_DESCRIPTION			33004
-#define IDC_STATUSBAR			33005
+#define IDC_CHB_CHOOSE			33005
+#define IDC_EDT					33006
+#define IDC_STATUSBAR			33007
 
 // message
 #define CONNECT_SERIAL			33100
