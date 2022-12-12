@@ -235,11 +235,11 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // through into the underlying message handler!
         break;
     } // eof WM_COMMAND
-    case WM_TIMER:
-    {
-        onWmTimer_DlgProc(hDlg);
-        return (INT_PTR)TRUE;
-    } // eof WM_TIMER
+    //case WM_TIMER:
+    //{
+    //    onWmTimer_DlgProc(hDlg);
+    //    return (INT_PTR)TRUE;
+    //} // eof WM_TIMER
     } // eof switch
 
     return (INT_PTR)FALSE;

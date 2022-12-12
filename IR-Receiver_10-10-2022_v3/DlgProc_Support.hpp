@@ -57,7 +57,11 @@ std::vector<std::pair<UINT16, std::vector<CHAR>>> g_vKey =
 { p0, p1, p2, p3, p4, p5, p6, p7, p8, p9 };
 
 //BOOL g_bChoose = FALSE;
-//UINT8 g_idxvKey = 0;
+//std::pair<UINT16, std::vector<CHAR>> g_p = { 0, { 0 } };
+//UINT8 g_nvKey = 0, g_cvKey = 0;
+UINT16 g_lastCommand = 0;
+UINT8 g_nvKey = 0;
+BOOL g_bRunningTimer = FALSE;
 
 //*****************************************************************************
 //*                     prototype
@@ -65,9 +69,14 @@ std::vector<std::pair<UINT16, std::vector<CHAR>>> g_vKey =
 BOOL				connect(HANDLE& hComm);
 DWORD WINAPI		Rx(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
-BOOL				evaluate(UINT8& nvKey, CHAR& ch);
+BOOL				processCommand(LPVOID lpVoid);
+BOOL				evaluate(CHAR& ch);
+VOID				Timerproc(HWND, UINT, UINT_PTR, DWORD);
+BOOL				evaluate(LPVOID lpVoid, CHAR& ch);
+//BOOL				evaluate(UINT8& nvKey, CHAR& ch);
 BOOL				appendTextToEditControlA(const HWND& hWndEditControl
 						, const std::string str);
+BOOL				eraseLastCharA(const HWND& hWndEditControl);
 
 //*****************************************************************************
 //*                     onWmInitDialog_DlgProc
@@ -459,36 +468,210 @@ BOOL receive(LPVOID lpVoid)
 				, (WPARAM)0
 				, (LPARAM)g_oFrame.payload
 			);
-			// evaluate g_oFrame.cmnd for choosing numeric/alphanumeric character
-			//UINT8 nvKey = 0;
-			//CHAR ch;
-			//if (evaluate(nvKey, ch) == EXIT_SUCCESS)
-			//{
-			//	// the character is a numeric/alphanumeric character, so place it
-			//	// in the edit control IDC_EDT
-			//	std::string str = "";
-			//	str.push_back(ch);
-			//	appendTextToEditControlA(GetDlgItem((HWND)lpVoid, IDC_EDT)
-			//		, str
-			//	);
-			//	// create a timer
-			//	SetTimer((HWND)lpVoid
-			//		, IDT_TIMER
-			//		, 2000
-			//		, (TIMERPROC)NULL
-			//	);
-			//	g_bChoose = TRUE;
-			//	SendMessage(GetDlgItem((HWND)lpVoid, IDC_CHB_CHOOSE)
-			//		, BM_SETCHECK
-			//		, (WPARAM)BST_CHECKED
-			//		, (LPARAM)0
-			//	);
-			//}
+			processCommand(lpVoid);
 		}
 	}
 
 	return EXIT_SUCCESS;
 }
+
+//****************************************************************************
+//*                     processCommand
+//****************************************************************************
+BOOL processCommand(LPVOID lpVoid)
+{
+	CHAR ch = '\0';
+	if (evaluate(lpVoid, ch) == EXIT_SUCCESS)
+	{
+		// the character is a numeric/alphanumeric character, so place it
+		// in the edit control IDC_EDT
+		std::string str = "";
+		str.push_back(ch);
+		appendTextToEditControlA(GetDlgItem((HWND)lpVoid, IDC_EDT)
+			, str
+		);
+		g_lastCommand = g_oFrame.cmnd;
+		// start a timer
+		SetTimer((HWND)lpVoid
+			, IDT_TIMER
+			, 2000
+			, (TIMERPROC)Timerproc
+		);
+		g_bRunningTimer = TRUE;
+		// check checkbox control IDC_CHB_CHOOSE
+		SendMessage(GetDlgItem((HWND)lpVoid, IDC_CHB_CHOOSE)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		);
+	}
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     evaluate
+//****************************************************************************
+BOOL evaluate(LPVOID lpVoid, CHAR& ch)
+{
+	std::pair<UINT16, std::vector<CHAR>> p = { 0, { 0 } };
+	auto ite = g_vKey.begin();
+	for (; ite != g_vKey.end(); ++ite)
+	{
+		p = *ite;
+		if (g_oFrame.cmnd == std::get<UINT16>(p))
+		{
+			break;
+		}
+	}
+	if (ite == g_vKey.end())
+	{
+		// key not found
+		return EXIT_FAILURE;
+	}
+	// key found
+	std::vector<CHAR> v = std::get<std::vector<CHAR>>(p);
+	if (g_oFrame.cmnd == g_lastCommand)
+	{
+		if (g_bRunningTimer)
+		{
+			eraseLastCharA(GetDlgItem((HWND)lpVoid, IDC_EDT));
+			g_nvKey = ((++g_nvKey) % v.size());
+			// assign character
+			ch = v.at(g_nvKey);
+		}
+		else
+		{
+			g_nvKey = 0;
+			ch = v.at(g_nvKey);
+		}
+	}
+	else
+	{
+		g_nvKey = 0;
+		ch = v.at(g_nvKey);
+	}
+	return EXIT_SUCCESS;
+}
+
+//	CHAR ch = '\0';
+//	if (evaluate(ch) == EXIT_SUCCESS)
+//	{
+//		if (g_lastCommand == 0)
+//		{
+//			// the character is a numeric/alphanumeric character, so place it
+//			// in the edit control IDC_EDT
+//			std::string str = "";
+//			str.push_back(ch);
+//			appendTextToEditControlA(GetDlgItem((HWND)lpVoid, IDC_EDT)
+//				, str
+//			);
+//			// start a timer
+//			SetTimer((HWND)lpVoid
+//				, IDT_TIMER
+//				, 2000
+//				, (TIMERPROC)Timerproc
+//			);
+//			g_bRunningTimer = TRUE;
+//			// check checkbox control IDC_CHB_CHOOSE
+//			SendMessage(GetDlgItem((HWND)lpVoid, IDC_CHB_CHOOSE)
+//				, BM_SETCHECK
+//				, (WPARAM)BST_CHECKED
+//				, (LPARAM)0
+//			);
+//			g_lastCommand = g_oFrame.cmnd;
+//		}
+//		else
+//		{
+//
+//		}
+//		//if (g_oFrame.cmnd == g_lastCommand)
+//		//{
+//		//	if (g_bRunningTimer)
+//		//	{
+//		//		// increase the index, with a circular buffer style,
+//		//		// to point to a following character option
+//		//		g_nvKey = ((g_nvKey + 1) % g_cvKey);
+//		//		// get the following character option
+//		//		CHAR ch = std::get<std::vector<CHAR>>(g_p).at(g_nvKey);
+//		//		// replace the last character in the edit control IDC_EDT
+//		//		// with the following character option
+//		//		str.clear();
+//		//		str.push_back(0x08);
+//		//		str.push_back(ch);
+//		//		appendTextToEditControlA(GetDlgItem((HWND)lpVoid, IDC_EDT)
+//		//			, str
+//		//		);
+//		//		// hold the last received character
+//		//						
+//		//		// re-time the timer by coalescing the timer
+//		//		SetCoalescableTimer((HWND)lpVoid
+//		//			, IDT_TIMER
+//		//			, 2000
+//		//			, (TIMERPROC)Timerproc
+//		//			, 0
+//		//		);
+//		//	}
+//		//	else
+//		//	{
+//		//		// place a following character in the edit control IDC_EDT
+//
+//		//		// reset g_lastCommand to zero
+//		//	}
+//		//}
+//	}
+//
+//	return EXIT_SUCCESS;
+//}
+
+//****************************************************************************
+//*                     Timerproc
+//****************************************************************************
+VOID Timerproc(HWND hDlg
+	, UINT uint			// 275??
+	, UINT_PTR uint_ptr	// matches IDT_TIMER 33200
+	, DWORD dw			// variable value??
+)
+{
+	OutputDebugString(L"Timerproc\n");
+	// kill the timer
+	KillTimer(hDlg, uint_ptr);
+	g_bRunningTimer = FALSE;
+	// uncheck checkbox control IDC_CHB_CHOOSE
+	SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
+		, BM_SETCHECK
+		, (WPARAM)BST_UNCHECKED
+		, (LPARAM)0
+	);
+}
+
+//****************************************************************************
+//*                     evaluate
+//****************************************************************************
+//BOOL evaluate(CHAR& ch)
+//{
+//	//std::pair<UINT16, std::vector<CHAR>> p = { 0, { 0 } };
+//	auto ite = g_vKey.begin();
+//	for (; ite != g_vKey.end(); ++ite)
+//	{
+//		g_p = *ite;
+//		if (g_oFrame.cmnd == std::get<UINT16>(g_p))
+//		{
+//			break;
+//		}
+//	}
+//	if (ite == g_vKey.end())
+//	{
+//		// key not found
+//		return EXIT_FAILURE;
+//	}
+//	// key found
+//	std::vector<CHAR> v = std::get<std::vector<CHAR>>(g_p);
+//	// get size vKey
+//	g_cvKey = v.size();
+//	// assign character
+//	ch = v.at(0);
+//	return EXIT_SUCCESS;
+//}
 
 //****************************************************************************
 //*                     evaluate
@@ -542,3 +725,56 @@ BOOL appendTextToEditControlA(const HWND& hWndEditControl
 
 	return EXIT_SUCCESS;
 }
+
+//****************************************************************************
+//*                     eraseLastCharA
+//****************************************************************************
+BOOL eraseLastCharA(const HWND & hWndEditControl)
+{
+	if (hWndEditControl == NULL) return EXIT_FAILURE;
+	INT i = GetWindowTextLength(hWndEditControl);
+	if (i == 0) return EXIT_FAILURE;
+	// select the last char in the present text
+	SendMessageA(hWndEditControl
+		, EM_SETSEL
+		, (WPARAM)i - 1
+		, (LPARAM)i
+	);
+	// replace the selection with an empty string, i.d. erasing the last char 
+	SendMessageA(hWndEditControl
+		, EM_REPLACESEL
+		, (WPARAM)0
+		, (LPARAM)""
+	);
+
+	return EXIT_SUCCESS;
+
+}
+
+
+			// evaluate g_oFrame.cmnd for choosing numeric/alphanumeric character
+			//UINT8 nvKey = 0;
+			//CHAR ch;
+			//if (evaluate(nvKey, ch) == EXIT_SUCCESS)
+			//{
+			//	// the character is a numeric/alphanumeric character, so place it
+			//	// in the edit control IDC_EDT
+			//	std::string str = "";
+			//	str.push_back(ch);
+			//	appendTextToEditControlA(GetDlgItem((HWND)lpVoid, IDC_EDT)
+			//		, str
+			//	);
+			//	// create a timer
+			//	SetTimer((HWND)lpVoid
+			//		, IDT_TIMER
+			//		, 2000
+			//		, (TIMERPROC)NULL
+			//	);
+			//	g_bChoose = TRUE;
+			//	SendMessage(GetDlgItem((HWND)lpVoid, IDC_CHB_CHOOSE)
+			//		, BM_SETCHECK
+			//		, (WPARAM)BST_CHECKED
+			//		, (LPARAM)0
+			//	);
+			//}
+
