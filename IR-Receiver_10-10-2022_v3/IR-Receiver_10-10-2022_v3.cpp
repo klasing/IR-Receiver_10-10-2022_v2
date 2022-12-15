@@ -203,7 +203,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     static HANDLE hThread = INVALID_HANDLE_VALUE;
-    //static BOOL bChoose = FALSE;
     switch (uMsg)
     {
     case WM_INITDIALOG:
@@ -235,35 +234,10 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // through into the underlying message handler!
         break;
     } // eof WM_COMMAND
-    //case WM_TIMER:
-    //{
-    //    onWmTimer_DlgProc(hDlg);
-    //    return (INT_PTR)TRUE;
-    //} // eof WM_TIMER
     } // eof switch
 
     return (INT_PTR)FALSE;
 }
-
-//    OutputDebugString(L"timer triggered\n");
-//    bChoose = !bChoose;
-//    if (bChoose)
-//    {
-//        SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
-//            , BM_SETCHECK
-//            , (WPARAM)BST_CHECKED
-//            , (LPARAM)0
-//        );
-//    }
-//    else
-//    {
-//        SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
-//            , BM_SETCHECK
-//            , (WPARAM)BST_UNCHECKED
-//            , (LPARAM)0
-//        );
-//    }
-//    return (INT_PTR)TRUE;
 
 // Message handler for about box.
 //****************************************************************************

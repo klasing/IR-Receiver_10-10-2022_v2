@@ -142,9 +142,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Connect2SQLite.hpp" />
+    <ClInclude Include="Crc_Support.hpp" />
     <ClInclude Include="DlgProc_Support.hpp" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Statusbar.hpp" />
+    <ClInclude Include="Struct_Support.hpp" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TMP102_temp_sensor_30-10-2022_v1.h" />
   </ItemGroup>

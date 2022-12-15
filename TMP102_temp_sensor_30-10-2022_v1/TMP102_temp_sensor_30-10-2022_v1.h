@@ -9,4 +9,7 @@
 
 #include "sqlite3.h"
 #include "Connect2SQlite.hpp"
+#include "Statusbar.hpp"
+#include "Crc_Support.hpp"
+#include "Struct_Support.hpp"
 #include "DlgProc_Support.hpp"

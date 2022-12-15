@@ -1,4 +1,623 @@
 #pragma once
+
+//****************************************************************************
+//*                     global
+//****************************************************************************
+HWND g_hWndLV_Cnfg = NULL;
+HWND g_hWndLV_T_lo = NULL;
+HWND g_hWndLV_T_hi = NULL;
+HWND g_hWndLV_Treg = NULL;
+HBRUSH g_brush = { 0 };
+HBRUSH g_redBrush = CreateSolidBrush(RGB(0xFF, 0, 0));
+HBRUSH g_greenBrush = CreateSolidBrush(RGB(0, 0xFF, 0));
+HBRUSH g_bkColorDlgBrush = CreateSolidBrush(RGB(0xF3, 0xF3, 0xF3));
+RECT g_rect = { 0 };
+Statusbar g_oStatusbar;
+HANDLE g_hComm = INVALID_HANDLE_VALUE;
+BOOL g_bContinueTxRx = FALSE;
+HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
+UINT g_cTransmission = 0;
+UINT g_cErrorCrc = 0;
+BIT12TEMP g_oTempLo{ 0 };
+BIT12TEMP g_oTempHi{ 0 };
+// TODO: initializing a derived struct is not yet under control
+BIT12MSRDTEMP g_oMsrdTemp;
+CONFIGURATION g_oConfiguration{ 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+FRAME g_oFrameEx = { SOH, 0, STX, 0, ETX, ETB, EOT };
+// no need to initialise
+std::queue<tagFRAME> g_queue;
+
+//*****************************************************************************
+//*                     prototype
+//*****************************************************************************
+BOOL				connect(HANDLE& hComm);
+DWORD WINAPI		TxRx(LPVOID lpVoid);
+BOOL                transmit();
+BOOL                receive(LPVOID lpVoid);
+
+//*****************************************************************************
+//*                     onWmInitDialog_DlgProc
+//*****************************************************************************
+BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
+	, const HWND& hDlg
+)
+{
+	// set edit control IDC_STATUS_CONNECT text
+	SendMessage(GetDlgItem(hDlg, IDC_STATUS_CONNECT)
+		, WM_SETTEXT
+		, (WPARAM)0
+		, (LPARAM)L"Disconnected"
+	);
+
+	g_oStatusbar.createStatusbar(hInst
+		, hDlg
+		, 4
+	);
+
+	// create listview CONFIGURATION /////////////////////////////////////
+	g_hWndLV_Cnfg = createListView(hInst, hDlg, IDC_LV_CONFIGURATION);
+	// add column to listview
+	addColumn(hInst
+		, g_hWndLV_Cnfg
+		, 12
+		, IDS_LVCONFIG_COL0, IDS_LVCONFIG_COL1, IDS_LVCONFIG_COL2
+		, IDS_LVCONFIG_COL3, IDS_LVCONFIG_COL4, IDS_LVCONFIG_COL5
+		, IDS_LVCONFIG_COL6, IDS_LVCONFIG_COL7, IDS_LVCONFIG_COL8
+		, IDS_LVCONFIG_COL9, IDS_LVCONFIG_COL10, IDS_LVCONFIG_COL11
+	);
+	// adjust column with to the header text width
+	// and add one row with empty listview item
+	for (uint8_t i = 0; i < 12; i++)
+	{
+		ListView_SetColumnWidth(g_hWndLV_Cnfg, i, LVSCW_AUTOSIZE_USEHEADER);
+		createListViewItem(g_hWndLV_Cnfg
+			, (PWCHAR)L" "
+			, 0
+			, i
+		);
+	}
+
+	// create listview TEMPERATURE LOW ///////////////////////////////////
+	g_hWndLV_T_lo = createListView(hInst, hDlg, IDC_LV_T_LO);
+	// add column to listview
+	addColumn(hInst
+		, g_hWndLV_T_lo
+		, 16
+		, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+		, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+		, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+		, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+	);
+	// adjust column with to the header text width
+	// and add one row with empty listview item
+	for (uint8_t i = 0; i < 16; i++)
+	{
+		ListView_SetColumnWidth(g_hWndLV_T_lo, i, LVSCW_AUTOSIZE_USEHEADER);
+		createListViewItem(g_hWndLV_T_lo
+			, (PWCHAR)L" "
+			, 0
+			, i
+		);
+	}
+
+	// create listview TEMPERATURE HIGH //////////////////////////////////
+	g_hWndLV_T_hi = createListView(hInst, hDlg, IDC_LV_T_HI);
+	// add column to listview
+	addColumn(hInst
+		, g_hWndLV_T_hi
+		, 16
+		, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+		, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+		, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+		, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+	);
+	// adjust column with to the header text width
+	// and add one row with empty listview item
+	for (uint8_t i = 0; i < 16; i++)
+	{
+		ListView_SetColumnWidth(g_hWndLV_T_hi, i, LVSCW_AUTOSIZE_USEHEADER);
+		createListViewItem(g_hWndLV_T_hi
+			, (PWCHAR)L" "
+			, 0
+			, i
+		);
+	}
+
+	// create listview TEMPERATURE REGISTER //////////////////////////////
+	g_hWndLV_Treg = createListView(hInst, hDlg, IDC_LV_TREG);
+	// add column to listview
+	addColumn(hInst
+		, g_hWndLV_Treg
+		, 16
+		, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+		, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+		, IDS_LVTEMP_COL0, IDS_LVTEMP_COL1, IDS_LVTEMP_COL2, IDS_LVTEMP_COL3
+		, IDS_LVTEMP_COL4, IDS_LVTEMP_COL5, IDS_LVTEMP_COL6, IDS_LVTEMP_COL7
+	);
+	// adjust column with to the header text width
+	// and add one row with empty listview item
+	for (uint8_t i = 0; i < 16; i++)
+	{
+		ListView_SetColumnWidth(g_hWndLV_Treg, i, LVSCW_AUTOSIZE_USEHEADER);
+		createListViewItem(g_hWndLV_Treg
+			, (PWCHAR)L" "
+			, 0
+			, i
+		);
+	}
+
+	// populate combobox fault queue /////////////////////////////////////////
+	SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"1"
+	);
+	SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"2"
+	);
+	SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"4"
+	);
+	SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"6"
+	);
+	// set the default value for the fault queue
+	SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+		, CB_SETCURSEL
+		, (WPARAM)0
+		, (LPARAM)0
+	);
+
+	// populate combobox polarity alert //////////////////////////////////////
+	SendMessage(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"Active low"
+	);
+	SendMessage(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"Active high"
+	);
+	// set the default value for the fault queue
+	SendMessage(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT)
+		, CB_SETCURSEL
+		, (WPARAM)0
+		, (LPARAM)0
+	);
+
+	// populate combobox mode thermostat /////////////////////////////////////
+	SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"Comparator"
+	);
+	SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"Interrupt"
+	);
+	// set the default value for the mode thermostat
+	SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
+		, CB_SETCURSEL
+		, (WPARAM)0
+		, (LPARAM)0
+	);
+
+	// populate combobox rate conversion /////////////////////////////////////
+	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"0.25"
+	);
+	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"1"
+	);
+	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"4"
+	);
+	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+		, CB_ADDSTRING
+		, (WPARAM)0
+		, (LPARAM)L"8"
+	);
+	// set the default value for the rate conversion
+	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+		, CB_SETCURSEL
+		, (WPARAM)2
+		, (LPARAM)0
+	);
+
+	// initialize rect
+	g_rect.left = 450;
+	g_rect.top = 362;
+	g_rect.right = 503;
+	g_rect.bottom = 372;
+
+	// default brush color
+	g_brush = g_bkColorDlgBrush;
+
+	return EXIT_SUCCESS;
+}
+
+//*****************************************************************************
+//*                     onWmSize_DlgProc
+//*****************************************************************************
+BOOL onWmSize_DlgProc(const HWND& hDlg
+)
+{
+	// CONFIGURATION
+	MoveWindow(g_hWndLV_Cnfg
+		, 20, 122
+		, 336
+		, 40
+		, TRUE
+	);
+	// TEMPERATURE LOW
+	MoveWindow(g_hWndLV_T_lo
+		, 20, 187
+		, 417
+		, 40
+		, TRUE
+	);
+	// TEMPERATURE HIGH
+	MoveWindow(g_hWndLV_T_hi
+		, 20, 252
+		, 417
+		, 40
+		, TRUE
+	);
+	// TEMPERATURE REGISTER
+	MoveWindow(g_hWndLV_Treg
+		, 20, 317
+		, 417
+		, 40
+		, TRUE
+	);
+
+	g_oStatusbar.setStatusbar(hDlg);
+
+	return EXIT_SUCCESS;
+}
+
+//*****************************************************************************
+//*                     onWmCommand_DlgProc
+//*****************************************************************************
+INT_PTR onWmCommand_DlgProc(const HWND& hDlg
+	, const WPARAM& wParam
+)
+{
+	switch (LOWORD(wParam))
+	{
+	case CONNECT_SERIAL:
+	{
+		if (connect(g_hComm) == EXIT_SUCCESS)
+		{
+			// set text edit control IDC_STATUS
+			SendMessage(GetDlgItem(hDlg, IDC_STATUS_CONNECT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)L"Connected"
+			);
+
+			// enable/disable button
+			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
+			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
+			EnableWindow(GetDlgItem(hDlg, RESTART_SERIAL), TRUE);
+
+			// enable lo/hi
+			EnableWindow(GetDlgItem(hDlg, IDC_T_LO_CLCS), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_T_HI_CLCS), TRUE);
+
+			// enable setting
+			EnableWindow(GetDlgItem(hDlg, TMP102_RESET), TRUE);
+			// hold disabled untill IDC_CHB_SHUTDOWN is checked
+			//EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION), TRUE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_EXTENDED), TRUE);
+			EnableWindow(GetDlgItem(hDlg, APPLY_SETTING), TRUE);
+
+			// clear statusbar
+			g_oStatusbar.setTextStatusbar(0, L"");
+
+			g_oFrameEx.cmnd = RD_REG_CNFG;
+			g_queue.push(g_oFrameEx);
+			g_oFrameEx.cmnd = RD_REG_T_LO;
+			g_queue.push(g_oFrameEx);
+			g_oFrameEx.cmnd = RD_REG_T_HI;
+			g_queue.push(g_oFrameEx);
+			g_oFrameEx.cmnd = RD_REG_TEMP;
+			g_queue.push(g_oFrameEx);
+
+			// enable infinite loop
+			g_bContinueTxRx = TRUE;
+
+			// create thread to continuously transmit and receive
+			DWORD dwThreadIdTxRx = 0;
+			g_hThreadTxRx = CreateThread(NULL
+				, 0
+				, TxRx
+				, (LPVOID)hDlg
+				, CREATE_SUSPENDED // wait until started
+				, &dwThreadIdTxRx
+			);
+
+			// start thread exact on this command
+			if (g_hThreadTxRx) ResumeThread(g_hThreadTxRx);
+		}
+		else
+		{
+			// can't connect with STM32, probably the connection cable is loose
+			g_oStatusbar.setTextStatusbar(0, L"Can't connect");
+		}
+		return (INT_PTR)TRUE;
+	} // eof CONNECT_SERIAL
+	case DISCONNECT_SERIAL:
+	{
+		// terminate thread
+		g_bContinueTxRx = FALSE;
+		g_hThreadTxRx = INVALID_HANDLE_VALUE;
+
+		if (g_hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
+
+		if (CloseHandle(g_hComm))
+		{
+			g_hComm = INVALID_HANDLE_VALUE;
+
+			// set text edit control IDC_STATUS
+			SendMessage(GetDlgItem(hDlg, IDC_STATUS_CONNECT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)L"Disconnected"
+			);
+
+			// enable/disable button
+			EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), TRUE);
+			EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
+			EnableWindow(GetDlgItem(hDlg, RESTART_SERIAL), FALSE);
+
+			// disable lo/hi
+			EnableWindow(GetDlgItem(hDlg, IDC_T_LO_CLCS), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_T_HI_CLCS), FALSE);
+
+			// disable setting
+			EnableWindow(GetDlgItem(hDlg, TMP102_RESET), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), FALSE);
+			SendMessage(GetDlgItem(hDlg, IDC_RESOLUTION)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)L"Read only"
+			);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN), FALSE);
+			EnableWindow(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION), FALSE);
+			SendMessage(GetDlgItem(hDlg, IDC_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)L"Read only"
+			);
+			EnableWindow(GetDlgItem(hDlg, IDC_CHB_EXTENDED), FALSE);
+			EnableWindow(GetDlgItem(hDlg, APPLY_SETTING), FALSE);
+
+			// erase alert bit indicator
+			g_brush = g_bkColorDlgBrush;
+			InvalidateRect(hDlg, &g_rect, TRUE);
+		}
+		
+		return (INT_PTR)TRUE;
+	} // eof DISCONNECT_SERIAL
+	case RESTART_SERIAL:
+	{
+		// reset g_cTransmission
+		g_cTransmission = 0;
+		// clear edittext IDC_NOF_TRANSMISSION
+		SendMessageA(GetDlgItem(hDlg, IDC_NOF_TRANSMISSION)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)""
+		);
+		// clear edittext IDC_NOF_ERROR_CRC
+		SendMessageA(GetDlgItem(hDlg, IDC_NOF_ERROR_CRC)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)""
+		);
+		// send message DISCONNECT_SERIAL
+		SendMessage(hDlg
+			, WM_COMMAND
+			, (WPARAM)DISCONNECT_SERIAL
+			, (LPARAM)0
+		);
+		// hold for two second
+		Sleep(2000);
+		// send message CONNECT_SERIAL
+		SendMessage(hDlg
+			, WM_COMMAND
+			, (WPARAM)CONNECT_SERIAL
+			, (LPARAM)0
+		);
+
+		return (INT_PTR)TRUE;
+	} // eof RESTART_SERIAL
+	case TMP102_RESET:
+	{
+
+		return (INT_PTR)TRUE;
+	} // eof TMP102_RESET
+	case APPLY_SETTING:
+	{
+
+		return (INT_PTR)TRUE;
+	} // eof APPLY_SETTING
+	case IDC_CHB_ONESHOT:
+	{
+
+		return (INT_PTR)TRUE;
+	} // eof IDC_CHB_ONESHOT
+	case IDC_CHB_SHUTDOWN:
+	{
+
+		return (INT_PTR)TRUE;
+	} // eof IDC_CHB_SHUTDOWN
+	case IDC_CHB_EXTENDED:
+	{
+
+		return (INT_PTR)TRUE;
+	} // eof IDC_CHB_EXTENDED
+	} // eof switch
+
+	return (INT_PTR)FALSE;
+}
+
+//*****************************************************************************
+//*                     onWmPaint_DlgProc
+//*****************************************************************************
+BOOL onWmPaint_DlgProc(const HWND& hDlg)
+{
+	PAINTSTRUCT ps;
+	HDC hdc = BeginPaint(hDlg, &ps);
+	SelectObject(hdc, g_brush);
+	Rectangle(hdc, g_rect.left, g_rect.top, g_rect.right, g_rect.bottom);
+	EndPaint(hDlg, &ps);
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     connect
+//****************************************************************************
+BOOL connect(HANDLE& hComm)
+{
+	// create file
+	hComm = CreateFile(L"\\\\.\\COM3"
+		, GENERIC_READ | GENERIC_WRITE
+		, 0
+		, NULL
+		, OPEN_EXISTING
+		, FILE_ATTRIBUTE_NORMAL
+		//, FILE_FLAG_OVERLAPPED
+		, NULL
+	);
+	if (hComm == INVALID_HANDLE_VALUE)
+	{
+		return EXIT_FAILURE;
+	}
+
+	// set structure to initialize the communication port
+	DCB dcb;
+	dcb.DCBlength = sizeof(DCB);
+	dcb.BaudRate = 115200;
+	dcb.fBinary = 1;
+	dcb.fParity = 0;
+	dcb.fOutxCtsFlow = 0;
+	dcb.fOutxDsrFlow = 0;
+	dcb.fDtrControl = 1;
+	dcb.fDsrSensitivity = 0;
+	dcb.fTXContinueOnXoff = 0;
+	dcb.fOutX = 0;
+	dcb.fInX = 0;
+	dcb.fErrorChar = 0;
+	dcb.fNull = 0;
+	dcb.fRtsControl = 1;
+	dcb.fAbortOnError = 0;
+	dcb.fDummy2 = 0;
+	dcb.wReserved = 0;
+	dcb.ByteSize = 8;
+	dcb.Parity = 0;
+	dcb.StopBits = 0;
+	dcb.XoffChar = 0;
+	dcb.XoffChar = 0;
+	dcb.ErrorChar = 24;
+	dcb.EvtChar = 0;
+	dcb.wReserved1 = 0;
+	dcb.ByteSize = 8;
+	dcb.StopBits = 0;
+	// initialize the communication port
+	if (!SetCommState(hComm, (LPDCB)&dcb))
+	{
+		return EXIT_FAILURE;
+	}
+
+	// set structure for the communication port timeout
+	COMMTIMEOUTS commtimeouts;
+	commtimeouts.ReadIntervalTimeout = MAXDWORD;
+	commtimeouts.ReadTotalTimeoutMultiplier = 0;
+	commtimeouts.ReadTotalTimeoutConstant = 0;
+	commtimeouts.WriteTotalTimeoutMultiplier = 0;
+	commtimeouts.WriteTotalTimeoutConstant = 0;
+	// set communication port timeout
+	if (!SetCommTimeouts(hComm, (LPCOMMTIMEOUTS)&commtimeouts))
+	{
+		return EXIT_FAILURE;
+	}
+
+	// set the communication port mask bit to capture event
+	if (!SetCommMask(hComm, EV_TXEMPTY | EV_RXCHAR))
+	{
+		return EXIT_FAILURE;
+	}
+
+	// set in/out queue buffers
+	if (!SetupComm(hComm, BUFFER_MAX_SERIAL, BUFFER_MAX_SERIAL))
+	{
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     TxRx
+//****************************************************************************
+DWORD WINAPI TxRx(LPVOID lpVoid)
+{
+	// infinite loop
+	while (g_bContinueTxRx)
+	{
+		transmit();
+		Sleep(DELAY_4HZ_SERIAL);
+		receive(lpVoid);
+		Sleep(DELAY_4HZ_SERIAL);
+	}
+	return 0;
+}
+
+//****************************************************************************
+//*                     transmit
+//****************************************************************************
+BOOL transmit()
+{
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     receive
+//****************************************************************************
+BOOL receive(LPVOID lpVoid)
+{
+	return EXIT_SUCCESS;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// waste
+/*
+#pragma once
 //****************************************************************************
 //*                     note
 //*
@@ -13,222 +632,6 @@
 #include "framework.h"
 //#include "TMP102_temp_sensor_30-10-2022_v1.h"
 
-//****************************************************************************
-//*                     typedef
-//*
-//* when writing to the device, the device will respond with OK in the payload
-//* O=79 0x4F 0100 1111
-//* K=75 0x4B 0100 1011
-//* payload=0x4F4B
-//****************************************************************************
-typedef struct tagFRAME
-{
-	const CHAR soh;
-	UINT16 cmnd;
-	const CHAR stx;
-	INT16 payload;
-	const CHAR etx;
-	const CHAR etb;
-	const CHAR eot;
-} FRAME, *PFRAME;
-
-// bitfield CONFIGURATION ////////////////////////////////////////////////////
-typedef struct tagCONFIGURATION
-{
-	UINT8 oneShot : 1;
-	UINT8 resolution : 2;
-	UINT8 faultQueue : 2;
-	UINT8 polarity : 1;
-	UINT8 modeThermostat : 1;
-	UINT8 shutDown : 1;
-	UINT8 conversionRate : 2;
-	UINT8 alert : 1;
-	UINT8 modeExtended : 1;
-	UINT8 : 4;
-	VOID setHiByte(const UINT8& byte)
-	{
-		oneShot = (byte & 0x80) >> 7;
-		resolution = (byte & 0x60) >> 5;
-		faultQueue = (byte & 0x18) >> 3;
-		polarity = (byte & 0x04) >> 2;
-		modeThermostat = (byte & 0x02) >> 1;
-		shutDown = byte & 0x01;
-	}
-	UINT16 getHiByte()
-	{
-		UINT16 word = 0;
-		word = (oneShot << 7)
-			| (resolution << 5)
-			| (faultQueue << 3)
-			| (polarity << 2)
-			| (modeThermostat << 1)
-			| shutDown;
-		return word;
-	}
-	VOID setLoByte(const UINT8& byte)
-	{
-		conversionRate = (byte & 0xC0) >> 6;
-		alert = (byte & 0x20) >> 5;
-		modeExtended = (byte & 0x10) >> 4;
-	}
-	UINT16 getLoByte()
-	{
-		UINT16 word = 0;
-		word = (conversionRate << 6)
-			| (alert << 5)
-			| (modeExtended << 4);
-		return word;
-	}
-	VOID setOneShot(const BOOL& b)
-	{
-		oneShot = (b) ? TRUE : FALSE;
-	}
-	BOOL getOneShot()
-	{
-		return oneShot;
-	}
-	// read only
-	//VOID setResolution(const CHAR& byte)
-	//{
-	//	resolution = byte & 0x03;
-	//}
-	UINT8 getResolution()
-	{
-		return resolution;
-	}
-	VOID setFaultQueue(const UINT8& byte)
-	{
-		faultQueue = byte & 0x03;
-	}
-	UINT8 getFaultQueue()
-	{
-		return faultQueue;
-	}
-	VOID setPolarity(const BOOL& b)
-	{
-		polarity = (b) ? TRUE : FALSE;
-	}
-	BOOL getPolarity()
-	{
-		return polarity;
-	}
-	VOID setModeThermostat(const BOOL& b)
-	{
-		modeThermostat = (b) ? TRUE : FALSE;
-	}
-	BOOL getModeThermostat()
-	{
-		return modeThermostat;
-	}
-	VOID setShutDown(const BOOL& b)
-	{
-		shutDown = (b) ? TRUE : FALSE;
-	}
-	BOOL getShutDown()
-	{
-		return shutDown;
-	}
-	VOID setConversionRate(const UINT8& byte)
-	{
-		conversionRate = byte & 0x03;
-	}
-	UINT8 getConversionRate()
-	{
-		return conversionRate;
-	}
-	// read only
-	//VOID setAlert(const BOOL& b)
-	//{
-	//	alert = (b) ? TRUE : FALSE;
-	//}
-	BOOL getAlert()
-	{
-		return alert;
-	}
-	VOID setModeExtended(const BOOL& b)
-	{
-		modeExtended = (b) ? TRUE : FALSE;
-	}
-	BOOL getModeExtended()
-	{
-		return modeExtended;
-	}
-} CONFIGURATION, *PCONFIGURATION;
-
-// 12-bit bitfield TEMPERATURE ///////////////////////////////////////////////
-typedef struct tagBIT12TEMP
-{
-	INT16 temp : 12;
-	FLOAT fTempInClcs = 0.;
-	FLOAT fTempInClcsTimes100 = 0.;
-	CHAR chBufferTempInCelcius[LEN_TEMP_IN_CLCS] = { 0 };
-	VOID setHiByte(INT8 byte)
-	{
-		// must be called before setLoByte is called
-		temp = byte << 4;
-	}
-	VOID setLoByte(UINT8 byte)
-	{
-		temp |= byte >> 4;
-	}
-	// this member func will also set:
-	// fTempInClcs, 
-	// fTempInClcsTimes100, and
-	// chBufferTempInCelcius
-	CHAR* getTempInClcs_toStringA()
-	{
-		INT16 val = temp;
-		if (val & 0x8000)
-		{
-			val = ~val;
-			val += 1;
-		}
-		fTempInClcs = (FLOAT)(val * 0.0625);
-		fTempInClcsTimes100 = fTempInClcs * 100;
-		sprintf_s(chBufferTempInCelcius
-			, LEN_TEMP_IN_CLCS
-			, "%d.%02d"
-			, ((UINT)fTempInClcsTimes100 / 100)
-			, ((UINT)fTempInClcsTimes100 % 100)
-		);
-		return chBufferTempInCelcius;
-	}
-	CHAR* getTempInClcs_toStringA_()
-	{
-		sprintf_s(chBufferTempInCelcius
-			, LEN_TEMP_IN_CLCS
-			, "%d.%02d"
-			, ((UINT)fTempInClcsTimes100 / 100)
-			, ((UINT)fTempInClcsTimes100 % 100)
-		);
-		return chBufferTempInCelcius;
-	}
-} BIT12TEMP, *PBIT12TEMP;
-
-// 12-bit bitfield MEASURED TEMPERATURE //////////////////////////////////////
-typedef struct tagBIT12MSRDTEMP : tagBIT12TEMP
-{
-	UINT8 alert : 1;
-	UINT8 modeExtended : 1;
-	VOID setAlert(UINT8 byte)
-	{
-		alert = (byte & 0x02) >> 1;
-	}
-	BOOL getAlert()
-	{
-		return alert;
-	}
-	VOID setModeExtended(UINT8 byte)
-	{
-		modeExtended = byte & 0x01;
-	}
-	BOOL getModeExtended()
-	{
-		return modeExtended;
-	}
-} BIT12MSRDTEMP, *PBIT12MSRDTEMP;
-
-// 13-bit bitfield TEMPERATURE ///////////////////////////////////////////////
 
 //****************************************************************************
 //*                     extern
@@ -334,7 +737,7 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 	// and add one row with empty listview item
 	for (uint8_t i = 0; i < 12; i++)
 	{
-		ListView_SetColumnWidth(hWndLV_Cnfg, i, LVSCW_AUTOSIZE_USEHEADER);
+		istView_SetColumnWidth(hWndLV_Cnfg, i, LVSCW_AUTOSIZE_USEHEADER);
 		createListViewItem(hWndLV_Cnfg
 			, (PWCHAR)L" "
 			, 0
@@ -1919,3 +2322,4 @@ BOOL updateRegister(const HWND& hWndDlgItem
 	}
 	return EXIT_SUCCESS;
 }
+*/

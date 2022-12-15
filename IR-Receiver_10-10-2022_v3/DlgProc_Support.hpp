@@ -56,9 +56,6 @@ std::pair<UINT16, std::vector<CHAR>> p9 = { 0xFBB, v9 };
 std::vector<std::pair<UINT16, std::vector<CHAR>>> g_vKey =
 { p0, p1, p2, p3, p4, p5, p6, p7, p8, p9 };
 
-//BOOL g_bChoose = FALSE;
-//std::pair<UINT16, std::vector<CHAR>> g_p = { 0, { 0 } };
-//UINT8 g_nvKey = 0, g_cvKey = 0;
 UINT16 g_lastCommand = 0;
 UINT8 g_nvKey = 0;
 BOOL g_bRunningTimer = FALSE;
@@ -73,7 +70,6 @@ BOOL				processCommand(LPVOID lpVoid);
 BOOL				evaluate(CHAR& ch);
 VOID				Timerproc(HWND, UINT, UINT_PTR, DWORD);
 BOOL				evaluate(LPVOID lpVoid, CHAR& ch);
-//BOOL				evaluate(UINT8& nvKey, CHAR& ch);
 BOOL				appendTextToEditControlA(const HWND& hWndEditControl
 						, const std::string str);
 BOOL				eraseLastCharA(const HWND& hWndEditControl);
@@ -84,7 +80,6 @@ BOOL				eraseLastCharA(const HWND& hWndEditControl);
 BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 	, const HWND& hDlg
 	, HWND& hWndStatusbar
-	//, BOOL& bChoose
 )
 {
 	// set edit control IDC_STATUS_CONNECT text
@@ -103,19 +98,6 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 		, IDC_STATUSBAR
 		, 1
 	);
-
-	//// create a timer
-	//SetTimer(hDlg
-	//	, IDT_TIMER
-	//	, 2000
-	//	, (TIMERPROC)NULL
-	//);
-	//bChoose = TRUE;
-	//SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
-	//	, BM_SETCHECK
-	//	, (WPARAM)BST_CHECKED
-	//	, (LPARAM)0
-	//);
 
 	return EXIT_SUCCESS;
 }
@@ -412,15 +394,6 @@ BOOL receive(LPVOID lpVoid)
 	{
 		// disregard and simply return with EXIT_FAILURE
 		return EXIT_FAILURE;
-		// this gives too much interruption
-		//// kill thread
-		//g_bContinueTxRx = FALSE;
-
-		//SendMessage((HWND)lpVoid
-		//	, SET_TEXT_STATUSBAR
-		//	, (WPARAM)0
-		//	, (LPARAM)L"connection is lost"
-		//);
 	}
 	else if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
 	{
@@ -468,7 +441,16 @@ BOOL receive(LPVOID lpVoid)
 				, (WPARAM)0
 				, (LPARAM)g_oFrame.payload
 			);
-			processCommand(lpVoid);
+			// when g_oFrame.cmnd is 0xEEF it is interpreted as a backspace
+			if (g_oFrame.cmnd == 0xEEF)
+			{
+				// erase last character in edit control IDC_EDT
+				eraseLastCharA(GetDlgItem((HWND)lpVoid, IDC_EDT));
+			}
+			else
+			{
+				processCommand(lpVoid);
+			}
 		}
 	}
 
@@ -553,6 +535,103 @@ BOOL evaluate(LPVOID lpVoid, CHAR& ch)
 	return EXIT_SUCCESS;
 }
 
+//****************************************************************************
+//*                     Timerproc
+//****************************************************************************
+VOID Timerproc(HWND hDlg
+	, UINT uint			// 275??
+	, UINT_PTR uint_ptr	// matches IDT_TIMER 33200
+	, DWORD dw			// variable value??
+)
+{
+	OutputDebugString(L"Timerproc\n");
+	// kill the timer
+	KillTimer(hDlg, uint_ptr);
+	g_bRunningTimer = FALSE;
+	// uncheck checkbox control IDC_CHB_CHOOSE
+	SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
+		, BM_SETCHECK
+		, (WPARAM)BST_UNCHECKED
+		, (LPARAM)0
+	);
+}
+
+//****************************************************************************
+//*                     appendTextToEditControlA
+//****************************************************************************
+BOOL appendTextToEditControlA(const HWND& hWndEditControl
+	, const std::string str
+)
+{
+	if (hWndEditControl == NULL) return EXIT_FAILURE;
+	INT i = GetWindowTextLength(hWndEditControl);
+	// set the selection at the end of the present text
+	SendMessage(hWndEditControl
+		, EM_SETSEL
+		, (WPARAM)i
+		, (LPARAM)i
+	);
+	// replace the selection with the to be appended text
+	SendMessageA(hWndEditControl
+		, EM_REPLACESEL
+		, (WPARAM)0
+		, (LPARAM)str.c_str()
+	);
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     eraseLastCharA
+//****************************************************************************
+BOOL eraseLastCharA(const HWND & hWndEditControl)
+{
+	if (hWndEditControl == NULL) return EXIT_FAILURE;
+	INT i = GetWindowTextLength(hWndEditControl);
+	if (i == 0) return EXIT_FAILURE;
+	// select the last char in the present text
+	SendMessageA(hWndEditControl
+		, EM_SETSEL
+		, (WPARAM)i - 1
+		, (LPARAM)i
+	);
+	// replace the selection with an empty string, i.d. erasing the last char 
+	SendMessageA(hWndEditControl
+		, EM_REPLACESEL
+		, (WPARAM)0
+		, (LPARAM)""
+	);
+
+	return EXIT_SUCCESS;
+
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//                      waste
+	//// create a timer
+	//SetTimer(hDlg
+	//	, IDT_TIMER
+	//	, 2000
+	//	, (TIMERPROC)NULL
+	//);
+	//bChoose = TRUE;
+	//SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
+	//	, BM_SETCHECK
+	//	, (WPARAM)BST_CHECKED
+	//	, (LPARAM)0
+	//);
+
+
+// this gives too much interruption
+//// kill thread
+//g_bContinueTxRx = FALSE;
+
+//SendMessage((HWND)lpVoid
+//	, SET_TEXT_STATUSBAR
+//	, (WPARAM)0
+//	, (LPARAM)L"connection is lost"
+//);
+
 //	CHAR ch = '\0';
 //	if (evaluate(ch) == EXIT_SUCCESS)
 //	{
@@ -624,27 +703,6 @@ BOOL evaluate(LPVOID lpVoid, CHAR& ch)
 //}
 
 //****************************************************************************
-//*                     Timerproc
-//****************************************************************************
-VOID Timerproc(HWND hDlg
-	, UINT uint			// 275??
-	, UINT_PTR uint_ptr	// matches IDT_TIMER 33200
-	, DWORD dw			// variable value??
-)
-{
-	OutputDebugString(L"Timerproc\n");
-	// kill the timer
-	KillTimer(hDlg, uint_ptr);
-	g_bRunningTimer = FALSE;
-	// uncheck checkbox control IDC_CHB_CHOOSE
-	SendMessage(GetDlgItem(hDlg, IDC_CHB_CHOOSE)
-		, BM_SETCHECK
-		, (WPARAM)BST_UNCHECKED
-		, (LPARAM)0
-	);
-}
-
-//****************************************************************************
 //*                     evaluate
 //****************************************************************************
 //BOOL evaluate(CHAR& ch)
@@ -701,80 +759,29 @@ VOID Timerproc(HWND hDlg
 //	return EXIT_SUCCESS;
 //}
 
-//****************************************************************************
-//*                     appendTextToEditControlA
-//****************************************************************************
-BOOL appendTextToEditControlA(const HWND& hWndEditControl
-	, const std::string str
-)
-{
-	if (hWndEditControl == NULL) return EXIT_FAILURE;
-	INT i = GetWindowTextLength(hWndEditControl);
-	// set the selection at the end of the present text
-	SendMessage(hWndEditControl
-		, EM_SETSEL
-		, (WPARAM)i
-		, (LPARAM)i
-	);
-	// replace the selection with the to be appended text
-	SendMessageA(hWndEditControl
-		, EM_REPLACESEL
-		, (WPARAM)0
-		, (LPARAM)str.c_str()
-	);
-
-	return EXIT_SUCCESS;
-}
-
-//****************************************************************************
-//*                     eraseLastCharA
-//****************************************************************************
-BOOL eraseLastCharA(const HWND & hWndEditControl)
-{
-	if (hWndEditControl == NULL) return EXIT_FAILURE;
-	INT i = GetWindowTextLength(hWndEditControl);
-	if (i == 0) return EXIT_FAILURE;
-	// select the last char in the present text
-	SendMessageA(hWndEditControl
-		, EM_SETSEL
-		, (WPARAM)i - 1
-		, (LPARAM)i
-	);
-	// replace the selection with an empty string, i.d. erasing the last char 
-	SendMessageA(hWndEditControl
-		, EM_REPLACESEL
-		, (WPARAM)0
-		, (LPARAM)""
-	);
-
-	return EXIT_SUCCESS;
-
-}
-
-
-			// evaluate g_oFrame.cmnd for choosing numeric/alphanumeric character
-			//UINT8 nvKey = 0;
-			//CHAR ch;
-			//if (evaluate(nvKey, ch) == EXIT_SUCCESS)
-			//{
-			//	// the character is a numeric/alphanumeric character, so place it
-			//	// in the edit control IDC_EDT
-			//	std::string str = "";
-			//	str.push_back(ch);
-			//	appendTextToEditControlA(GetDlgItem((HWND)lpVoid, IDC_EDT)
-			//		, str
-			//	);
-			//	// create a timer
-			//	SetTimer((HWND)lpVoid
-			//		, IDT_TIMER
-			//		, 2000
-			//		, (TIMERPROC)NULL
-			//	);
-			//	g_bChoose = TRUE;
-			//	SendMessage(GetDlgItem((HWND)lpVoid, IDC_CHB_CHOOSE)
-			//		, BM_SETCHECK
-			//		, (WPARAM)BST_CHECKED
-			//		, (LPARAM)0
-			//	);
-			//}
+// evaluate g_oFrame.cmnd for choosing numeric/alphanumeric character
+//UINT8 nvKey = 0;
+//CHAR ch;
+//if (evaluate(nvKey, ch) == EXIT_SUCCESS)
+//{
+//	// the character is a numeric/alphanumeric character, so place it
+//	// in the edit control IDC_EDT
+//	std::string str = "";
+//	str.push_back(ch);
+//	appendTextToEditControlA(GetDlgItem((HWND)lpVoid, IDC_EDT)
+//		, str
+//	);
+//	// create a timer
+//	SetTimer((HWND)lpVoid
+//		, IDT_TIMER
+//		, 2000
+//		, (TIMERPROC)NULL
+//	);
+//	g_bChoose = TRUE;
+//	SendMessage(GetDlgItem((HWND)lpVoid, IDC_CHB_CHOOSE)
+//		, BM_SETCHECK
+//		, (WPARAM)BST_CHECKED
+//		, (LPARAM)0
+//	);
+//}
 
