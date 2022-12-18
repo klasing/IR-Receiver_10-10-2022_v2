@@ -18,22 +18,39 @@ BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
+CONFIGURATION g_oConfiguration{ 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 BIT12TEMP g_oTempLo{ 0 };
 BIT12TEMP g_oTempHi{ 0 };
 // TODO: initializing a derived struct is not yet under control
 BIT12MSRDTEMP g_oMsrdTemp;
-CONFIGURATION g_oConfiguration{ 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-FRAME g_oFrameEx = { SOH, 0, STX, 0, ETX, ETB, EOT };
+FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT };
 // no need to initialise
 std::queue<tagFRAME> g_queue;
+CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+UINT32 g_valCrc = 0;
 
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
 BOOL				connect(HANDLE& hComm);
 DWORD WINAPI		TxRx(LPVOID lpVoid);
-BOOL                transmit();
+BOOL                transmit(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
+BOOL				processCommand(LPVOID lpVoid);
+BOOL				updateRegister(const HWND& hWndDlgItem
+						, const UINT8 hiByte
+						, const UINT8 loByte
+						, const UINT8 nofBits = 16
+					);
+BOOL				updateListViewItemEx(const HWND& hWndLV
+						, const INT& iItem
+						, const INT& iSubItem
+						, const PWCHAR& pszItem
+					);
+BOOL				updateSetting(const HWND& hDlg
+						, const UINT8& hiByte
+						, const UINT8& loByte
+					);
 
 //*****************************************************************************
 //*                     onWmInitDialog_DlgProc
@@ -334,14 +351,14 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			// clear statusbar
 			g_oStatusbar.setTextStatusbar(0, L"");
 
-			g_oFrameEx.cmnd = RD_REG_CNFG;
-			g_queue.push(g_oFrameEx);
-			g_oFrameEx.cmnd = RD_REG_T_LO;
-			g_queue.push(g_oFrameEx);
-			g_oFrameEx.cmnd = RD_REG_T_HI;
-			g_queue.push(g_oFrameEx);
-			g_oFrameEx.cmnd = RD_REG_TEMP;
-			g_queue.push(g_oFrameEx);
+			g_oFrame.cmnd = RD_REG_CNFG;
+			g_queue.push(g_oFrame);
+			g_oFrame.cmnd = RD_REG_T_LO;
+			g_queue.push(g_oFrame);
+			g_oFrame.cmnd = RD_REG_T_HI;
+			g_queue.push(g_oFrame);
+			g_oFrame.cmnd = RD_REG_TEMP;
+			g_queue.push(g_oFrame);
 
 			// enable infinite loop
 			g_bContinueTxRx = TRUE;
@@ -415,6 +432,13 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, IDC_CHB_EXTENDED), FALSE);
 			EnableWindow(GetDlgItem(hDlg, APPLY_SETTING), FALSE);
 
+			// clear ltext IDC_T_ALERT
+			SendMessage(GetDlgItem(hDlg, IDC_T_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)L""
+			);
+
 			// erase alert bit indicator
 			g_brush = g_bkColorDlgBrush;
 			InvalidateRect(hDlg, &g_rect, TRUE);
@@ -480,10 +504,88 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 
 		return (INT_PTR)TRUE;
 	} // eof IDC_CHB_EXTENDED
+	case IDC_T_CLCS:
+	{
+		switch (HIWORD(wParam))
+		{
+		case EN_CHANGE:
+		{
+			if (g_bContinueTxRx)
+			{
+				// hThreadTxRx is running
+				// comparator mode
+				if (g_oConfiguration.polarity)
+				{
+					// active high
+					g_brush = (g_oMsrdTemp.alert) ? g_redBrush : g_greenBrush;
+				}
+				else
+				{
+					// active low
+					g_brush = (g_oMsrdTemp.alert) ? g_greenBrush : g_redBrush;
+				}
+
+				// thermostat mode
+				// TODO
+
+				// adjust color indicator
+				InvalidateRect(hDlg, &g_rect, TRUE);
+			}
+			return (INT_PTR)TRUE;
+		} // eof EN_CHANGE
+		} // eof switch
+		return (INT_PTR)FALSE;
+	} // eof IDC_T_CLCS
 	} // eof switch
 
 	return (INT_PTR)FALSE;
 }
+/*
+	case IDC_T_CLCS:
+	{
+		switch (HIWORD(wParam))
+		{
+		case EN_CHANGE:
+		{
+			if (g_bContinueTxRx)
+			{
+				// hThreadTxRx is running
+				// comparator mode
+				if (g_oConfiguration.polarity)
+				{
+					// active high
+					brush = (g_oMsrdTemp.alert) ? redBrush : greenBrush;
+				}
+				else
+				{
+					// active low
+					brush = (g_oMsrdTemp.alert) ? greenBrush : redBrush;
+				}
+
+				// thermostat mode
+				// TODO
+
+				// adjust color indicator
+				InvalidateRect(hDlg, &rect, TRUE);
+
+				std::initializer_list<std::string> list{ date_for_http_responseA()
+					, g_oMsrdTemp.getTempInClcs_toStringA_()
+					, "measurement1"
+				};
+				// TEST insert value into database:
+				// name table....: value_measurement
+				// foreign key...: 1 (referencing measurement1)
+				g_rc = g_oSqlite.insertTuple(IDR_VALUE_MEASUREMENT
+					, "value_measurement"
+					, list
+				);
+			}
+			return (INT_PTR)TRUE;
+		} // eof EN_CHANGE
+		} // eof switch
+		return (INT_PTR)FALSE;
+	} // eof IDC_T_CLCS
+*/
 
 //*****************************************************************************
 //*                     onWmPaint_DlgProc
@@ -590,7 +692,7 @@ DWORD WINAPI TxRx(LPVOID lpVoid)
 	// infinite loop
 	while (g_bContinueTxRx)
 	{
-		transmit();
+		transmit(lpVoid);
 		Sleep(DELAY_4HZ_SERIAL);
 		receive(lpVoid);
 		Sleep(DELAY_4HZ_SERIAL);
@@ -601,8 +703,48 @@ DWORD WINAPI TxRx(LPVOID lpVoid)
 //****************************************************************************
 //*                     transmit
 //****************************************************************************
-BOOL transmit()
+BOOL transmit(LPVOID lpVoid)
 {
+	FRAME oFrameEx = g_queue.front();
+
+	sprintf_s((CHAR*)g_chBuffer, (size_t)BUFFER_MAX_SERIAL, "%c%c%c%c%c%c%c%c%c"
+		, oFrameEx.soh
+		, (oFrameEx.cmnd >> 8) & 0xFF
+		, (oFrameEx.cmnd & 0xFF)
+		, oFrameEx.stx
+		, (oFrameEx.payload >> 8) & 0xFF
+		, (oFrameEx.payload & 0xFF)
+		, oFrameEx.etx
+		, oFrameEx.etb
+		, oFrameEx.eot
+	);
+
+	// calculate crc and feed into g_chBuffer
+	calcCrcEx((const UCHAR*)g_chBuffer, 9, g_valCrc);
+	g_chBuffer[9] = (g_valCrc & 0xFF000000) >> 24;
+	g_chBuffer[10] = (g_valCrc & 0x00FF0000) >> 16;
+	g_chBuffer[11] = (g_valCrc & 0x0000FF00) >> 8;
+	g_chBuffer[12] = (g_valCrc & 0x000000FF);
+	g_chBuffer[13] = '\0';
+
+	DWORD dwNofByteTransferred = 0;
+	WriteFile(g_hComm
+		, &g_chBuffer
+		, LEN_FRAME + LEN_CRC
+		, &dwNofByteTransferred
+		, NULL
+	);
+
+	if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
+	{
+		++g_cTransmission;
+		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_TRANSMISSION)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)std::to_string(g_cTransmission).c_str()
+		);
+	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -611,6 +753,430 @@ BOOL transmit()
 //****************************************************************************
 BOOL receive(LPVOID lpVoid)
 {
+	DWORD dwNofByteTransferred = 0;
+	ReadFile(g_hComm
+		, &g_chBuffer
+		, LEN_FRAME + LEN_CRC
+		, &dwNofByteTransferred
+		, NULL
+	);
+
+	if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
+	{
+		// isolate received crc from g_chBuffer
+		// the g_buffer char must be cast to UCHAR
+		UINT32 rxValCrc = ((UCHAR)g_chBuffer[LEN_FRAME + 0] << 24)
+			| ((UCHAR)g_chBuffer[LEN_FRAME + 1] << 16)
+			| ((UCHAR)g_chBuffer[LEN_FRAME + 2] << 8)
+			| ((UCHAR)g_chBuffer[LEN_FRAME + 3]);
+
+		// calculate crc
+		calcCrcEx((const UCHAR*)g_chBuffer, LEN_FRAME, g_valCrc);
+
+		// compare received CRC with calculated CRC
+		if (rxValCrc != g_valCrc)
+		{
+			// crc error
+			++g_cErrorCrc;
+			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_ERROR_CRC)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)std::to_string(g_cErrorCrc).c_str()
+			);
+		}
+		else
+		{
+			processCommand(lpVoid);
+			if (g_queue.size() > 1)
+			{
+				// last frame stays in the queue
+				g_queue.pop();
+			}
+		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
+//*****************************************************************************
+//*                     processCommand
+//*****************************************************************************
+BOOL processCommand(LPVOID lpVoid)
+{
+	// transfer command from g_chBuffer to g_oFrame.cmnd
+	g_oFrame.cmnd = g_chBuffer[1] << 8
+		| g_chBuffer[2];
+
+	switch (g_oFrame.cmnd)
+	{
+	case RD_REG_CNFG:
+	{
+		updateRegister(GetDlgItem((HWND)lpVoid, IDC_LV_CONFIGURATION)
+			, g_chBuffer[4]
+			, g_chBuffer[5]
+			, 12
+		);
+
+		updateSetting((HWND)lpVoid
+			, g_chBuffer[4]
+			, g_chBuffer[5]
+		);
+
+		break;
+	} // eof RD_REG_CNFG
+	case RD_REG_T_LO:
+	{
+		// must be called before func .setLoByte() is called
+		g_oTempLo.setHiByte(g_chBuffer[4]);
+		g_oTempLo.setLoByte(g_chBuffer[5]);
+
+		updateRegister(GetDlgItem((HWND)lpVoid, IDC_LV_T_LO)
+			, g_chBuffer[4]
+			, g_chBuffer[5]
+		);
+
+		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_LO_CLCS)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)g_oTempLo.getTempInClcs_toStringA()
+		);
+
+		break;
+	} // eof RD_REG_T_LO
+	case RD_REG_T_HI:
+	{
+		// must be called before func .setLoByte() is called
+		g_oTempHi.setHiByte(g_chBuffer[4]);
+		g_oTempHi.setLoByte(g_chBuffer[5]);
+
+		updateRegister(GetDlgItem((HWND)lpVoid, IDC_LV_T_HI)
+			, g_chBuffer[4]
+			, g_chBuffer[5]
+		);
+
+		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_HI_CLCS)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)g_oTempHi.getTempInClcs_toStringA()
+		);
+
+		break;
+	} // eof RD_REG_T_HI
+	case RD_REG_TEMP:
+	{
+		// must be called before func .setLoByte() is called
+		g_oMsrdTemp.setHiByte(g_chBuffer[4]);
+		g_oMsrdTemp.setLoByte(g_chBuffer[5]);
+		g_oMsrdTemp.setAlert(g_chBuffer[5]);
+		g_oMsrdTemp.setModeExtended(g_chBuffer[5]);
+
+		updateRegister(GetDlgItem((HWND)lpVoid, IDC_LV_TREG)
+			, g_chBuffer[4]
+			, g_chBuffer[5]
+		);
+
+		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_CLCS)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)g_oMsrdTemp.getTempInClcs_toStringA()
+		);
+
+		std::wstring wstrStateAlert = L"";
+		if (g_oConfiguration.polarity)
+		{
+			wstrStateAlert = (g_oMsrdTemp.alert) ? L"Active" : L"Not active";
+		}
+		else
+		{
+			wstrStateAlert = (g_oMsrdTemp.alert) ? L"Not active" : L"Active";
+		}
+
+		if (g_oMsrdTemp.fTempInClcsTimes100 < g_oTempLo.fTempInClcsTimes100)
+		{
+			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)"too low"
+			);
+		}
+		else if (g_oMsrdTemp.fTempInClcsTimes100 > g_oTempHi.fTempInClcsTimes100)
+		{
+			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)"too high"
+			);
+		}
+		else
+		{
+			SendMessageA(GetDlgItem((HWND)lpVoid, IDC_T_ALERT)
+				, WM_SETTEXT
+				, (WPARAM)0
+				, (LPARAM)"in range"
+			);
+		}
+
+		break;
+	} // eof RD_REG_TEMP
+	} // eof switch
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     updateRegister
+//****************************************************************************
+BOOL updateRegister(const HWND& hWndDlgItem
+	, const UINT8 hiByte
+	, const UINT8 loByte
+	, const UINT8 nofBits // has a default value nofBits = 16
+)
+{
+	UINT8 mask = 128;
+	for (UINT8 i = 0; i < 8; i++)
+	{
+		if (hiByte & mask)
+		{
+			updateListViewItemEx(hWndDlgItem
+				, 0
+				, i
+				, (PWCHAR)L"1"
+			);
+		}
+		else
+		{
+			updateListViewItemEx(hWndDlgItem
+				, 0
+				, i
+				, (PWCHAR)L"0"
+			);
+		}
+		mask >>= 1;
+	}
+	UINT8 limit = (nofBits == 16) ? 8 : 4;
+	mask = 128;
+	for (UINT8 i = 0; i < limit; i++)
+	{
+		if (loByte & mask)
+		{
+			updateListViewItemEx(hWndDlgItem
+				, 0
+				, i + 8
+				, (PWCHAR)L"1"
+			);
+		}
+		else
+		{
+			updateListViewItemEx(hWndDlgItem
+				, 0
+				, i + 8
+				, (PWCHAR)L"0"
+			);
+		}
+		mask >>= 1;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     updateListViewItemEx
+//*
+//* use this func instead of the func updateListViewItem() from the static lib
+//* this func avoids too much OutputDebugString()
+//****************************************************************************
+BOOL updateListViewItemEx(const HWND& hWndLV
+	, const INT& iItem
+	, const INT& iSubItem
+	, const PWCHAR& pszItem
+)
+{
+	LVITEM lvi = { 0 };
+	UINT cchItem = wcslen(pszItem);
+	lvi.mask = LVIF_TEXT;
+	lvi.iItem = iItem;
+	lvi.iSubItem = iSubItem;
+	lvi.cchTextMax = cchItem;
+	lvi.pszText = pszItem;
+	// get the column width
+	size_t iColumnWidth = SendMessage(hWndLV
+		, LVM_GETCOLUMNWIDTH
+		, (WPARAM)iSubItem
+		, (LPARAM)0
+	);
+	// set width column for (sub)item
+	size_t iItemLength = wcslen(pszItem) * 8 + 10;
+	if (iItemLength > iColumnWidth)
+	{
+		// adjust the column width for the length of the (sub)item
+		SendMessage(hWndLV
+			, LVM_SETCOLUMNWIDTH
+			, (WPARAM)iSubItem
+			, (LPARAM)iItemLength
+		);
+	}
+	// set (sub)item
+	BOOL bSuccess = SendMessage(hWndLV
+		, LVM_SETITEMTEXT
+		, (WPARAM)iItem
+		, (LPARAM)&lvi
+	);
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     updateSetting
+//****************************************************************************
+BOOL updateSetting(const HWND& hDlg
+	, const UINT8& hiByte
+	, const UINT8& loByte
+)
+{
+	UINT8 bit_field = 0;
+	// update IDC_CHB_ONESHOT ////////////////////////////////////////////////
+	if (hiByte & 128)
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_ONESHOT)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		);
+		g_oConfiguration.oneShot = TRUE;
+		//g_bCheckedStateChbOneshot = TRUE;
+	}
+	else
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_ONESHOT)
+			, BM_SETCHECK
+			, (WPARAM)BST_UNCHECKED
+			, (LPARAM)0
+		);
+		g_oConfiguration.oneShot = FALSE;
+		//g_bCheckedStateChbOneshot = FALSE;
+	}
+	// update IDC_RESOLUTION /////////////////////////////////////////////////
+	std::wstring wstrResolution = L"";
+	bit_field = (hiByte & 0x60) >> 5; // note precedence!
+	switch (bit_field)
+	{
+	case 0:
+	case 1:
+	case 2:
+	{
+		wstrResolution = L"not specified";
+		break;
+	} // eof 0 | 1 | 2
+	case 3:
+	{
+		wstrResolution = L"12 bit-resolution";
+		break;
+	} // eof 3
+	} // eof switch
+	SendMessage(GetDlgItem(hDlg, IDC_RESOLUTION)
+		, WM_SETTEXT
+		, (WPARAM)0
+		, (LPARAM)wstrResolution.c_str()
+	);
+	// update IDC_CB_FAULT_QUEUE /////////////////////////////////////////////
+	bit_field = (hiByte & 0x18) >> 3; // note precedence!
+	// 00 - 1
+	// 01 - 2
+	// 10 - 4
+	// 11 - 6
+	SendMessage(GetDlgItem(hDlg, IDC_CB_FAULT_QUEUE)
+		, CB_SETCURSEL
+		, (WPARAM)bit_field
+		, (LPARAM)0
+	);
+	// update IDC_CB_POLARITY_ALERT //////////////////////////////////////////
+	bit_field = (hiByte & 0x04) >> 2; // note precedence!
+	SendMessage(GetDlgItem(hDlg, IDC_CB_POLARITY_ALERT)
+		, CB_SETCURSEL
+		, (WPARAM)bit_field
+		, (LPARAM)0
+	);
+	g_oConfiguration.polarity = bit_field;
+	//g_bPolarity = bit_field;
+	// update IDC_CB_MODE_THERMOSTAT /////////////////////////////////////////
+	bit_field = (hiByte & 0x02) >> 1; // note precedence!
+	SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
+		, CB_SETCURSEL
+		, (WPARAM)bit_field
+		, (LPARAM)0
+	);
+	g_oConfiguration.modeThermostat = bit_field;
+	//g_bModeThermostat = bit_field;
+	// update IDC_CHB_SHUTDOWN ///////////////////////////////////////////////
+	if (hiByte & 1)
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		);
+		g_oConfiguration.shutDown = TRUE;
+		//g_bCheckedStateChbShutdown = TRUE;
+	}
+	else
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
+			, BM_SETCHECK
+			, (WPARAM)BST_UNCHECKED
+			, (LPARAM)0
+		);
+		g_oConfiguration.shutDown = FALSE;
+		//g_bCheckedStateChbShutdown = FALSE;
+	}
+	// update IDC_CB_RATE_CONVERSION /////////////////////////////////////////
+	// 00 - 0.25 Hz
+	// 01 - 1    Hz
+	// 10 - 4    Hz
+	// 11 - 8    Hz
+	bit_field = (loByte & 0xC0) >> 6; // note precedence!
+	SendMessage(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION)
+		, CB_SETCURSEL
+		, (WPARAM)bit_field
+		, (LPARAM)0
+	);
+	// update IDC_ALERT //////////////////////////////////////////////////////
+	std::wstring wstrStateAlert = L"";
+	if (g_oConfiguration.polarity)
+		//if (g_bPolarity)
+	{
+		wstrStateAlert = (loByte & 0x20) ? L"Active" : L"Not active";
+	}
+	else
+	{
+		wstrStateAlert = (loByte & 0x20) ? L"Not active" : L"Active";
+	}
+	SendMessage(GetDlgItem(hDlg, IDC_ALERT)
+		, WM_SETTEXT
+		, (WPARAM)0
+		, (LPARAM)wstrStateAlert.c_str()
+	);
+	// update IDC_CHB_EXTENDED ///////////////////////////////////////////////
+	if (loByte & 0x10)
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		);
+		g_oConfiguration.modeExtended = TRUE;
+		//g_bCheckedStateChbExtended = TRUE;
+	}
+	else
+	{
+		SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
+			, BM_SETCHECK
+			, (WPARAM)BST_UNCHECKED
+			, (LPARAM)0
+		);
+		g_oConfiguration.modeExtended = FALSE;
+		//g_bCheckedStateChbExtended = FALSE;
+	}
+
 	return EXIT_SUCCESS;
 }
 

@@ -36,12 +36,51 @@ typedef struct tagBIT12TEMP
 	FLOAT fTempInClcs = 0.;
 	FLOAT fTempInClcsTimes100 = 0.;
 	CHAR chBufferTempInCelcius[LEN_TEMP_IN_CLCS] = { 0 };
+	VOID setHiByte(INT8 byte)
+	{
+		// must be called before func .setLoByte() is called
+		temp = byte << 4;
+	}
+	VOID setLoByte(UINT8 byte)
+	{
+		temp |= byte >> 4;
+	}
+	// this member func will also set:
+	// fTempInClcs, 
+	// fTempInClcsTimes100, and
+	// chBufferTempInCelcius
+	CHAR* getTempInClcs_toStringA()
+	{
+		INT16 val = temp;
+		if (val & 0x8000)
+		{
+			val = ~val;
+			val += 1;
+		}
+		fTempInClcs = (FLOAT)(val * 0.0625);
+		fTempInClcsTimes100 = fTempInClcs * 100;
+		sprintf_s(chBufferTempInCelcius
+			, LEN_TEMP_IN_CLCS
+			, "%d.%02d"
+			, ((UINT)fTempInClcsTimes100 / 100)
+			, ((UINT)fTempInClcsTimes100 % 100)
+		);
+		return chBufferTempInCelcius;
+	}
 } BIT12TEMP, *PBIT12TEMP;
 
 typedef struct tagBIT12MSRDTEMP : tagBIT12TEMP
 {
 	UINT8 alert : 1;
 	UINT8 modeExtended : 1;
+	VOID setAlert(UINT8 byte)
+	{
+		alert = (byte & 0x02) >> 1;
+	}
+	VOID setModeExtended(UINT8 byte)
+	{
+		modeExtended = byte & 0x01;
+	}
 } BIT12MSRDTEMP, *PBIT12MSRDTEMP;
 
 /*
