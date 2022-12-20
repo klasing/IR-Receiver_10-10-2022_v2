@@ -19,10 +19,10 @@ HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
 CONFIGURATION g_oConfiguration{ 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-BIT12TEMP g_oTempLo{ 0 };
-BIT12TEMP g_oTempHi{ 0 };
+TEMP g_oTempLo{ 0 };
+TEMP g_oTempHi{ 0 };
 // TODO: initializing a derived struct is not yet under control
-BIT12MSRDTEMP g_oMsrdTemp;
+MSRDTEMP g_oMsrdTemp;
 FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT };
 // no need to initialise
 std::queue<tagFRAME> g_queue;
@@ -51,6 +51,7 @@ BOOL				updateSetting(const HWND& hDlg
 						, const UINT8& hiByte
 						, const UINT8& loByte
 					);
+UINT16				clcsToBit(const HWND& hWnd, TEMP& oTemp);
 
 //*****************************************************************************
 //*                     onWmInitDialog_DlgProc
@@ -481,11 +482,41 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	} // eof RESTART_SERIAL
 	case TMP102_RESET:
 	{
+		// if not connected: return
+		if (!g_bContinueTxRx) return (INT_PTR)TRUE;
+
+		// empty queue
+		g_queue = {};
+
+		// push TMP102_RESET command into the queue
+		g_oFrame.cmnd = WR_TMP102_RESET;
+		g_queue.push(g_oFrame);
 
 		return (INT_PTR)TRUE;
 	} // eof TMP102_RESET
 	case APPLY_SETTING:
 	{
+		// if not connected: return
+		if (!g_bContinueTxRx) return (INT_PTR)TRUE;
+
+		// empty queue
+		g_queue = {};
+
+		// push commands into the queue
+		g_oFrame.cmnd = WR_REG_CNFG;
+		g_oFrame.payload = g_oConfiguration.getHiByte() << 8;
+		g_oFrame.payload |= g_oConfiguration.getLoByte();
+		g_queue.push(g_oFrame);
+		g_oFrame.cmnd = WR_REG_T_LO;
+		g_oFrame.payload = clcsToBit(GetDlgItem(hDlg, IDC_T_LO_CLCS)
+			, g_oTempLo
+		);
+		g_queue.push(g_oFrame);
+		g_oFrame.cmnd = WR_REG_T_HI;
+		g_oFrame.payload = clcsToBit(GetDlgItem(hDlg, IDC_T_HI_CLCS)
+			, g_oTempHi
+		);
+		g_queue.push(g_oFrame);
 
 		return (INT_PTR)TRUE;
 	} // eof APPLY_SETTING
@@ -496,11 +527,56 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	} // eof IDC_CHB_ONESHOT
 	case IDC_CHB_SHUTDOWN:
 	{
+		if (g_oConfiguration.shutDown)
+		{
+			g_oConfiguration.shutDown = FALSE;
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
+				, BM_SETCHECK
+				, (WPARAM)BST_UNCHECKED
+				, (LPARAM)0
+			);
+			// must be done after the STM32 has applied the settings
+			// disable checkbox IDC_CHB_ONESHOT
+			//TODO: EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), FALSE);
+		}
+		else
+		{
+			g_oConfiguration.shutDown = TRUE;
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_SHUTDOWN)
+				, BM_SETCHECK
+				, (WPARAM)BST_CHECKED
+				, (LPARAM)0
+			);
+			// must be done after the STM32 has applied the settings
+			// enable checkbox IDC_CHB_ONESHOT
+			//TODO: EnableWindow(GetDlgItem(hDlg, IDC_CHB_ONESHOT), TRUE);
+		}
 
 		return (INT_PTR)TRUE;
 	} // eof IDC_CHB_SHUTDOWN
 	case IDC_CHB_EXTENDED:
 	{
+
+		if (g_oConfiguration.modeExtended)
+		{
+			g_oConfiguration.modeExtended = FALSE;
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
+				, BM_SETCHECK
+				, (WPARAM)BST_UNCHECKED
+				, (LPARAM)0
+			);
+#define CONVERTER_RESOLUTION 12
+		}
+		else
+		{
+			g_oConfiguration.modeExtended = TRUE;
+			SendMessage(GetDlgItem(hDlg, IDC_CHB_EXTENDED)
+				, BM_SETCHECK
+				, (WPARAM)BST_CHECKED
+				, (LPARAM)0
+			);
+#define CONVERTER_RESOLUTION 13
+		}
 
 		return (INT_PTR)TRUE;
 	} // eof IDC_CHB_EXTENDED
@@ -513,16 +589,19 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			if (g_bContinueTxRx)
 			{
 				// hThreadTxRx is running
+				std::wstring wstrStateAlert = L"";
 				// comparator mode
 				if (g_oConfiguration.polarity)
 				{
 					// active high
 					g_brush = (g_oMsrdTemp.alert) ? g_redBrush : g_greenBrush;
+					wstrStateAlert = (g_oMsrdTemp.alert) ? L"Active" : L"Not active";
 				}
 				else
 				{
 					// active low
 					g_brush = (g_oMsrdTemp.alert) ? g_greenBrush : g_redBrush;
+					wstrStateAlert = (g_oMsrdTemp.alert) ? L"Not active" : L"Active";
 				}
 
 				// thermostat mode
@@ -530,6 +609,13 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 
 				// adjust color indicator
 				InvalidateRect(hDlg, &g_rect, TRUE);
+
+				// set the state in ltext IDC_ALERT
+				SendMessage(GetDlgItem(hDlg, IDC_ALERT)
+					, WM_SETTEXT
+					, (WPARAM)0
+					, (LPARAM)wstrStateAlert.c_str()
+				);
 			}
 			return (INT_PTR)TRUE;
 		} // eof EN_CHANGE
@@ -540,52 +626,6 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 
 	return (INT_PTR)FALSE;
 }
-/*
-	case IDC_T_CLCS:
-	{
-		switch (HIWORD(wParam))
-		{
-		case EN_CHANGE:
-		{
-			if (g_bContinueTxRx)
-			{
-				// hThreadTxRx is running
-				// comparator mode
-				if (g_oConfiguration.polarity)
-				{
-					// active high
-					brush = (g_oMsrdTemp.alert) ? redBrush : greenBrush;
-				}
-				else
-				{
-					// active low
-					brush = (g_oMsrdTemp.alert) ? greenBrush : redBrush;
-				}
-
-				// thermostat mode
-				// TODO
-
-				// adjust color indicator
-				InvalidateRect(hDlg, &rect, TRUE);
-
-				std::initializer_list<std::string> list{ date_for_http_responseA()
-					, g_oMsrdTemp.getTempInClcs_toStringA_()
-					, "measurement1"
-				};
-				// TEST insert value into database:
-				// name table....: value_measurement
-				// foreign key...: 1 (referencing measurement1)
-				g_rc = g_oSqlite.insertTuple(IDR_VALUE_MEASUREMENT
-					, "value_measurement"
-					, list
-				);
-			}
-			return (INT_PTR)TRUE;
-		} // eof EN_CHANGE
-		} // eof switch
-		return (INT_PTR)FALSE;
-	} // eof IDC_T_CLCS
-*/
 
 //*****************************************************************************
 //*                     onWmPaint_DlgProc
@@ -918,6 +958,31 @@ BOOL processCommand(LPVOID lpVoid)
 
 		break;
 	} // eof RD_REG_TEMP
+	case WR_TMP102_RESET:
+	// WR_REG_T_HI is the last command in the compound:
+	// WR_REG_CNFG  WR_REG_T_LO & WR_REG_T_HI
+	//case WR_REG_CNFG:
+	//case WR_REG_T_LO:
+	case WR_REG_T_HI: 
+	{
+		if (g_oFrame.cmnd == WR_TMP102_RESET) g_oStatusbar.setTextStatusbar(0, L"TMP102 reset");
+		if (g_oFrame.cmnd == WR_REG_T_HI) g_oStatusbar.setTextStatusbar(0, L"Settings applied");
+
+		// empty the queue
+		g_queue = {};
+
+		// continue with normal operation
+		g_oFrame.cmnd = RD_REG_CNFG;
+		g_queue.push(g_oFrame);
+		g_oFrame.cmnd = RD_REG_T_LO;
+		g_queue.push(g_oFrame);
+		g_oFrame.cmnd = RD_REG_T_HI;
+		g_queue.push(g_oFrame);
+		g_oFrame.cmnd = RD_REG_TEMP;
+		g_queue.push(g_oFrame);
+
+		break;
+	} // eof WR_TMP102_RESET | WR_REG_T_HI
 	} // eof switch
 
 	return EXIT_SUCCESS;
@@ -998,23 +1063,7 @@ BOOL updateListViewItemEx(const HWND& hWndLV
 	lvi.iSubItem = iSubItem;
 	lvi.cchTextMax = cchItem;
 	lvi.pszText = pszItem;
-	// get the column width
-	size_t iColumnWidth = SendMessage(hWndLV
-		, LVM_GETCOLUMNWIDTH
-		, (WPARAM)iSubItem
-		, (LPARAM)0
-	);
-	// set width column for (sub)item
-	size_t iItemLength = wcslen(pszItem) * 8 + 10;
-	if (iItemLength > iColumnWidth)
-	{
-		// adjust the column width for the length of the (sub)item
-		SendMessage(hWndLV
-			, LVM_SETCOLUMNWIDTH
-			, (WPARAM)iSubItem
-			, (LPARAM)iItemLength
-		);
-	}
+
 	// set (sub)item
 	BOOL bSuccess = SendMessage(hWndLV
 		, LVM_SETITEMTEXT
@@ -1043,7 +1092,6 @@ BOOL updateSetting(const HWND& hDlg
 			, (LPARAM)0
 		);
 		g_oConfiguration.oneShot = TRUE;
-		//g_bCheckedStateChbOneshot = TRUE;
 	}
 	else
 	{
@@ -1053,7 +1101,6 @@ BOOL updateSetting(const HWND& hDlg
 			, (LPARAM)0
 		);
 		g_oConfiguration.oneShot = FALSE;
-		//g_bCheckedStateChbOneshot = FALSE;
 	}
 	// update IDC_RESOLUTION /////////////////////////////////////////////////
 	std::wstring wstrResolution = L"";
@@ -1097,7 +1144,6 @@ BOOL updateSetting(const HWND& hDlg
 		, (LPARAM)0
 	);
 	g_oConfiguration.polarity = bit_field;
-	//g_bPolarity = bit_field;
 	// update IDC_CB_MODE_THERMOSTAT /////////////////////////////////////////
 	bit_field = (hiByte & 0x02) >> 1; // note precedence!
 	SendMessage(GetDlgItem(hDlg, IDC_CB_MODE_THERMOSTAT)
@@ -1106,7 +1152,6 @@ BOOL updateSetting(const HWND& hDlg
 		, (LPARAM)0
 	);
 	g_oConfiguration.modeThermostat = bit_field;
-	//g_bModeThermostat = bit_field;
 	// update IDC_CHB_SHUTDOWN ///////////////////////////////////////////////
 	if (hiByte & 1)
 	{
@@ -1116,7 +1161,6 @@ BOOL updateSetting(const HWND& hDlg
 			, (LPARAM)0
 		);
 		g_oConfiguration.shutDown = TRUE;
-		//g_bCheckedStateChbShutdown = TRUE;
 	}
 	else
 	{
@@ -1126,7 +1170,6 @@ BOOL updateSetting(const HWND& hDlg
 			, (LPARAM)0
 		);
 		g_oConfiguration.shutDown = FALSE;
-		//g_bCheckedStateChbShutdown = FALSE;
 	}
 	// update IDC_CB_RATE_CONVERSION /////////////////////////////////////////
 	// 00 - 0.25 Hz
@@ -1142,7 +1185,6 @@ BOOL updateSetting(const HWND& hDlg
 	// update IDC_ALERT //////////////////////////////////////////////////////
 	std::wstring wstrStateAlert = L"";
 	if (g_oConfiguration.polarity)
-		//if (g_bPolarity)
 	{
 		wstrStateAlert = (loByte & 0x20) ? L"Active" : L"Not active";
 	}
@@ -1164,7 +1206,6 @@ BOOL updateSetting(const HWND& hDlg
 			, (LPARAM)0
 		);
 		g_oConfiguration.modeExtended = TRUE;
-		//g_bCheckedStateChbExtended = TRUE;
 	}
 	else
 	{
@@ -1174,10 +1215,31 @@ BOOL updateSetting(const HWND& hDlg
 			, (LPARAM)0
 		);
 		g_oConfiguration.modeExtended = FALSE;
-		//g_bCheckedStateChbExtended = FALSE;
 	}
 
 	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     clcsToBit
+//****************************************************************************
+UINT16 clcsToBit(const HWND& hWnd, TEMP& oTemp)
+{
+	CHAR chBuffer[LEN_TEMP_IN_CLCS] = { 0 };
+	std::string str = "";
+	FLOAT fTemp = 0.;
+	// get value from edittext control
+	SendMessageA(hWnd
+		, WM_GETTEXT
+		, (WPARAM)8
+		, (LPARAM)chBuffer
+	);
+	str = chBuffer;
+	fTemp = std::stof(str);
+	fTemp /= 0.0625;
+	oTemp.fTempInClcs = fTemp;
+	oTemp.fTempInClcsTimes100 = fTemp * 100;
+	return (UINT16)fTemp << 4;
 }
 
 //////////////////////////////////////////////////////////////////////////////

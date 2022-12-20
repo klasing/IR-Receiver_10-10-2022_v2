@@ -4,6 +4,7 @@
 //*                     include
 //****************************************************************************
 #include "framework.h"
+#include "resource.h"
 
 typedef struct tagFRAME
 {
@@ -28,11 +29,32 @@ typedef struct tagCONFIGURATION
 	UINT8 alert : 1;
 	UINT8 modeExtended : 1;
 	UINT8 : 4;
+	UINT16 getHiByte()
+	{
+		UINT16 word = 0;
+		word = (oneShot << 7)
+			| (resolution << 5)
+			| (faultQueue << 3)
+			| (polarity << 2)
+			| (modeThermostat << 1)
+			| shutDown;
+		return word;
+	}
+	UINT16 getLoByte()
+	{
+		UINT16 word = 0;
+		word = (conversionRate << 6)
+			| (alert << 5)
+			| (modeExtended << 4);
+		return word;
+	}
 } CONFIGURATION, *PCONFIGURATION;
 
-typedef struct tagBIT12TEMP
+typedef struct tagTEMP
 {
-	INT16 temp : 12;
+	// CONVERTER_RESOLUTION can 12- or 13-bit
+	// depending on setting in checkbox IDC_CHB_EXTENDED 
+	INT16 temp : CONVERTER_RESOLUTION;
 	FLOAT fTempInClcs = 0.;
 	FLOAT fTempInClcsTimes100 = 0.;
 	CHAR chBufferTempInCelcius[LEN_TEMP_IN_CLCS] = { 0 };
@@ -67,9 +89,9 @@ typedef struct tagBIT12TEMP
 		);
 		return chBufferTempInCelcius;
 	}
-} BIT12TEMP, *PBIT12TEMP;
+} TEMP, *PTEMP;
 
-typedef struct tagBIT12MSRDTEMP : tagBIT12TEMP
+typedef struct tagMSRDTEMP : tagTEMP
 {
 	UINT8 alert : 1;
 	UINT8 modeExtended : 1;
@@ -81,7 +103,7 @@ typedef struct tagBIT12MSRDTEMP : tagBIT12TEMP
 	{
 		modeExtended = byte & 0x01;
 	}
-} BIT12MSRDTEMP, *PBIT12MSRDTEMP;
+} MSRDTEMP, *PMSRDTEMP;
 
 /*
 //****************************************************************************

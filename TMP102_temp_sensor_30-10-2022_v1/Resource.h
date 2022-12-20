@@ -1,3 +1,5 @@
+#define CONVERTER_RESOLUTION	12
+
 // crc
 #define INIT_CRC				0xFFFFFFFF
 #define POLY_CRC				0x04C11DB7
@@ -10,11 +12,11 @@
 #define EOT						4
 
 // serial communication
-#define BUFFER_MAX_SERIAL		32
-#define LEN_FRAME				9
 #define LEN_CRC					4
-#define DELAY_4HZ_SERIAL		125
 #define LEN_TEMP_IN_CLCS		8
+#define LEN_FRAME				9
+#define BUFFER_MAX_SERIAL		32
+#define DELAY_4HZ_SERIAL		125
 
 // control
 #define IDC_STATUS_CONNECT		33000
@@ -38,6 +40,7 @@
 #define IDC_ALERT				33018
 #define IDC_CHB_EXTENDED		33019
 #define IDC_STATUSBAR			33020
+#define IDC_NAME_HDR_DB			33021
 
 // message
 #define CONNECT_SERIAL			33100
@@ -45,6 +48,8 @@
 #define RESTART_SERIAL			33102
 #define TMP102_RESET			33103
 #define APPLY_SETTING			33104
+#define RECORD_DB				33105
+#define STOP_RECORD_DB			33106
 
 // string
 #define IDS_LVCONFIG_COL0		33500
