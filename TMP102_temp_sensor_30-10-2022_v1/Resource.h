@@ -40,7 +40,7 @@
 #define IDC_ALERT				33018
 #define IDC_CHB_EXTENDED		33019
 #define IDC_STATUSBAR			33020
-#define IDC_NAME_HDR_DB			33021
+#define IDC_NAME_HDR_TABLE		33021
 
 // message
 #define CONNECT_SERIAL			33100
@@ -76,6 +76,12 @@
 
 #define IDS_DEGREE_SYMBOL		33520
 
+#define IDS_NAME_DB				33521
+#define IDS_NAME_HDR_TABLE		33522
+#define IDS_NAME_VAL_TABLE		33523
+//#define IDS_MEASUREMENT			33522
+//#define IDS_VALUE_MEASUREMENT	33523
+
 // command serial communication
 // read command
 #define RD_REG_CNFG				33600 // address to approach two bytes with 12 bits data
@@ -87,6 +93,12 @@
 #define WR_REG_T_LO				33611 // address to approach two bytes with 12/13 bits data
 #define WR_REG_T_HI				33612 // address to approach two bytes with 12/13 bits data
 #define WR_TMP102_RESET			33620 // reset TMP102
+
+// resource database
+#define IDR_NAME_HDR_TABLE		33700
+#define IDR_NAME_VAL_TABLE		33701
+//#define IDR_MEASUREMENT			33700
+//#define IDR_VALUE_MEASUREMENT	33701
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

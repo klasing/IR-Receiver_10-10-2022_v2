@@ -1,3 +1,107 @@
+#pragma once
+//****************************************************************************
+//*                     include
+//****************************************************************************
+#include "framework.h"
+//****************************************************************************
+//*                     Connect2SQLite
+//****************************************************************************
+class Connect2SQLite
+{
+	sqlite3* pdb = nullptr;
+	int rc = -1;
+	char* pszErrMsg{ 0 };
+	std::string strSql = "";
+	std::string strNameHdrTable = "";
+	std::string strNameValTable = "";
+public:
+	//************************************************************************
+	//*                 openDb
+	//************************************************************************
+	int openDb(const std::string& strNameDb)
+	{
+		rc = sqlite3_open(strNameDb.c_str()
+			, &pdb
+		);
+		if (rc == 0)
+		{
+			// enable foreign key support
+			rc = sqlite3_exec(pdb, "PRAGMA foreign_keys = ON", 0, 0, 0);
+		}
+		return rc;
+	}
+	//************************************************************************
+	//*                 createTable
+	//************************************************************************
+	int createTable(const UINT& resourceIdTable
+		, const std::string& strNameTable
+	)
+	{
+		switch (resourceIdTable)
+		{
+		case IDR_NAME_HDR_TABLE:
+		{
+			strNameHdrTable = strNameTable;
+			strSql =
+				"CREATE TABLE IF NOT EXISTS "
+				+ strNameTable + "("
+				"id INTEGER PRIMARY KEY, "
+				"name TEXT NOT NULL UNIQUE, "
+				"tlo REAL, "
+				"thi REAL"
+				");";
+			break;
+		} // eof IDR_MEASUREMENT
+		case IDR_NAME_VAL_TABLE:
+		{
+			strNameValTable = strNameTable;
+			strSql =
+				"CREATE TABLE IF NOT EXISTS "
+				+ strNameTable + "("
+				"id INTEGER PRIMARY KEY, "
+				"timestamp TEXT NOT NULL, "
+				"value REAL, "
+				"fk_header INTEGER, "
+				"CONSTRAINT cnstrnt "
+				"FOREIGN KEY(fk_header) REFERENCES " 
+				+ strNameHdrTable + "(id)"
+				");";
+			break;
+		} // eof IDR_VALUE_MEASUREMENT
+		} // eof switch
+		rc = execute(pdb, strSql, nullptr);
+		return rc;
+	}
+private:
+	//************************************************************************
+	//*                 execute
+	//************************************************************************
+	int execute(sqlite3* pdb
+		, const std::string& strSql
+		, void* pData
+	)
+	{
+		rc = sqlite3_exec(pdb
+			, strSql.c_str()
+			, callback
+			, pData
+			, &pszErrMsg
+		);
+		return rc;
+	}
+	//************************************************************************
+	//*                 callback
+	//************************************************************************
+	static int callback(void* pdata
+		, int argc
+		, char** argv
+		, char** aszColName
+	)
+	{
+		return EXIT_SUCCESS;
+	}
+};
+
 //////////////////////////////////////////////////////////////////////////////
 // waste
 /*

@@ -28,6 +28,10 @@ FRAME g_oFrame = { SOH, 0, STX, 0, ETX, ETB, EOT };
 std::queue<tagFRAME> g_queue;
 CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 UINT32 g_valCrc = 0;
+// SQLite
+CHAR g_szBufferLoadString[MAX_LOADSTRING];
+Connect2SQLite g_oSqlite;
+int g_ResultCode = 0;
 
 //*****************************************************************************
 //*                     prototype
@@ -265,6 +269,23 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 	// default brush color
 	g_brush = g_bkColorDlgBrush;
 
+	// create/open database
+	LoadStringA(hInst, IDS_NAME_DB, g_szBufferLoadString, MAX_LOADSTRING);
+	g_ResultCode = g_oSqlite.openDb(g_szBufferLoadString);
+	// test //////////////////////////////////////////////////////////////////
+	// if not exists: create header table
+	LoadStringA(hInst, IDS_NAME_HDR_TABLE, g_szBufferLoadString, MAX_LOADSTRING);
+	g_ResultCode = g_oSqlite.createTable(IDR_NAME_HDR_TABLE, g_szBufferLoadString);
+	SendMessageA(GetDlgItem(hDlg, IDC_NAME_HDR_TABLE)
+		, WM_SETTEXT
+		, (WPARAM)0
+		, (LPARAM)g_szBufferLoadString
+	);
+	// if not exists: create value table
+	LoadStringA(hInst, IDS_NAME_VAL_TABLE, g_szBufferLoadString, MAX_LOADSTRING);
+	g_ResultCode = g_oSqlite.createTable(IDR_NAME_VAL_TABLE, g_szBufferLoadString);
+	//////////////////////////////////////////////////////////////////////////
+
 	return EXIT_SUCCESS;
 }
 
@@ -321,6 +342,7 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	{
 		if (connect(g_hComm) == EXIT_SUCCESS)
 		{
+
 			// set text edit control IDC_STATUS
 			SendMessage(GetDlgItem(hDlg, IDC_STATUS_CONNECT)
 				, WM_SETTEXT
@@ -348,6 +370,10 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, IDC_CB_RATE_CONVERSION), TRUE);
 			EnableWindow(GetDlgItem(hDlg, IDC_CHB_EXTENDED), TRUE);
 			EnableWindow(GetDlgItem(hDlg, APPLY_SETTING), TRUE);
+
+			// enable SQLite
+			EnableWindow(GetDlgItem(hDlg, RECORD_DB), TRUE);
+			EnableWindow(GetDlgItem(hDlg, STOP_RECORD_DB), TRUE);
 
 			// clear statusbar
 			g_oStatusbar.setTextStatusbar(0, L"");
@@ -439,6 +465,10 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 				, (WPARAM)0
 				, (LPARAM)L""
 			);
+
+			// disable SQLite
+			EnableWindow(GetDlgItem(hDlg, RECORD_DB), FALSE);
+			EnableWindow(GetDlgItem(hDlg, STOP_RECORD_DB), FALSE);
 
 			// erase alert bit indicator
 			g_brush = g_bkColorDlgBrush;
@@ -607,21 +637,29 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 				// thermostat mode
 				// TODO
 
-				// adjust color indicator
-				InvalidateRect(hDlg, &g_rect, TRUE);
-
 				// set the state in ltext IDC_ALERT
 				SendMessage(GetDlgItem(hDlg, IDC_ALERT)
 					, WM_SETTEXT
 					, (WPARAM)0
 					, (LPARAM)wstrStateAlert.c_str()
 				);
+
+				// adjust color indicator
+				InvalidateRect(hDlg, &g_rect, TRUE);
 			}
 			return (INT_PTR)TRUE;
 		} // eof EN_CHANGE
 		} // eof switch
 		return (INT_PTR)FALSE;
 	} // eof IDC_T_CLCS
+	case RECORD_DB:
+	{
+		return (INT_PTR)TRUE;
+	} // eof RECORD_DB
+	case STOP_RECORD_DB:
+	{
+		return (INT_PTR)TRUE;
+	} // eof STOP_RECORD_DB
 	} // eof switch
 
 	return (INT_PTR)FALSE;
@@ -1192,11 +1230,11 @@ BOOL updateSetting(const HWND& hDlg
 	{
 		wstrStateAlert = (loByte & 0x20) ? L"Not active" : L"Active";
 	}
-	SendMessage(GetDlgItem(hDlg, IDC_ALERT)
-		, WM_SETTEXT
-		, (WPARAM)0
-		, (LPARAM)wstrStateAlert.c_str()
-	);
+	//SendMessage(GetDlgItem(hDlg, IDC_ALERT)
+	//	, WM_SETTEXT
+	//	, (WPARAM)0
+	//	, (LPARAM)wstrStateAlert.c_str()
+	//);
 	// update IDC_CHB_EXTENDED ///////////////////////////////////////////////
 	if (loByte & 0x10)
 	{
