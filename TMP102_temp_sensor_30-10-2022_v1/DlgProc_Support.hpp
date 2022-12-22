@@ -33,6 +33,7 @@ CHAR g_szBufferLoadString[MAX_LOADSTRING];
 Connect2SQLite g_oSqlite;
 int g_ResultCode = 0;
 BOOL g_bRecordValueMeasurement = FALSE;
+CHAR g_szNameMeasurement[BUFFER_MAX] = { '\0' };
 
 //*****************************************************************************
 //*                     prototype
@@ -656,25 +657,45 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 
 				// adjust color indicator
 				InvalidateRect(hDlg, &g_rect, TRUE);
+
+				if (g_bRecordValueMeasurement)
+				{
+					// insert into IDR_VAL_TABLE the value from:
+					// the return value from the func date_for_http_responseA()
+					// the measured value from: g_oMsrdTemp.fTempInClcs
+					// the number for the device, only one device for now, so a literal "1"
+					// the name of the measurement in g_szNameMeasurement
+					std::initializer_list<std::string> list{ date_for_http_responseA()
+						, std::to_string(g_oMsrdTemp.fTempInClcs)
+						, "1"
+						, g_szNameMeasurement
+					};
+					g_ResultCode = g_oSqlite.insertTuple(IDR_VAL_TABLE, list);
+				}
 			}
 			return (INT_PTR)TRUE;
 		} // eof EN_CHANGE
 		} // eof switch
 		return (INT_PTR)FALSE;
 	} // eof IDC_T_CLCS
+/*
+				g_rc = g_oSqlite.insertTuple(IDR_VALUE_MEASUREMENT
+					, "value_measurement"
+					, list
+				);
+*/
 	case RECORD_DB:
 	{
 		// insert into IDR_HDR_TABLE the value from:
 		// IDC_NAME_MEASUREMENT (edittext control)
 		// g_oTempLo.fTempInClcs
 		// g_oTempHi.fTempInClcs
-		CHAR szBufferNameMeasurement[BUFFER_MAX] = { '\0' };
 		SendMessageA(GetDlgItem(hDlg, IDC_NAME_MEASUREMENT)
 			, WM_GETTEXT
 			, (WPARAM)BUFFER_MAX
-			, (LPARAM)szBufferNameMeasurement
+			, (LPARAM)g_szNameMeasurement
 		);
-		std::initializer_list<std::string> list{ szBufferNameMeasurement
+		std::initializer_list<std::string> list{ g_szNameMeasurement
 			, std::to_string(g_oTempLo.fTempInClcs)
 			, std::to_string(g_oTempHi.fTempInClcs)
 		};
