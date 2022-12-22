@@ -32,6 +32,7 @@ UINT32 g_valCrc = 0;
 CHAR g_szBufferLoadString[MAX_LOADSTRING];
 Connect2SQLite g_oSqlite;
 int g_ResultCode = 0;
+BOOL g_bRecordValueMeasurement = FALSE;
 
 //*****************************************************************************
 //*                     prototype
@@ -269,22 +270,29 @@ BOOL onWmInitDialog_DlgProc(const HINSTANCE& hInst
 	// default brush color
 	g_brush = g_bkColorDlgBrush;
 
-	// create/open database
+	// create/open database 
+	// IDS_NAME_DB = "Resource\\tmp102.db"
 	LoadStringA(hInst, IDS_NAME_DB, g_szBufferLoadString, MAX_LOADSTRING);
 	g_ResultCode = g_oSqlite.openDb(g_szBufferLoadString);
-	// test //////////////////////////////////////////////////////////////////
+
 	// if not exists: create header table
+	// IDS_NAME_HDR_TABLE = "measurement"
 	LoadStringA(hInst, IDS_NAME_HDR_TABLE, g_szBufferLoadString, MAX_LOADSTRING);
-	g_ResultCode = g_oSqlite.createTable(IDR_NAME_HDR_TABLE, g_szBufferLoadString);
-	SendMessageA(GetDlgItem(hDlg, IDC_NAME_HDR_TABLE)
+	g_ResultCode = g_oSqlite.createTable(IDR_HDR_TABLE, g_szBufferLoadString);
+
+	// if not exists: create value table
+	// IDS_NAME_VAL_TABLE = "value_measurement"
+	LoadStringA(hInst, IDS_NAME_VAL_TABLE, g_szBufferLoadString, MAX_LOADSTRING);
+	g_ResultCode = g_oSqlite.createTable(IDR_VAL_TABLE, g_szBufferLoadString);
+
+	// test //////////////////////////////////////////////////////////
+	// set a default name for a measurement
+	SendMessageA(GetDlgItem(hDlg, IDC_NAME_MEASUREMENT)
 		, WM_SETTEXT
 		, (WPARAM)0
-		, (LPARAM)g_szBufferLoadString
+		, (LPARAM)"slaapkamer_koetshuis_001"
 	);
-	// if not exists: create value table
-	LoadStringA(hInst, IDS_NAME_VAL_TABLE, g_szBufferLoadString, MAX_LOADSTRING);
-	g_ResultCode = g_oSqlite.createTable(IDR_NAME_VAL_TABLE, g_szBufferLoadString);
-	//////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////
 
 	return EXIT_SUCCESS;
 }
@@ -372,6 +380,7 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, APPLY_SETTING), TRUE);
 
 			// enable SQLite
+			EnableWindow(GetDlgItem(hDlg, IDC_NAME_MEASUREMENT), TRUE);
 			EnableWindow(GetDlgItem(hDlg, RECORD_DB), TRUE);
 			EnableWindow(GetDlgItem(hDlg, STOP_RECORD_DB), TRUE);
 
@@ -467,6 +476,7 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			);
 
 			// disable SQLite
+			EnableWindow(GetDlgItem(hDlg, IDC_NAME_MEASUREMENT), FALSE);
 			EnableWindow(GetDlgItem(hDlg, RECORD_DB), FALSE);
 			EnableWindow(GetDlgItem(hDlg, STOP_RECORD_DB), FALSE);
 
@@ -654,10 +664,37 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	} // eof IDC_T_CLCS
 	case RECORD_DB:
 	{
+		// insert into IDR_HDR_TABLE the value from:
+		// IDC_NAME_MEASUREMENT (edittext control)
+		// g_oTempLo.fTempInClcs
+		// g_oTempHi.fTempInClcs
+		CHAR szBufferNameMeasurement[BUFFER_MAX] = { '\0' };
+		SendMessageA(GetDlgItem(hDlg, IDC_NAME_MEASUREMENT)
+			, WM_GETTEXT
+			, (WPARAM)BUFFER_MAX
+			, (LPARAM)szBufferNameMeasurement
+		);
+		std::initializer_list<std::string> list{ szBufferNameMeasurement
+			, std::to_string(g_oTempLo.fTempInClcs)
+			, std::to_string(g_oTempHi.fTempInClcs)
+		};
+		g_ResultCode = g_oSqlite.insertTuple(IDR_HDR_TABLE, list);
+		// when g_ResultCode is SQLite Error 19: 'UNIQUE constraint failed'
+		// the measurement values will join a previous measurement
+		// 
+		// when a unique name is given in the edittext control IDC_NAME_MEASUREMENT,
+		// a new tuple will be inserted into IDR_HDR_TABLE
+		// 
+		// the measurement values -in IDR_VAL_TABLE- will be referenced to this new tuple
+
+		g_bRecordValueMeasurement = TRUE;
+
 		return (INT_PTR)TRUE;
 	} // eof RECORD_DB
 	case STOP_RECORD_DB:
 	{
+		g_bRecordValueMeasurement = FALSE;
+
 		return (INT_PTR)TRUE;
 	} // eof STOP_RECORD_DB
 	} // eof switch

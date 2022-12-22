@@ -1,4 +1,5 @@
 #define CONVERTER_RESOLUTION	12
+#define BUFFER_MAX				64
 
 // crc
 #define INIT_CRC				0xFFFFFFFF
@@ -40,7 +41,7 @@
 #define IDC_ALERT				33018
 #define IDC_CHB_EXTENDED		33019
 #define IDC_STATUSBAR			33020
-#define IDC_NAME_HDR_TABLE		33021
+#define IDC_NAME_MEASUREMENT	33021
 
 // message
 #define CONNECT_SERIAL			33100
@@ -95,10 +96,8 @@
 #define WR_TMP102_RESET			33620 // reset TMP102
 
 // resource database
-#define IDR_NAME_HDR_TABLE		33700
-#define IDR_NAME_VAL_TABLE		33701
-//#define IDR_MEASUREMENT			33700
-//#define IDR_VALUE_MEASUREMENT	33701
+#define IDR_HDR_TABLE			33700
+#define IDR_VAL_TABLE			33701
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

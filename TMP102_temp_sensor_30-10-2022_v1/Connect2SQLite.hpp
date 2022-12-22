@@ -3,6 +3,7 @@
 //*                     include
 //****************************************************************************
 #include "framework.h"
+
 //****************************************************************************
 //*                     Connect2SQLite
 //****************************************************************************
@@ -39,37 +40,86 @@ public:
 	{
 		switch (resourceIdTable)
 		{
-		case IDR_NAME_HDR_TABLE:
+		case IDR_HDR_TABLE:
 		{
 			strNameHdrTable = strNameTable;
 			strSql =
 				"CREATE TABLE IF NOT EXISTS "
-				+ strNameTable + "("
+				+ strNameHdrTable + "("
 				"id INTEGER PRIMARY KEY, "
 				"name TEXT NOT NULL UNIQUE, "
 				"tlo REAL, "
 				"thi REAL"
 				");";
 			break;
-		} // eof IDR_MEASUREMENT
-		case IDR_NAME_VAL_TABLE:
+		} // eof IDR_HDR_TABLE
+		case IDR_VAL_TABLE:
 		{
 			strNameValTable = strNameTable;
 			strSql =
 				"CREATE TABLE IF NOT EXISTS "
-				+ strNameTable + "("
+				+ strNameValTable + "("
 				"id INTEGER PRIMARY KEY, "
 				"timestamp TEXT NOT NULL, "
 				"value REAL, "
+				"device INTEGER, "
 				"fk_header INTEGER, "
 				"CONSTRAINT cnstrnt "
 				"FOREIGN KEY(fk_header) REFERENCES " 
 				+ strNameHdrTable + "(id)"
 				");";
 			break;
-		} // eof IDR_VALUE_MEASUREMENT
+		} // eof IDR_VAL_TABLE
 		} // eof switch
 		rc = execute(pdb, strSql, nullptr);
+		return rc;
+	}
+	//************************************************************************
+	//*                 insertTuple
+	//************************************************************************
+	int insertTuple(const UINT& resourceIdTable
+		, std::initializer_list<std::string>& list
+	)
+	{
+		std::vector<std::string> vector_list{ list };
+		switch (resourceIdTable)
+		{
+		case IDR_HDR_TABLE:
+		{
+			strSql = "INSERT INTO "
+				+ strNameHdrTable
+				+ "(name, tlo, thi) VALUES('"
+				+ vector_list[0] + "', "
+				+ vector_list[1] + ", "
+				+ vector_list[2]
+				+ ");";
+			break;
+		} // eof IDR_HDR_TABLE
+		case IDR_VAL_TABLE:
+		{
+			strSql = "INSERT INTO "
+				+ strNameValTable
+				+ "(timestamp, value, device, fk_header) VALUES('"
+				+ vector_list[0] + "', "
+				+ vector_list[1] + ", "
+				+ vector_list[2] + ", ("
+				+ "SELECT id FROM " + strNameHdrTable  + " WHERE name='"
+				+ vector_list[3] + "')"
+				+ ");";			
+			break;
+		} // eof IDR_VAL_TABLE
+		} // eof switch
+		rc = execute(pdb, strSql, nullptr);
+		return rc;
+	}
+	//************************************************************************
+	//*                 closeDb
+	//*
+	//* not yet in use, because it is unclear where to close the database
+	//************************************************************************
+	int closeDb()
+	{
+		rc = sqlite3_close(pdb);
 		return rc;
 	}
 private:
@@ -101,6 +151,32 @@ private:
 		return EXIT_SUCCESS;
 	}
 };
+
+//****************************************************************************
+//*                     date_for_http_responseA
+//****************************************************************************
+std::string
+date_for_http_responseA()
+{
+	const std::string dow[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+	const std::string month[] = { "Jan","Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+	time_t tt;
+	time(&tt);
+	tm t;
+	localtime_s(&t, &tt);
+	struct tm gmt;
+	gmtime_s(&gmt, &tt);
+	std::ostringstream oss;
+	oss << dow[gmt.tm_wday] << ", "
+		<< std::setw(2) << std::setfill('0') << gmt.tm_mday << " "
+		<< month[gmt.tm_mon] << " "
+		<< gmt.tm_year + 1900 << " "
+		<< std::setw(2) << std::setfill('0') << gmt.tm_hour << ":"
+		<< std::setw(2) << std::setfill('0') << gmt.tm_min << ":"
+		<< std::setw(2) << std::setfill('0') << gmt.tm_sec << " "
+		<< "GMT";
+	return oss.str();
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // waste
