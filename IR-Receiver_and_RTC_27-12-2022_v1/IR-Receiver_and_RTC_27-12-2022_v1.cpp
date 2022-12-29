@@ -1,22 +1,40 @@
 // IR-Receiver_and_RTC_27-12-2022_v1.cpp : Defines the entry point for the application.
 //
 
+//****************************************************************************
+//*                     include
+//****************************************************************************
 #include "framework.h"
 #include "IR-Receiver_and_RTC_27-12-2022_v1.h"
 
+//****************************************************************************
+//*                     define
+//****************************************************************************
 #define MAX_LOADSTRING 100
 
+//****************************************************************************
+//*                     global
+//****************************************************************************
 // Global Variables:
-HINSTANCE hInst;                                // current instance
+HINSTANCE g_hInst;                              // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
+HWND g_hDlg = { 0 };
+
+//****************************************************************************
+//*                     prototype
+//****************************************************************************
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK    DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
+//****************************************************************************
+//*                     wWinMain
+//****************************************************************************
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPWSTR    lpCmdLine,
@@ -26,6 +44,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(lpCmdLine);
 
     // TODO: Place code here.
+    // load common controls: tab, listview, header, toolbar, statusbar,
+    // and tooltip
+    INITCOMMONCONTROLSEX ic = { 0 };
+    ic.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    ic.dwICC = ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES;
+    BOOL bSuccessInit = InitCommonControlsEx(&ic);
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -45,6 +69,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
     {
+        if (IsDialogMessage(g_hDlg, &msg))
+        {
+            continue;
+        }
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
             TranslateMessage(&msg);
@@ -55,13 +83,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int) msg.wParam;
 }
 
-
-
-//
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
+//****************************************************************************
+//*                     MyRegisterClass
+//****************************************************************************
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
@@ -83,22 +107,19 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
+//****************************************************************************
+//*                     InitInstance
+//****************************************************************************
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   hInst = hInstance; // Store instance handle in our global variable
+   g_hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW
+       , 15
+       , 15
+       , 370
+       , 310
+       , nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -111,20 +132,36 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE: Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
+//****************************************************************************
+//*                     WndProc
+//****************************************************************************
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
+    case WM_NCCREATE:
+    {
+        // create dialog
+        g_hDlg = CreateDialog(g_hInst, L"DLGPROCWINDOW", hWnd, DlgProc);
+
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    } // eof WM_NCCREATE
+    case WM_SIZE:
+    {
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        // set size dialog and show dialog
+        SetWindowPos(g_hDlg
+            , HWND_TOP
+            , rect.left
+            , rect.top
+            , rect.right
+            , rect.bottom
+            , SWP_SHOWWINDOW
+        );
+
+        return (INT_PTR)TRUE;
+    } // eof WM_SIZE
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -132,7 +169,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (wmId)
             {
             case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
             case IDM_EXIT:
                 DestroyWindow(hWnd);
@@ -159,7 +196,48 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+//****************************************************************************
+//*                     DlgProc
+//****************************************************************************
+INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    static HANDLE hThread = INVALID_HANDLE_VALUE;
+    switch (uMsg)
+    {
+    case WM_INITDIALOG:
+    {
+        onWmInitDialog_DlgProc(g_hInst
+            , hDlg
+        );
+
+        return (INT_PTR)FALSE;
+    } // eof WM_INITDIALOG
+    case WM_SIZE:
+    {
+        onWmSize_DlgProc(hDlg
+        );
+        return (INT_PTR)TRUE;
+    } // eof WM_SIZE
+    case WM_COMMAND:
+    {
+
+        onWmCommand_DlgProc(hDlg
+            , wParam
+            , hThread
+        );
+        // this break is vital, otherwise a WM_COMMAND falls
+        // through into the underlying message handler!
+        break;
+    } // eof WM_COMMAND
+    } // eof switch
+
+    return (INT_PTR)FALSE;
+}
+
 // Message handler for about box.
+//****************************************************************************
+//*                     About
+//****************************************************************************
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     UNREFERENCED_PARAMETER(lParam);
