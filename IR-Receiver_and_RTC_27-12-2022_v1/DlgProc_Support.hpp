@@ -5,6 +5,287 @@
 #include "framework.h"
 
 //****************************************************************************
+//*                     global
+//****************************************************************************
+HANDLE g_hComm = INVALID_HANDLE_VALUE;
+BOOL g_bContinueTxRx = FALSE;
+HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
+// Resource Aquisition Is Initialisation RAII 
+FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
+UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+UINT32 g_valCrc = 0;
+
+//*****************************************************************************
+//*                     prototype
+//*****************************************************************************
+BOOL				connect(HANDLE& hComm);
+DWORD WINAPI		TxRx(LPVOID lpVoid);
+BOOL				transmit(LPVOID lpVoid);
+BOOL                receive(LPVOID lpVoid);
+BOOL				date_time_for_serialA(CHAR* pszDateTime);
+
+//*****************************************************************************
+//*                     onWmCommand_DlgProc
+//*****************************************************************************
+INT_PTR onWmCommand_DlgProc(const HWND& hDlg
+	, const WPARAM& wParam
+)
+{
+	switch (LOWORD(wParam))
+	{
+	case CONNECT_SERIAL:
+	{
+		if (connect(g_hComm) == EXIT_SUCCESS)
+		{
+			// get the date and time for synchronising the real time clock (RTC)
+			// in the STM32
+			CHAR pszDateTime[LEN_DATE_TIME + 1];
+			date_time_for_serialA(pszDateTime);
+			// copy pszDateTime into g_oFrame.payload
+			strcpy_s(g_oFrame.payload, LEN_MAX_ENTRY, pszDateTime);
+			g_oFrame.cmnd = WR_DATE_TIME;
+
+			// enable infinite loop
+			g_bContinueTxRx = TRUE;
+
+			// create thread to continuously transmit and receive
+			DWORD dwThreadIdTxRx = 0;
+			g_hThreadTxRx = CreateThread(NULL
+				, 0
+				, TxRx
+				, (LPVOID)hDlg
+				, CREATE_SUSPENDED // wait until started
+				, &dwThreadIdTxRx
+			);
+
+			// start thread exact on this command
+			if (g_hThreadTxRx) ResumeThread(g_hThreadTxRx);
+		}
+		else
+		{
+			// can't connect with STM32, probably the connection cable is loose
+		}
+		return (INT_PTR)TRUE;
+	} // eof CONNECT_SERIAL
+	default:
+	{
+		return (INT_PTR)FALSE;
+	}
+	} // eof switch
+
+	return (INT_PTR)FALSE;
+}
+
+//****************************************************************************
+//*                     connect
+//****************************************************************************
+BOOL connect(HANDLE& hComm)
+{
+	// create file
+	hComm = CreateFile(L"\\\\.\\COM3"
+		, GENERIC_READ | GENERIC_WRITE
+		, 0
+		, NULL
+		, OPEN_EXISTING
+		, FILE_ATTRIBUTE_NORMAL
+		//, FILE_FLAG_OVERLAPPED
+		, NULL
+	);
+	if (hComm == INVALID_HANDLE_VALUE)
+	{
+		return EXIT_FAILURE;
+	}
+
+	// set structure to initialize the communication port
+	DCB dcb;
+	dcb.DCBlength = sizeof(DCB);
+	dcb.BaudRate = 115200;
+	dcb.fBinary = 1;
+	dcb.fParity = 0;
+	dcb.fOutxCtsFlow = 0;
+	dcb.fOutxDsrFlow = 0;
+	dcb.fDtrControl = 1;
+	dcb.fDsrSensitivity = 0;
+	dcb.fTXContinueOnXoff = 0;
+	dcb.fOutX = 0;
+	dcb.fInX = 0;
+	dcb.fErrorChar = 0;
+	dcb.fNull = 0;
+	dcb.fRtsControl = 1;
+	dcb.fAbortOnError = 0;
+	dcb.fDummy2 = 0;
+	dcb.wReserved = 0;
+	dcb.ByteSize = 8;
+	dcb.Parity = 0;
+	dcb.StopBits = 0;
+	dcb.XoffChar = 0;
+	dcb.XoffChar = 0;
+	dcb.ErrorChar = 24;
+	dcb.EvtChar = 0;
+	dcb.wReserved1 = 0;
+	dcb.ByteSize = 8;
+	dcb.StopBits = 0;
+	// initialize the communication port
+	if (!SetCommState(hComm, (LPDCB)&dcb))
+	{
+		return EXIT_FAILURE;
+	}
+
+	// set structure for the communication port timeout
+	COMMTIMEOUTS commtimeouts;
+	commtimeouts.ReadIntervalTimeout = MAXDWORD;
+	commtimeouts.ReadTotalTimeoutMultiplier = 0;
+	commtimeouts.ReadTotalTimeoutConstant = 0;
+	commtimeouts.WriteTotalTimeoutMultiplier = 0;
+	commtimeouts.WriteTotalTimeoutConstant = 0;
+	// set communication port timeout
+	if (!SetCommTimeouts(hComm, (LPCOMMTIMEOUTS)&commtimeouts))
+	{
+		return EXIT_FAILURE;
+	}
+
+	// set the communication port mask bit to capture event
+	if (!SetCommMask(hComm, EV_TXEMPTY | EV_RXCHAR))
+	{
+		return EXIT_FAILURE;
+	}
+
+	// set in/out queue buffers
+	if (!SetupComm(hComm, BUFFER_MAX_SERIAL, BUFFER_MAX_SERIAL))
+	{
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     TxRx
+//****************************************************************************
+DWORD WINAPI TxRx(LPVOID lpVoid)
+{
+	// infinite loop
+	while (g_bContinueTxRx)
+	{
+		transmit(lpVoid);
+		Sleep(DELAY_4HZ_SERIAL);
+		receive(lpVoid);
+		Sleep(DELAY_4HZ_SERIAL);
+	}
+
+	return 0;
+}
+
+//****************************************************************************
+//*                     transmit
+//****************************************************************************
+BOOL transmit(LPVOID lpVoid)
+{
+	g_chBuffer[0] = g_oFrame.soh;
+	g_chBuffer[1] = (g_oFrame.cmnd >> 8) & 0xFF;
+	g_chBuffer[2] = (g_oFrame.cmnd & 0xFF);
+	g_chBuffer[3] = g_oFrame.stx;
+	for (uint8_t i = 0; i < LEN_DATE_TIME; i++)
+	{
+		g_chBuffer[i + 4] = g_oFrame.payload[i];
+	}
+	g_chBuffer[34] = '\0';
+	g_chBuffer[35] = g_oFrame.etx;
+	g_chBuffer[36] = g_oFrame.etb;
+	g_chBuffer[37] = g_oFrame.eot;
+
+	// calculate crc and feed into g_chBuffer
+	calcCrcEx((const UCHAR*)g_chBuffer, LEN_FRAME, g_valCrc);
+	g_chBuffer[38] = (g_valCrc & 0xFF000000) >> 24;
+	g_chBuffer[39] = (g_valCrc & 0x00FF0000) >> 16;
+	g_chBuffer[40] = (g_valCrc & 0x0000FF00) >> 8;
+	g_chBuffer[41] = (g_valCrc & 0x000000FF);
+
+	DWORD dwNofByteTransferred = 0;
+	WriteFile(g_hComm
+		, &g_chBuffer
+		, LEN_FRAME + LEN_CRC
+		, &dwNofByteTransferred
+		, NULL
+	);
+
+	return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     receive
+//****************************************************************************
+BOOL receive(LPVOID lpVoid)
+{
+	DWORD dwNofByteTransferred = 0;
+	ReadFile(g_hComm
+		, &g_chBuffer
+		, LEN_FRAME + LEN_CRC
+		, &dwNofByteTransferred
+		, NULL
+	);
+
+	// check crc
+	// receive ACK: stop transmit
+	// receive NAK: retransmit
+
+	return EXIT_SUCCESS;
+}
+/*
+		// isolate received crc from g_chBuffer
+		UINT32 rxValCrc = (g_chBuffer[38] << 24)
+			| (g_chBuffer[39] << 16)
+			| (g_chBuffer[40] << 8)
+			| (g_chBuffer[41]);
+
+		// calculate crc
+		calcCrcEx(g_chBuffer, LEN_FRAME, g_valCrc);
+
+		// compare received CRC with calculated CRC
+		if (rxValCrc != g_valCrc)
+*/
+
+//****************************************************************************
+//*                     date_time_for_serialA
+//****************************************************************************
+BOOL date_time_for_serialA(CHAR* pszDateTime)
+{
+	// use ctime to get date and time
+	time_t tt;
+	time(&tt);
+	tm t;
+	localtime_s(&t, &tt);
+	struct tm gmt;
+	gmtime_s(&gmt, &tt);
+	// coded in binary code decimal (BCD)
+	// hour.....: t.tm_hour
+	// minute...: t.tm_min
+	// second...: t.tm_sec
+	// day......: t.tm_mday
+	// month....: (t.tm_mon + 1)
+	// year.....: (t.tm_year % 100)
+	sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c"
+		, ((t.tm_hour / 10) << 4) | (t.tm_hour % 10)
+		, ((t.tm_min / 10) << 4) | (t.tm_min % 10)
+		, ((t.tm_sec / 10) << 4) | (t.tm_sec % 10)
+		, ((t.tm_mday / 10) << 4) | (t.tm_mday % 10)
+		, (((t.tm_mon + 1) / 10) << 4) | ((t.tm_mon + 1) % 10)
+		, (((t.tm_year % 100) / 10) << 4) | ((t.tm_year % 100) % 10)
+	);
+
+	return EXIT_SUCCESS;
+}
+
+/*
+///////////////////////////////////////////////////////////////////////////////
+// waste //////////////////////////////////////////////////////////////////////
+#pragma once
+//*****************************************************************************
+//*                     include
+//*****************************************************************************
+#include "framework.h"
+
+//****************************************************************************
 //*                     typedef
 //****************************************************************************
 typedef struct tagFRAME
@@ -27,7 +308,8 @@ HANDLE g_hComm = INVALID_HANDLE_VALUE;
 // Resource Aquisition Is Initialisation RAII 
 FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
 
-BOOL g_bContinueRx = FALSE;
+BOOL g_bContinueTxRx = FALSE;
+HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
@@ -65,15 +347,18 @@ BOOL g_bRunningTimer = FALSE;
 //*                     prototype
 //*****************************************************************************
 BOOL				connect(HANDLE& hComm);
-DWORD WINAPI		Rx(LPVOID lpVoid);
+DWORD WINAPI		TxRx(LPVOID lpVoid);
+BOOL				transmit(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
 BOOL				processCommand(LPVOID lpVoid);
 BOOL				evaluate(CHAR& ch);
 VOID				Timerproc(HWND, UINT, UINT_PTR, DWORD);
 BOOL				evaluate(LPVOID lpVoid, CHAR& ch);
 BOOL				appendTextToEditControlA(const HWND& hWndEditControl
-	, const std::string str);
+						, const std::string str);
 BOOL				eraseLastCharA(const HWND& hWndEditControl);
+BOOL				date_time_for_serialA(CHAR* pszDateTime
+						, const UINT8& lenDateTime);
 
 //*****************************************************************************
 //*                     onWmInitDialog_DlgProc
@@ -117,7 +402,7 @@ BOOL onWmSize_DlgProc(const HWND& hDlg
 //*****************************************************************************
 INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	, const WPARAM& wParam
-	, HANDLE& hThreadRx
+	//, HANDLE& hThreadRx
 )
 {
 	switch (LOWORD(wParam))
@@ -139,20 +424,20 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 			EnableWindow(GetDlgItem(hDlg, RESTART_SERIAL), TRUE);
 
 			// enable infinite loop
-			g_bContinueRx = TRUE;
+			g_bContinueTxRx = TRUE;
 
 			// create thread to continuously transmit and receive
 			DWORD dwThreadIdTxRx = 0;
-			hThreadRx = CreateThread(NULL
+			g_hThreadTxRx = CreateThread(NULL
 				, 0
-				, Rx
+				, TxRx
 				, (LPVOID)hDlg
 				, CREATE_SUSPENDED // wait until started
 				, &dwThreadIdTxRx
 			);
 
 			// start thread exact on this command
-			if (hThreadRx) ResumeThread(hThreadRx);
+			if (g_hThreadTxRx) ResumeThread(g_hThreadTxRx);
 		}
 		else
 		{
@@ -164,8 +449,8 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 	case DISCONNECT_SERIAL:
 	{
 		// terminate thread
-		g_bContinueRx = FALSE;
-		hThreadRx = INVALID_HANDLE_VALUE;
+		g_bContinueTxRx = FALSE;
+		g_hThreadTxRx = INVALID_HANDLE_VALUE;
 
 		if (g_hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
 
@@ -329,12 +614,15 @@ BOOL connect(HANDLE& hComm)
 }
 
 //****************************************************************************
-//*                     Rx
+//*                     TxRx
 //****************************************************************************
-DWORD WINAPI Rx(LPVOID lpVoid)
+DWORD WINAPI TxRx(LPVOID lpVoid)
 {
+	// start with one transmission to transfer date and time to STM32
+	transmit(lpVoid);
+
 	// infinite loop
-	while (g_bContinueRx)
+	while (g_bContinueTxRx)
 	{
 		++g_cTransmission;
 		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_TRANSMISSION)
@@ -346,6 +634,68 @@ DWORD WINAPI Rx(LPVOID lpVoid)
 		Sleep(2 * DELAY_SERIAL_COMM);
 	}
 	return 0;
+}
+
+//****************************************************************************
+//*                     transmit
+//****************************************************************************
+BOOL transmit(LPVOID lpVoid)
+{
+	OutputDebugString(L"transmitting\n");
+	// get date and time for synchronising the real time clock (RTC)
+	// in the STM32
+	const UINT8 lenDateTimne = 13;
+	CHAR pszDateTime[lenDateTimne];
+	date_time_for_serialA(pszDateTime, lenDateTimne);
+
+	// Resource Aquisition Is Initialisation RAII 
+	FRAME oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
+	oFrame.cmnd = WR_DATE_TIME;
+	for (UINT8 i = 0; i < lenDateTimne; i++)
+	{
+		// set date and time into payload
+		oFrame.payload[i] = pszDateTime[i];
+	}
+
+	g_chBuffer[0] = oFrame.soh;
+	g_chBuffer[1] = (oFrame.cmnd & 0xFF00) >> 8;
+	g_chBuffer[2] = (oFrame.cmnd & 0x00FF);
+	g_chBuffer[3] = oFrame.stx;
+	for (UINT8 i = 0; i < lenDateTimne - 1; i++)
+	{
+		g_chBuffer[i + 4] = oFrame.payload[i];
+	}
+	g_chBuffer[34] = '\0';
+	g_chBuffer[35] = oFrame.etx;
+	g_chBuffer[36] = oFrame.etb;
+	g_chBuffer[37] = oFrame.eot;
+
+	// calculate crc and feed into g_chBuffer
+	calcCrcEx((const UCHAR*)g_chBuffer, LEN_FRAME, g_valCrc);
+	g_chBuffer[38] = (g_valCrc & 0xFF000000) >> 24;
+	g_chBuffer[39] = (g_valCrc & 0x00FF0000) >> 16;
+	g_chBuffer[40] = (g_valCrc & 0x0000FF00) >> 8;
+	g_chBuffer[41] = (g_valCrc & 0x000000FF);
+
+	DWORD dwNofByteTransferred = 0;
+	WriteFile(g_hComm
+		, &g_chBuffer
+		, LEN_FRAME + LEN_CRC
+		, &dwNofByteTransferred
+		, NULL
+	);
+
+	if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
+	{
+		++g_cTransmission;
+		SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_TRANSMISSION)
+			, WM_SETTEXT
+			, (WPARAM)0
+			, (LPARAM)std::to_string(g_cTransmission).c_str()
+		);
+	}
+
+	return EXIT_SUCCESS;
 }
 
 //****************************************************************************
@@ -581,7 +931,9 @@ BOOL eraseLastCharA(const HWND& hWndEditControl)
 //****************************************************************************
 //*                     date_time_for_serialA
 //****************************************************************************
-BOOL date_time_for_serialA(CHAR* pszDateTime)
+BOOL date_time_for_serialA(CHAR* pszDateTime
+	, const UINT8& lenDateTime
+)
 {
 	// use ctime to get date and time
 	time_t tt;
@@ -596,8 +948,8 @@ BOOL date_time_for_serialA(CHAR* pszDateTime)
 	// day......: t.tm_mday
 	// month....: (t.tm_mon + 1)
 	// year.....: (t.tm_year + 1900)
-	sprintf_s(pszDateTime, (size_t)BUFFER_MAX_SERIAL, "%c%c%c%c%c%c%c%c%c%c%c%c"
-		, t.tm_hour
+	sprintf_s(pszDateTime, (size_t)lenDateTime, "%c%c%c%c%c%c%c%c%c%c%c%c"
+		, t.tm_hour / 10
 		, t.tm_hour % 10
 		, t.tm_min / 10
 		, t.tm_min % 10
@@ -613,3 +965,4 @@ BOOL date_time_for_serialA(CHAR* pszDateTime)
 
 	return EXIT_SUCCESS;
 }
+*/

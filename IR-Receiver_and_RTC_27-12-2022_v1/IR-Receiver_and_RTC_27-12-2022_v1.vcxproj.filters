@@ -36,6 +36,9 @@
     <ClInclude Include="Statusbar.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Struct_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IR-Receiver_and_RTC_27-12-2022_v1.cpp">

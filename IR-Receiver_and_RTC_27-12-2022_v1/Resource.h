@@ -8,6 +8,39 @@
 #define ETX						3
 #define ETB						23
 #define EOT						4
+#define ACK						6
+#define NAK						21
+
+// serial communication
+#define LEN_DATE_TIME			6
+#define LEN_MAX_ENTRY			31
+#define LEN_FRAME				38
+#define LEN_CRC					4
+#define DELAY_4HZ_SERIAL		125
+#define BUFFER_MAX_SERIAL		512
+
+// control
+#define IDC_STATUSBAR			33007
+
+// message
+#define CONNECT_SERIAL			33100
+
+// command serial communication
+// write command
+#define WR_DATE_TIME			33621 // write date and time to STM32, to initialize the RTC
+
+/*
+// waste /////////////////////////////////////////////////////////////////////
+// crc
+#define INIT_CRC				0xFFFFFFFF
+#define POLY_CRC				0x04C11DB7
+
+// frame
+#define SOH						1
+#define STX						2
+#define ETX						3
+#define ETB						23
+#define EOT						4
 
 // serial communication
 #define LEN_MAX_ENTRY			31
@@ -33,6 +66,12 @@
 
 // timer
 #define IDT_TIMER				33200
+
+// command serial communication
+// write command
+#define WR_DATE_TIME			33621 // write date and time to STM32, to initialize the RTC
+//////////////////////////////////////////////////////////////////////////////
+*/
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

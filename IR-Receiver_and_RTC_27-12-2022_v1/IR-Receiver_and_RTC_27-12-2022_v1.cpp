@@ -201,7 +201,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //****************************************************************************
 INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    static HANDLE hThread = INVALID_HANDLE_VALUE;
+    switch (uMsg)
+    {
+    case WM_COMMAND:
+    {
+
+        onWmCommand_DlgProc(hDlg
+            , wParam
+        );
+        // this break is vital, otherwise a WM_COMMAND falls
+        // through into the underlying message handler!
+        break;
+    } // eof WM_COMMAND
+    } // eof switch
+    
+    return (INT_PTR)FALSE;
+}
+/*
+// waste /////////////////////////////////////////////////////////////////////
+//****************************************************************************
+//*                     DlgProc
+//****************************************************************************
+INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
     switch (uMsg)
     {
     case WM_INITDIALOG:
@@ -223,7 +245,6 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         onWmCommand_DlgProc(hDlg
             , wParam
-            , hThread
         );
         // this break is vital, otherwise a WM_COMMAND falls
         // through into the underlying message handler!
@@ -233,6 +254,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     return (INT_PTR)FALSE;
 }
+*/
 
 // Message handler for about box.
 //****************************************************************************
