@@ -203,29 +203,6 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
-    case WM_COMMAND:
-    {
-
-        onWmCommand_DlgProc(hDlg
-            , wParam
-        );
-        // this break is vital, otherwise a WM_COMMAND falls
-        // through into the underlying message handler!
-        break;
-    } // eof WM_COMMAND
-    } // eof switch
-    
-    return (INT_PTR)FALSE;
-}
-/*
-// waste /////////////////////////////////////////////////////////////////////
-//****************************************************************************
-//*                     DlgProc
-//****************************************************************************
-INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    switch (uMsg)
-    {
     case WM_INITDIALOG:
     {
         onWmInitDialog_DlgProc(g_hInst
@@ -238,6 +215,7 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
         onWmSize_DlgProc(hDlg
         );
+
         return (INT_PTR)TRUE;
     } // eof WM_SIZE
     case WM_COMMAND:
@@ -246,15 +224,15 @@ INT_PTR CALLBACK DlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         onWmCommand_DlgProc(hDlg
             , wParam
         );
+
         // this break is vital, otherwise a WM_COMMAND falls
         // through into the underlying message handler!
         break;
     } // eof WM_COMMAND
     } // eof switch
-
+    
     return (INT_PTR)FALSE;
 }
-*/
 
 // Message handler for about box.
 //****************************************************************************
