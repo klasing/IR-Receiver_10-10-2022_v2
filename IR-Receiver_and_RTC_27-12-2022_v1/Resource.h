@@ -12,7 +12,7 @@
 #define NAK						21
 
 // serial communication
-#define LEN_DATE_TIME			6
+#define LEN_DATE_TIME			7
 #define LEN_MAX_ENTRY			31
 #define LEN_FRAME				38
 #define LEN_CRC					4

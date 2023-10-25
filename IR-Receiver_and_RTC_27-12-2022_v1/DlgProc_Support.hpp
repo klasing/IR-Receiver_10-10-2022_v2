@@ -125,10 +125,7 @@ INT_PTR onWmCommand_DlgProc(const HWND& hDlg
 
 			// get the date and time for synchronising the real time clock (RTC)
 			// in the STM32
-			CHAR pszDateTime[LEN_DATE_TIME + 1];
-			date_time_for_serialA(pszDateTime);
-			// copy pszDateTime into g_oFrame.payload
-			strcpy_s(g_oFrame.payload, LEN_MAX_ENTRY, pszDateTime);
+			date_time_for_serialA(g_oFrame.payload);
 			g_oFrame.cmnd = WR_DATE_TIME;
 
 			// enable infinite loop
@@ -491,13 +488,14 @@ BOOL date_time_for_serialA(CHAR* pszDateTime)
 	// day......: t.tm_mday
 	// month....: (t.tm_mon + 1)
 	// year.....: (t.tm_year % 100)
-	sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c"
+	sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c%c"
 		, ((t.tm_hour / 10) << 4) | (t.tm_hour % 10)
 		, ((t.tm_min / 10) << 4) | (t.tm_min % 10)
 		, ((t.tm_sec / 10) << 4) | (t.tm_sec % 10)
 		, ((t.tm_mday / 10) << 4) | (t.tm_mday % 10)
-		, (((t.tm_mon + 1) / 10) << 4) | ((t.tm_mon + 1) % 10)
+		, ((t.tm_mon / 10) << 4) | (t.tm_mon % 10)
 		, (((t.tm_year % 100) / 10) << 4) | ((t.tm_year % 100) % 10)
+		, t.tm_wday
 	);
 
 	return EXIT_SUCCESS;
