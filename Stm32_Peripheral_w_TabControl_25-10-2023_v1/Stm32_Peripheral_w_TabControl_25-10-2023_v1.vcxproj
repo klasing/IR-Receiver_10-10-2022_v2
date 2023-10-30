@@ -139,6 +139,7 @@
     <ResourceCompile Include="Stm32_Peripheral_w_TabControl_25-10-2023_v1.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Resource\st_logo.ico" />
     <Image Include="small.ico" />
     <Image Include="Stm32_Peripheral_w_TabControl_25-10-2023_v1.ico" />
   </ItemGroup>
