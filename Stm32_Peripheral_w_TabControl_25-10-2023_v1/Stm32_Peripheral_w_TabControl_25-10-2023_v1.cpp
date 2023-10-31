@@ -20,6 +20,7 @@ HINSTANCE g_hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
+Statusbar g_oStatusbar;
 HWND g_hDlg = { 0 };
 
 //****************************************************************************
@@ -143,6 +144,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
+    case WM_NCCREATE:
+    {
+        // create statusbar
+        g_oStatusbar.createStatusbar(g_hInst
+            , hWnd
+            , 4
+        );
+
+
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    } // eof WM_NCCREATE
+    case WM_SIZE:
+    {
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        // set statusbar
+        g_oStatusbar.setStatusbar(hWnd);
+
+        return (INT_PTR)TRUE;
+    } // eof WM_SIZE
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);

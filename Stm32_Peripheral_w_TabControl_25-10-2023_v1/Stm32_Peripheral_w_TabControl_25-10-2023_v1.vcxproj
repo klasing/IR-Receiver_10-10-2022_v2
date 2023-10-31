@@ -129,6 +129,7 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Statusbar.hpp" />
     <ClInclude Include="Stm32_Peripheral_w_TabControl_25-10-2023_v1.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>

@@ -1,3 +1,6 @@
+// control
+#define IDC_STATUSBAR			33007
+
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by Stm32_Peripheral_w_TabControl_25-10-2023_v1.rc
