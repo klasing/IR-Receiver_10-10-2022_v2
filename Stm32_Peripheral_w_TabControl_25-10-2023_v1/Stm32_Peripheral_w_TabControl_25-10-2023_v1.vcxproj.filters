@@ -30,6 +30,9 @@
     <ClInclude Include="Statusbar.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TabControl.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Stm32_Peripheral_w_TabControl_25-10-2023_v1.cpp">

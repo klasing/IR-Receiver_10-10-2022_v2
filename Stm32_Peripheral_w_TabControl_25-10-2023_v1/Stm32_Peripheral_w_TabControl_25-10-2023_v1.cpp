@@ -21,7 +21,8 @@ WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 Statusbar g_oStatusbar;
-HWND g_hDlg = { 0 };
+TabControl g_oTabControl;
+HWND g_hWndDlgTab0 = NULL;
 
 //****************************************************************************
 //*                     prototype
@@ -30,6 +31,7 @@ HWND g_hDlg = { 0 };
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK	Tab0Proc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 //****************************************************************************
@@ -69,7 +71,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
     {
-        if (IsDialogMessage(g_hDlg, &msg))
+        if (IsDialogMessage(g_hWndDlgTab0, &msg))
         {
             continue;
         }
@@ -151,7 +153,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             , hWnd
             , 4
         );
-
+        // create tab control
+        g_oTabControl.createTabControl(g_hInst
+            , hWnd
+            , IDC_TABCONTROL
+            , 1
+            , Tab0Proc
+        );
+        g_oTabControl.setItem(0, (PWCHAR)L"Serial comm.");
+        g_hWndDlgTab0 = g_oTabControl.hWndDlg[0];
 
         return DefWindowProc(hWnd, message, wParam, lParam);
     } // eof WM_NCCREATE
@@ -161,6 +171,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GetClientRect(hWnd, &rect);
         // set statusbar
         g_oStatusbar.setStatusbar(hWnd);
+        // test
+        g_oStatusbar.setTextStatusbar(0, L"part 1");
+        g_oStatusbar.setTextStatusbar(1, L"part 2");
+        g_oStatusbar.setTextStatusbar(2, L"part 3");
+        g_oStatusbar.setTextStatusbar(3, L"part 4");
+        // set teb control
+        g_oTabControl.showTabItems(lParam);
 
         return (INT_PTR)TRUE;
     } // eof WM_SIZE
@@ -196,6 +213,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
+}
+
+//*****************************************************************************
+//*                     Tab0Proc
+//*****************************************************************************
+INT_PTR CALLBACK Tab0Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    return (INT_PTR)FALSE;
 }
 
 // Message handler for about box.

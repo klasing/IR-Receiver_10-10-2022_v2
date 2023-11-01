@@ -1,5 +1,6 @@
 // control
-#define IDC_STATUSBAR			33007
+#define IDC_STATUSBAR											33000
+#define IDC_TABCONTROL											33001
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

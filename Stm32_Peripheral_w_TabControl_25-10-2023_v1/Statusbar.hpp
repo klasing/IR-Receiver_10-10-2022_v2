@@ -101,5 +101,20 @@ public:
 
 		return EXIT_SUCCESS;
 	}
+	//************************************************************************
+	//*                 setTextStatusbar
+	//************************************************************************
+	BOOL setTextStatusbar(const UINT8& part
+		, const std::wstring& wstr
+	)
+	{
+		SendMessage(hWndStatusbar
+			, SB_SETTEXT
+			, (WPARAM)part
+			, (LPARAM)wstr.c_str()
+		);
+
+		return EXIT_SUCCESS;
+	}
 private:
 };
