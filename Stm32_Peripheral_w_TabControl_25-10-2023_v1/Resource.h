@@ -1,6 +1,9 @@
 // control
 #define IDC_STATUSBAR											33000
 #define IDC_TABCONTROL											33001
+// message
+#define CONNECT_SERIAL											33100
+#define DISCONNECT_SERIAL										33101
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

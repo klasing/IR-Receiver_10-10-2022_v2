@@ -10,6 +10,8 @@
 class  TabControl
 {
 	static const UINT MAX_TAB = 16;
+	static const DWORD OFFSET_TABHDR = 25;
+	static const DWORD HEIGHT_STATUSBAR = 20;
 	HWND hWndTab = NULL;
 	UINT nofDlg = 0;	// can't be greater than the constant MAX_TAB
 	UINT iPage = 0;		// holds the index of the window belonging to the active tab-item
@@ -101,7 +103,7 @@ public:
 		// on the rights side of he window is a irritating black vertical line
 		// add two to the x-value to get rid of this line
 		int x = GET_X_LPARAM(lParam) + 2;
-		int y = GET_Y_LPARAM(lParam);
+		int y = GET_Y_LPARAM(lParam) - OFFSET_TABHDR - HEIGHT_STATUSBAR;
 		// show the tab items
 		SetWindowPos(hWndTab
 			, HWND_TOP
@@ -115,9 +117,10 @@ public:
 			if (i == iPage)
 			{
 				// show the window belonging to the active tab-item
+				// the y-value (OFFSET_TABHDR) is essential, it prevents hiding the tab control text
 				SetWindowPos(hWndDlg[i]
 					, HWND_TOP
-					, 0, 0
+					, 0, OFFSET_TABHDR
 					, x
 					, y
 					, SWP_SHOWWINDOW
@@ -126,9 +129,10 @@ public:
 			else
 			{
 				// hide the window(s) belonging to the nonactive tab-item(s)
+				// the y-value (OFFSET_TABHDR) is essential, it prevents hiding the tab control text
 				SetWindowPos(hWndDlg[i]
 					, HWND_TOP
-					, 0, 0
+					, 0, OFFSET_TABHDR
 					, x
 					, y
 					, SWP_HIDEWINDOW
