@@ -140,5 +140,48 @@ public:
 			}
 		}
 	}
+	//************************************************************************
+	//*                 onWmNotify
+	//*
+	//* lParam: pointer to NMHDR
+	//*
+	//************************************************************************
+	BOOL onWmNotify(const LPARAM& lParam)
+	{
+		LPNMHDR lpNmHdr = (LPNMHDR)lParam;
+		switch (lpNmHdr->code)
+		{
+		case TCN_SELCHANGING:
+		{
+			// return FALSE to allow the selection to change
+			return FALSE;
+		} // eof TCN_SELCHANGING
+		case TCN_SELCHANGE:
+		{
+			// respond to a tab item change
+			iPage = TabCtrl_GetCurSel(hWndTab);
+			for (unsigned i = 0; i < nofDlg; i++)
+			{
+				if (i == iPage)
+				{
+					// show the window belonging to the active tab item
+					ShowWindow(hWndDlg[i], SW_SHOW);
+				}
+				else
+				{
+					// hide the window(s) belonging to the nonactive tab-item(s)
+					ShowWindow(hWndDlg[i], SW_HIDE);
+				}
+			}
+			break;
+		} // eof TCN_SELCHANGE
+		case NM_CLICK:
+		{
+			break;
+		} // eof NM_CLICK
+		} // eof switch
+		// the return value is ignored
+		return TRUE;
+	}
 private:
 };

@@ -9,12 +9,16 @@
 // serial communication
 #define LEN_DATE_TIME											7
 #define LEN_MAX_ENTRY											31
+#define BUFFER_MAX_SERIAL										512
 // control
 #define IDC_STATUSBAR											33000
 #define IDC_TABCONTROL											33001
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101
+// command serial communication
+// write command
+#define WR_DATE_TIME											33621 // write date and time to STM32, to initialize the RTC
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

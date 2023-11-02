@@ -32,6 +32,7 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	Tab0Proc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK	Tab1Proc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 //****************************************************************************
@@ -157,11 +158,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         g_oTabControl.createTabControl(g_hInst
             , hWnd
             , IDC_TABCONTROL
-            , 1
-            , Tab0Proc
+            , 2
+            , Tab0Proc, Tab1Proc
         );
         g_oTabControl.setItem(0, (PWCHAR)L"Serial comm.");
         g_hWndDlgTab0 = g_oTabControl.hWndDlg[0];
+        g_oTabControl.setItem(1, (PWCHAR)L"IR remote");
+        g_hWndDlgTab0 = g_oTabControl.hWndDlg[1];
 
         return DefWindowProc(hWnd, message, wParam, lParam);
     } // eof WM_NCCREATE
@@ -178,6 +181,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         return (INT_PTR)TRUE;
     } // eof WM_SIZE
+    case WM_NOTIFY:
+    {
+        if (((LPNMHDR)lParam)->idFrom == IDC_TABCONTROL)
+        {
+            return g_oTabControl.onWmNotify(lParam);
+        }
+        return (INT_PTR)FALSE;
+    } // eof WM_NOTIFY
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -214,6 +225,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 //*****************************************************************************
 //*                     Tab0Proc
+//*
+//* Serial comm.
+//*
 //*****************************************************************************
 INT_PTR CALLBACK Tab0Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -230,6 +244,17 @@ INT_PTR CALLBACK Tab0Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return onWmCommand_Tab0Proc(hDlg, wParam, g_oStatusbar);
     } // eof WM_COMMAND
     } // eof switch
+    return (INT_PTR)FALSE;
+}
+
+//*****************************************************************************
+//*                     Tab1Proc
+//*
+//*IR remote
+//*
+//*****************************************************************************
+INT_PTR CALLBACK Tab1Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
     return (INT_PTR)FALSE;
 }
 

@@ -5,12 +5,14 @@
 //****************************************************************************
 // Resource Aquisition Is Initialisation RAII 
 FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
+HANDLE g_hComm = INVALID_HANDLE_VALUE;
 
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
 BOOL date_time_for_serial(CHAR* pszDateTime);
-BOOL set_date_time(const CHAR* pszDateTime, Statusbar g_oStatusbar);
+BOOL set_date_time(const CHAR* pszDateTime, Statusbar& g_oStatusbar);
+BOOL connect();
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
@@ -21,25 +23,36 @@ BOOL onWmInitDialog_Tab0Proc(const HWND& hDlg)
     EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
     return EXIT_SUCCESS;
 }
+//****************************************************************************
+//*                     onWmCommand_Tab0Proc
+//****************************************************************************
 INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
-    , const WPARAM wParam
-    , Statusbar g_oStatusbar
+    , const WPARAM& wParam
+    , Statusbar& g_oStatusbar
 )
 {
     switch (LOWORD(wParam))
     {
     case CONNECT_SERIAL:
     {
-        // enable/disable button
-        EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
-        EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
-        // set connect state
-        g_oStatusbar.setTextStatusbar(0, L"STM32 connected");
-        // get the date and time for synchronising the real time clock (RTC)
-        // in the STM32
-        date_time_for_serial(g_oFrame.payload);
-        // set date time on statusbar
-        set_date_time(g_oFrame.payload, g_oStatusbar);
+        if (connect() == EXIT_SUCCESS)
+        {
+            // enable/disable button
+            EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
+            EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
+            // set connect state
+            g_oStatusbar.setTextStatusbar(0, L"STM32 connected");
+            // get the date and time for synchronising the real time clock (RTC)
+            // in the STM32
+            date_time_for_serial(g_oFrame.payload);
+            // set date time on statusbar
+            set_date_time(g_oFrame.payload, g_oStatusbar);
+            g_oFrame.cmd = WR_DATE_TIME;
+        }
+        else
+        {
+            g_oStatusbar.setTextStatusbar(3, L"Can't connect");
+        }
         return (INT_PTR)TRUE;
     } // eof CONNECT_SERIAL
     case DISCONNECT_SERIAL:
@@ -88,7 +101,7 @@ BOOL date_time_for_serial(CHAR* pszDateTime)
 //****************************************************************************
 //*                     set_date_time
 //****************************************************************************
-BOOL set_date_time(const CHAR* pszDateTime, Statusbar g_oStatusbar)
+BOOL set_date_time(const CHAR* pszDateTime, Statusbar& g_oStatusbar)
 {
     const WCHAR wstrDow[7][3] = { { L"zo" }
         , { L"ma" }
@@ -143,6 +156,87 @@ BOOL set_date_time(const CHAR* pszDateTime, Statusbar g_oStatusbar)
         , pszDateTime[2] & 0x0F
     );
     g_oStatusbar.setTextStatusbar(1, wstrDateTime);
+
+    return EXIT_SUCCESS;
+}
+//****************************************************************************
+//*                     connect
+//****************************************************************************
+BOOL connect()
+{
+    // create file
+    g_hComm = CreateFile(L"\\\\.\\COM3"
+        , GENERIC_READ | GENERIC_WRITE
+        , 0
+        , NULL
+        , OPEN_EXISTING
+        , FILE_ATTRIBUTE_NORMAL
+        , NULL
+    );
+    if (g_hComm == INVALID_HANDLE_VALUE)
+    {
+        return EXIT_FAILURE;
+    }
+
+    // set structure to initialize the communication port
+    DCB dcb;
+    dcb.DCBlength           = sizeof(DCB);
+    dcb.BaudRate            = 115200;
+    dcb.fBinary             = 1;
+    dcb.fParity             = 0;
+    dcb.fOutxCtsFlow        = 0;
+    dcb.fOutxDsrFlow        = 0;
+    dcb.fDtrControl         = 1;
+    dcb.fDsrSensitivity     = 0;
+    dcb.fTXContinueOnXoff   = 0;
+    dcb.fOutX               = 0;
+    dcb.fInX                = 0;
+    dcb.fErrorChar          = 0;
+    dcb.fNull               = 0;
+    dcb.fRtsControl         = 1;
+    dcb.fAbortOnError       = 0;
+    dcb.fDummy2             = 0;
+    dcb.wReserved           = 0;
+    dcb.ByteSize            = 8;
+    dcb.Parity              = 0;
+    dcb.StopBits            = 0;
+    dcb.XoffChar            = 0;
+    dcb.XoffChar            = 0;
+    dcb.ErrorChar           = 24;
+    dcb.EvtChar             = 0;
+    dcb.wReserved1          = 0;
+    dcb.ByteSize            = 8;
+    dcb.StopBits            = 0;
+    // initialize the communication port
+    if (!SetCommState(g_hComm, (LPDCB)&dcb))
+    {
+        return EXIT_FAILURE;
+    }
+
+    // set structure for the communication port timeout
+    COMMTIMEOUTS commtimeouts;
+    commtimeouts.ReadIntervalTimeout = MAXDWORD;
+    commtimeouts.ReadTotalTimeoutMultiplier = 0;
+    commtimeouts.ReadTotalTimeoutConstant = 0;
+    commtimeouts.WriteTotalTimeoutMultiplier = 0;
+    commtimeouts.WriteTotalTimeoutConstant = 0;
+    // set communication port timeout
+    if (!SetCommTimeouts(g_hComm, (LPCOMMTIMEOUTS)&commtimeouts))
+    {
+        return EXIT_FAILURE;
+    }
+
+    // set the communication port mask bit to capture event
+    if (!SetCommMask(g_hComm, EV_TXEMPTY | EV_RXCHAR))
+    {
+        return EXIT_FAILURE;
+    }
+
+    // set in/out queue buffers
+    if (!SetupComm(g_hComm, BUFFER_MAX_SERIAL, BUFFER_MAX_SERIAL))
+    {
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
