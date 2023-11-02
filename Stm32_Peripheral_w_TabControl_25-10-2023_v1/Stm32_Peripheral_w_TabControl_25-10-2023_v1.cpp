@@ -221,34 +221,13 @@ INT_PTR CALLBACK Tab0Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
     case WM_INITDIALOG:
     {
-        // disable button DISCONNECT_SERIAL
-        EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
+        onWmInitDialog_Tab0Proc(hDlg);
 
         return (INT_PTR)FALSE;
     } // eof WM_INITDIALOG
     case WM_COMMAND:
     {
-        switch (LOWORD(wParam))
-        {
-        case CONNECT_SERIAL:
-        {
-            // enable/disable button
-            EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), FALSE);
-            EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
-            // set connect state
-            g_oStatusbar.setTextStatusbar(0, L"STM32 connected");
-            return (INT_PTR)TRUE;
-        } // eof CONNECT_SERIAL
-        case DISCONNECT_SERIAL:
-        {
-            // enable/disable button
-            EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), TRUE);
-            EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
-            // set connect state
-            g_oStatusbar.setTextStatusbar(0, L"STM32 disconnected");
-            return (INT_PTR)TRUE;
-        } // eof DISCONNECT_SERIAL
-        } // eof switch
+        return onWmCommand_Tab0Proc(hDlg, wParam, g_oStatusbar);
     } // eof WM_COMMAND
     } // eof switch
     return (INT_PTR)FALSE;

@@ -1,3 +1,14 @@
+// frame
+#define SOH														1
+#define STX														2
+#define ETX														3
+#define ETB														23
+#define EOT														4
+#define ACK														6
+#define NAK														21
+// serial communication
+#define LEN_DATE_TIME											7
+#define LEN_MAX_ENTRY											31
 // control
 #define IDC_STATUSBAR											33000
 #define IDC_TABCONTROL											33001

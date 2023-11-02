@@ -24,3 +24,4 @@
 #include <tchar.h>
 
 #include <string>
+#include <ctime>
