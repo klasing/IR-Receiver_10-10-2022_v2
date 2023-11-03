@@ -9,6 +9,7 @@
 // serial communication
 #define LEN_DATE_TIME											7
 #define LEN_MAX_ENTRY											31
+#define DELAY_4HZ_SERIAL										125 // 2 * 125 = 250, is 4 times per second, is 4 Hz
 #define BUFFER_MAX_SERIAL										512
 // control
 #define IDC_STATUSBAR											33000

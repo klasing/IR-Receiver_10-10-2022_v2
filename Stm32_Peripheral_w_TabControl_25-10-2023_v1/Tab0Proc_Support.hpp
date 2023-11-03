@@ -6,13 +6,18 @@
 // Resource Aquisition Is Initialisation RAII 
 FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
+BOOL g_bContinueTxRx = FALSE;
+HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
-BOOL date_time_for_serial(CHAR* pszDateTime);
-BOOL set_date_time(const CHAR* pszDateTime, Statusbar& g_oStatusbar);
-BOOL connect();
+BOOL                date_time_for_serial(CHAR* pszDateTime);
+BOOL                set_date_time(const CHAR* pszDateTime, Statusbar& g_oStatusbar);
+BOOL                connect();
+DWORD WINAPI	    TxRx(LPVOID lpVoid);
+BOOL				transmit(LPVOID lpVoid);
+BOOL                receive(LPVOID lpVoid);
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
@@ -48,6 +53,22 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             // set date time on statusbar
             set_date_time(g_oFrame.payload, g_oStatusbar);
             g_oFrame.cmd = WR_DATE_TIME;
+
+            // enable infinite loop
+            g_bContinueTxRx = TRUE;
+
+            // create thread to continuously transmit and receive
+            DWORD dwThreadIdTxRx = 0;
+            g_hThreadTxRx = CreateThread(NULL
+                , 0
+                , TxRx
+                , (LPVOID)hDlg
+                , CREATE_SUSPENDED // wait until started
+                , &dwThreadIdTxRx
+            );
+
+            // start thread exact on this command
+            if (g_hThreadTxRx) ResumeThread(g_hThreadTxRx);
         }
         else
         {
@@ -57,6 +78,15 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
     } // eof CONNECT_SERIAL
     case DISCONNECT_SERIAL:
     {
+        // terminate thread
+        g_bContinueTxRx = FALSE;
+        g_hThreadTxRx = INVALID_HANDLE_VALUE;
+        // when g_hComm is INVALID_HANDLE_VALUE, no need to close the handle
+        if (g_hComm == INVALID_HANDLE_VALUE) return (INT_PTR)TRUE;
+        if (CloseHandle(g_hComm))
+        {
+            g_hComm = INVALID_HANDLE_VALUE;
+        }
         // enable/disable button
         EnableWindow(GetDlgItem(hDlg, CONNECT_SERIAL), TRUE);
         EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
@@ -240,3 +270,36 @@ BOOL connect()
 
     return EXIT_SUCCESS;
 }
+//****************************************************************************
+//*                     TxRx
+//****************************************************************************
+DWORD WINAPI TxRx(LPVOID lpVoid)
+{
+    // infinite loop
+    while (g_bContinueTxRx)
+    {
+        transmit(lpVoid);
+        Sleep(DELAY_4HZ_SERIAL);
+        receive(lpVoid);
+        Sleep(DELAY_4HZ_SERIAL);
+    }
+
+    return 0;
+}
+//****************************************************************************
+//*                     transmit
+//****************************************************************************
+BOOL transmit(LPVOID lpVoid)
+{
+    OutputDebugString(L"transmit\n");
+    return EXIT_SUCCESS;
+}
+//****************************************************************************
+//*                     receive
+//****************************************************************************
+BOOL receive(LPVOID lpVoid)
+{
+    OutputDebugString(L"receive\n");
+    return EXIT_SUCCESS;
+}
+
