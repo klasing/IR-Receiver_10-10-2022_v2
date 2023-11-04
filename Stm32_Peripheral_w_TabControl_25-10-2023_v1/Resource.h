@@ -21,6 +21,8 @@
 #define IDC_TABCONTROL											33001
 #define IDC_NOF_TRANSMISSION									33002
 #define IDC_NOF_ERROR_CRC										33003
+#define IDC_CODE												33004
+#define IDC_DESCRIPTION											33005
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101

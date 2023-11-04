@@ -4,6 +4,7 @@
 //*                     extern
 //****************************************************************************
 extern Statusbar g_oStatusbar;
+extern HWND g_hWndDlgTab1;
 
 //****************************************************************************
 //*                     global
@@ -17,6 +18,7 @@ UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
+CHAR g_chTextBuffer[8] = { 0 };
 
 //*****************************************************************************
 //*                     prototype
@@ -410,6 +412,24 @@ BOOL receive(LPVOID lpVoid)
         // 0xABF and 0xFFF
         if (g_oFrame.cmd >= 0xABF && g_oFrame.cmd <= 0xFFF)
         {
+            // transfer payload from g_chBuffer to g_oFrame.payload
+            for (UINT8 i = 0; i < LEN_MAX_ENTRY; i++)
+            {
+                g_oFrame.payload[i] = g_chBuffer[i + 4];
+            }
+            // set g_oFrame.cmnd in edittext IDC_CODE
+            sprintf_s(g_chTextBuffer, 8, "0x%X", g_oFrame.cmd);
+            SendMessageA(GetDlgItem(g_hWndDlgTab1, IDC_CODE)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
+            // set g_oFrame.payload in edittext IDC_DESCRIPTION
+            SendMessageA(GetDlgItem(g_hWndDlgTab1, IDC_DESCRIPTION)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_oFrame.payload
+            );
         }
     }
     

@@ -23,6 +23,7 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 Statusbar g_oStatusbar;
 TabControl g_oTabControl;
 HWND g_hWndDlgTab0 = NULL;
+HWND g_hWndDlgTab1 = NULL;
 
 //****************************************************************************
 //*                     prototype
@@ -72,7 +73,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
     {
-        if (IsDialogMessage(g_hWndDlgTab0, &msg))
+        if (IsDialogMessage(g_hWndDlgTab0, &msg) ||
+            IsDialogMessage(g_hWndDlgTab1, &msg))
         {
             continue;
         }
@@ -164,7 +166,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         g_oTabControl.setItem(0, (PWCHAR)L"Serial comm.");
         g_hWndDlgTab0 = g_oTabControl.hWndDlg[0];
         g_oTabControl.setItem(1, (PWCHAR)L"IR remote");
-        g_hWndDlgTab0 = g_oTabControl.hWndDlg[1];
+        g_hWndDlgTab1 = g_oTabControl.hWndDlg[1];
 
         return DefWindowProc(hWnd, message, wParam, lParam);
     } // eof WM_NCCREATE
