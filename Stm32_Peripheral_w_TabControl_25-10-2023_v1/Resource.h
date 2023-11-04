@@ -1,3 +1,6 @@
+// crc
+#define INIT_CRC												0xFFFFFFFF
+#define POLY_CRC												0x04C11DB7
 // frame
 #define SOH														1
 #define STX														2
@@ -9,11 +12,15 @@
 // serial communication
 #define LEN_DATE_TIME											7
 #define LEN_MAX_ENTRY											31
+#define LEN_FRAME												38
 #define DELAY_4HZ_SERIAL										125 // 2 * 125 = 250, is 4 times per second, is 4 Hz
 #define BUFFER_MAX_SERIAL										512
+#define LEN_CRC													4
 // control
 #define IDC_STATUSBAR											33000
 #define IDC_TABCONTROL											33001
+#define IDC_NOF_TRANSMISSION									33002
+#define IDC_NOF_ERROR_CRC										33003
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101

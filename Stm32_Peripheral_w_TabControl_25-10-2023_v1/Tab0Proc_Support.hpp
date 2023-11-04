@@ -1,6 +1,11 @@
 #pragma once
 
 //****************************************************************************
+//*                     extern
+//****************************************************************************
+extern Statusbar g_oStatusbar;
+
+//****************************************************************************
 //*                     global
 //****************************************************************************
 // Resource Aquisition Is Initialisation RAII 
@@ -8,12 +13,16 @@ FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
 BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
+UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+UINT32 g_valCrc = 0;
+UINT g_cTransmission = 0;
+UINT g_cErrorCrc = 0;
 
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
 BOOL                date_time_for_serial(CHAR* pszDateTime);
-BOOL                set_date_time(const CHAR* pszDateTime, Statusbar& g_oStatusbar);
+BOOL                set_date_time(const CHAR* pszDateTime);
 BOOL                connect();
 DWORD WINAPI	    TxRx(LPVOID lpVoid);
 BOOL				transmit(LPVOID lpVoid);
@@ -33,7 +42,6 @@ BOOL onWmInitDialog_Tab0Proc(const HWND& hDlg)
 //****************************************************************************
 INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
     , const WPARAM& wParam
-    , Statusbar& g_oStatusbar
 )
 {
     switch (LOWORD(wParam))
@@ -51,7 +59,7 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             // in the STM32
             date_time_for_serial(g_oFrame.payload);
             // set date time on statusbar
-            set_date_time(g_oFrame.payload, g_oStatusbar);
+            set_date_time(g_oFrame.payload);
             g_oFrame.cmd = WR_DATE_TIME;
 
             // enable infinite loop
@@ -92,8 +100,9 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
         EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
         // set connect state
         g_oStatusbar.setTextStatusbar(0, L"STM32 disconnected");
-        // clear connected date time
+        // clear connected date time and rtc is set message
         g_oStatusbar.setTextStatusbar(1, L"");
+        g_oStatusbar.setTextStatusbar(3, L"");
         return (INT_PTR)TRUE;
     } // eof DISCONNECT_SERIAL
     } // eof switch
@@ -131,7 +140,7 @@ BOOL date_time_for_serial(CHAR* pszDateTime)
 //****************************************************************************
 //*                     set_date_time
 //****************************************************************************
-BOOL set_date_time(const CHAR* pszDateTime, Statusbar& g_oStatusbar)
+BOOL set_date_time(const CHAR* pszDateTime)
 {
     const WCHAR wstrDow[7][3] = { { L"zo" }
         , { L"ma" }
@@ -291,7 +300,48 @@ DWORD WINAPI TxRx(LPVOID lpVoid)
 //****************************************************************************
 BOOL transmit(LPVOID lpVoid)
 {
-    OutputDebugString(L"transmit\n");
+    // bring over the frame into a buffer
+    g_chBuffer[0] = g_oFrame.soh;
+    g_chBuffer[1] = (g_oFrame.cmd >> 8) & 0xFF;
+    g_chBuffer[2] = (g_oFrame.cmd & 0xFF);
+    g_chBuffer[3] = g_oFrame.stx;
+    for (uint8_t i = 0; i < LEN_DATE_TIME; i++)
+    {
+        g_chBuffer[i + 4] = g_oFrame.payload[i];
+    }
+    g_chBuffer[34] = '\0';
+    g_chBuffer[35] = g_oFrame.etx;
+    g_chBuffer[36] = g_oFrame.etb;
+    g_chBuffer[37] = g_oFrame.eot;
+
+    // calculate crc and feed into g_chBuffer
+    calcCrcEx((const UCHAR*)g_chBuffer, LEN_FRAME, g_valCrc);
+    g_chBuffer[38] = (g_valCrc & 0xFF000000) >> 24;
+    g_chBuffer[39] = (g_valCrc & 0x00FF0000) >> 16;
+    g_chBuffer[40] = (g_valCrc & 0x0000FF00) >> 8;
+    g_chBuffer[41] = (g_valCrc & 0x000000FF);
+
+    // transmit
+    DWORD dwNofByteTransferred = 0;
+    WriteFile(g_hComm
+        , &g_chBuffer
+        , LEN_FRAME + LEN_CRC
+        , &dwNofByteTransferred
+        , NULL
+    );
+
+    // if dwNofByteTransferred is LEN_FRAME + LEN_CRC then the transmission
+    // is completed
+    if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
+    {
+        ++g_cTransmission;
+        SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_TRANSMISSION)
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)std::to_string(g_cTransmission).c_str()
+        );
+    }
+
     return EXIT_SUCCESS;
 }
 //****************************************************************************
@@ -299,7 +349,70 @@ BOOL transmit(LPVOID lpVoid)
 //****************************************************************************
 BOOL receive(LPVOID lpVoid)
 {
-    OutputDebugString(L"receive\n");
+    // receive
+    DWORD dwNofByteTransferred = 0;
+    ReadFile(g_hComm
+        , &g_chBuffer
+        , LEN_FRAME + LEN_CRC
+        , &dwNofByteTransferred
+        , NULL
+    );
+
+    // connection is lost
+    if (dwNofByteTransferred == 0)
+    {
+        // disregard and simply return with EXIT_FAILURE
+        return EXIT_FAILURE;
+    }
+    else if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
+    {
+        // check crc
+        // isolate received crc from g_chBuffer
+        UINT32 rxValCrc = (g_chBuffer[38] << 24)
+            | (g_chBuffer[39] << 16)
+            | (g_chBuffer[40] << 8)
+            | (g_chBuffer[41]);
+
+        // calculate crc
+        calcCrcEx(g_chBuffer, LEN_FRAME, g_valCrc);
+
+        // compare received CRC with calculated CRC
+        if (rxValCrc != g_valCrc)
+        {
+            // crc error
+            ++g_cErrorCrc;
+            SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_ERROR_CRC)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)std::to_string(g_cErrorCrc).c_str()
+            );
+            return EXIT_FAILURE;
+        }
+
+        // no crc error
+        // transfer command from g_chBuffer to g_oFrame.cmd
+        g_oFrame.cmd = g_chBuffer[1] << 8
+            | g_chBuffer[2];
+
+        if (g_oFrame.cmd == WR_DATE_TIME)
+        {
+            // finish setting the RTC in the STM32
+            // receive ACK: the laptop will continuesly send ACK
+            // until a ir-remote (on the mcu) value is received
+            if (g_chBuffer[4] == ACK)
+            {
+                g_oStatusbar.setTextStatusbar(3, L"RTC in STM32 is set");
+                g_chBuffer[4] = ACK;
+            }
+        }
+
+        // the IR-receiver will return a g_oFrame.cmd value between
+        // 0xABF and 0xFFF
+        if (g_oFrame.cmd >= 0xABF && g_oFrame.cmd <= 0xFFF)
+        {
+        }
+    }
+    
     return EXIT_SUCCESS;
 }
 

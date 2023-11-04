@@ -241,7 +241,9 @@ INT_PTR CALLBACK Tab0Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } // eof WM_INITDIALOG
     case WM_COMMAND:
     {
-        return onWmCommand_Tab0Proc(hDlg, wParam, g_oStatusbar);
+        return onWmCommand_Tab0Proc(hDlg
+            , wParam
+        );
     } // eof WM_COMMAND
     } // eof switch
     return (INT_PTR)FALSE;
