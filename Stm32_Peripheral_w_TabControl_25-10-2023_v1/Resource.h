@@ -24,6 +24,8 @@
 #define IDC_CODE												33004
 #define IDC_DESCRIPTION											33005
 #define IDC_FAN_ON												33006
+#define IDC_PWM_FAN												33007
+#define IDC_RPM_FAN												33008
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101

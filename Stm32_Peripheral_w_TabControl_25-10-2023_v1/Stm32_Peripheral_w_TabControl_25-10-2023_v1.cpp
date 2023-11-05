@@ -50,11 +50,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(lpCmdLine);
 
     // TODO: Place code here.
-// load common controls: tab, listview, header, toolbar, statusbar,
-    // and tooltip
+    // load common controls: tab, listview, header, toolbar, statusbar,
+    // tooltip, and Up/Down control
     INITCOMMONCONTROLSEX ic = { 0 };
     ic.dwSize = sizeof(INITCOMMONCONTROLSEX);
-    ic.dwICC = ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES;
+    ic.dwICC = ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES | ICC_UPDOWN_CLASS;
     BOOL bSuccessInit = InitCommonControlsEx(&ic);
 
     // Initialize global strings
@@ -268,6 +268,12 @@ INT_PTR CALLBACK Tab1Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 //*****************************************************************************
+//*                     CreateUpDnCtl
+//*
+//* Up/Down control used beside the IDC_PWM_FAN control in func Tab2Proc()
+//*
+//*****************************************************************************
+//*****************************************************************************
 //*                     Tab2Proc
 //*
 //* Fan control
@@ -275,6 +281,16 @@ INT_PTR CALLBACK Tab1Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //*****************************************************************************
 INT_PTR CALLBACK Tab2Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    switch (uMsg)
+    {
+    case WM_INITDIALOG:
+    {
+        onWmInitDialog_Tab2Proc(hDlg);
+
+        return (INT_PTR)FALSE;
+    } // eof WM_INITDIALOG
+    } // eof switch
+
     return (INT_PTR)FALSE;
 }
 
