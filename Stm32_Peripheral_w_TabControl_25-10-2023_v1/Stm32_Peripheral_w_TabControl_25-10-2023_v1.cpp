@@ -24,6 +24,7 @@ Statusbar g_oStatusbar;
 TabControl g_oTabControl;
 HWND g_hWndDlgTab0 = NULL;
 HWND g_hWndDlgTab1 = NULL;
+HWND g_hWndDlgTab2 = NULL;
 
 //****************************************************************************
 //*                     prototype
@@ -34,6 +35,7 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	Tab0Proc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	Tab1Proc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK	Tab2Proc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 //****************************************************************************
@@ -74,7 +76,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     while (GetMessage(&msg, nullptr, 0, 0))
     {
         if (IsDialogMessage(g_hWndDlgTab0, &msg) ||
-            IsDialogMessage(g_hWndDlgTab1, &msg))
+            IsDialogMessage(g_hWndDlgTab1, &msg) ||
+            IsDialogMessage(g_hWndDlgTab2, &msg))
         {
             continue;
         }
@@ -160,13 +163,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         g_oTabControl.createTabControl(g_hInst
             , hWnd
             , IDC_TABCONTROL
-            , 2
-            , Tab0Proc, Tab1Proc
+            , 3
+            , Tab0Proc, Tab1Proc, Tab2Proc
         );
         g_oTabControl.setItem(0, (PWCHAR)L"Serial comm.");
         g_hWndDlgTab0 = g_oTabControl.hWndDlg[0];
         g_oTabControl.setItem(1, (PWCHAR)L"IR remote");
         g_hWndDlgTab1 = g_oTabControl.hWndDlg[1];
+        g_oTabControl.setItem(2, (PWCHAR)L"Fan control");
+        g_hWndDlgTab2 = g_oTabControl.hWndDlg[2];
 
         return DefWindowProc(hWnd, message, wParam, lParam);
     } // eof WM_NCCREATE
@@ -254,10 +259,21 @@ INT_PTR CALLBACK Tab0Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //*****************************************************************************
 //*                     Tab1Proc
 //*
-//*IR remote
+//* IR remote
 //*
 //*****************************************************************************
 INT_PTR CALLBACK Tab1Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    return (INT_PTR)FALSE;
+}
+
+//*****************************************************************************
+//*                     Tab2Proc
+//*
+//* Fan control
+//*
+//*****************************************************************************
+INT_PTR CALLBACK Tab2Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     return (INT_PTR)FALSE;
 }

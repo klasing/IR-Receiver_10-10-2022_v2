@@ -23,6 +23,7 @@
 #define IDC_NOF_ERROR_CRC										33003
 #define IDC_CODE												33004
 #define IDC_DESCRIPTION											33005
+#define IDC_FAN_ON												33006
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101
