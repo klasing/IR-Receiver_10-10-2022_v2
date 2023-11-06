@@ -10,6 +10,7 @@
 //*                     extern
 //****************************************************************************
 extern HINSTANCE g_hInst;
+extern UCHAR g_chBuffer[BUFFER_MAX_SERIAL];
 
 //****************************************************************************
 //*                     global
@@ -54,3 +55,27 @@ BOOL onWmInitDialog_Tab2Proc(const HWND& hDlg)
     
     return EXIT_SUCCESS;
 }
+//****************************************************************************
+//*                     onWmCommand_Tab2Proc
+//****************************************************************************
+INT_PTR onWmCommand_Tab2Proc(const HWND& hDlg
+    , const WPARAM& wParam
+)
+{
+    switch (LOWORD(wParam))
+    {
+    case IDC_FAN_STATE_CHANGED:
+    {
+        (SendMessage(GetDlgItem(hDlg, IDC_FAN_ON)
+            , BM_GETCHECK
+            , (WPARAM)0
+            , (LPARAM)0
+        ) == BST_UNCHECKED) ?
+            OutputDebugString(L"Fan is off\n") :
+            OutputDebugString(L"Fan is on\n");
+        return (INT_PTR)TRUE;
+    } // eof IDC_FAN_STATE_CHANGED
+    } // eof switch
+    return (INT_PTR)FALSE;
+}
+

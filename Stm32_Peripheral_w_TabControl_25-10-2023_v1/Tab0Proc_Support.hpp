@@ -6,6 +6,7 @@
 extern Statusbar g_oStatusbar;
 extern HWND g_hWndDlgTab1;
 extern HWND g_hWndDlgTab2;
+extern UCHAR g_chBuffer[BUFFER_MAX_SERIAL];
 
 //****************************************************************************
 //*                     global
@@ -15,7 +16,7 @@ FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
 BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
-UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
@@ -128,7 +129,10 @@ BOOL date_time_for_serial(CHAR* pszDateTime)
     // day......: t.tm_mday
     // month....: (t.tm_mon + 1)
     // year.....: (t.tm_year % 100)
-    sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c%c"
+    sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 2, "%c%c%c%c%c%c%c%c"
+        // the first character in the payload holds the length of the payload
+        // in this case lenPayload (1) + LEN_DATE_TIME (7) + null character (1)
+        , LEN_DATE_TIME
         , ((t.tm_hour / 10) << 4) | (t.tm_hour % 10)
         , ((t.tm_min / 10) << 4) | (t.tm_min % 10)
         , ((t.tm_sec / 10) << 4) | (t.tm_sec % 10)
@@ -167,7 +171,9 @@ BOOL set_date_time(const CHAR* pszDateTime)
         , { L"dec" }
     };
     UCHAR idx_month = 0;
-    switch (pszDateTime[4])
+    // take into account that the first character in the payload is the length of the payload
+    // so every index is incremented with 1
+    switch (pszDateTime[4 + 1])
     {
     case 0b00010000: // (BCD format)
         // November
@@ -179,23 +185,23 @@ BOOL set_date_time(const CHAR* pszDateTime)
         break;
     default: // (0 - 9 in BCD format)
         // January up to October
-        idx_month = pszDateTime[4];
+        idx_month = pszDateTime[4 + 1];
     }
     const UCHAR lenDateTime = 24;
     WCHAR wstrDateTime[lenDateTime] = { L'\0' };
     wsprintf(wstrDateTime, L"%s %d%d-%s-20%d%d %d%d:%d%d:%d%d"
-        , wstrDow[pszDateTime[6]]
-        , (pszDateTime[3] & 0xF0) >> 4
-        , pszDateTime[3] & 0x0F
+        , wstrDow[pszDateTime[6 + 1]]
+        , (pszDateTime[3 + 1] & 0xF0) >> 4
+        , pszDateTime[3 + 1] & 0x0F
         , wstrMonth[idx_month]
-        , (pszDateTime[5] & 0xF0) >> 4
-        , pszDateTime[5] & 0x0F
-        , (pszDateTime[0] & 0xF0) >> 4
-        , pszDateTime[0] & 0x0F
-        , (pszDateTime[1] & 0xF0) >> 4
-        , pszDateTime[1] & 0x0F
-        , (pszDateTime[2] & 0xF0) >> 4
-        , pszDateTime[2] & 0x0F
+        , (pszDateTime[5 + 1] & 0xF0) >> 4
+        , pszDateTime[5 + 1] & 0x0F
+        , (pszDateTime[0 + 1] & 0xF0) >> 4
+        , pszDateTime[0 + 1] & 0x0F
+        , (pszDateTime[1 + 1] & 0xF0) >> 4
+        , pszDateTime[1 + 1] & 0x0F
+        , (pszDateTime[2 + 1] & 0xF0) >> 4
+        , pszDateTime[2 + 1] & 0x0F
     );
     g_oStatusbar.setTextStatusbar(1, wstrDateTime);
 
@@ -308,9 +314,13 @@ BOOL transmit(LPVOID lpVoid)
     g_chBuffer[1] = (g_oFrame.cmd >> 8) & 0xFF;
     g_chBuffer[2] = (g_oFrame.cmd & 0xFF);
     g_chBuffer[3] = g_oFrame.stx;
-    for (uint8_t i = 0; i < LEN_DATE_TIME; i++)
+    // first character in the payload holds the length of the payload
+    // this makes payloads with variable lengths possible
+    // max payload is LEN_MAX_ENTRY = 31
+    UCHAR lenPayload = g_oFrame.payload[0];
+    for (uint8_t i = 0; i < lenPayload; i++)
     {
-        g_chBuffer[i + 4] = g_oFrame.payload[i];
+        g_chBuffer[i + 4] = g_oFrame.payload[i + 1];
     }
     g_chBuffer[34] = '\0';
     g_chBuffer[35] = g_oFrame.etx;
@@ -411,10 +421,11 @@ BOOL receive(LPVOID lpVoid)
 
         if (g_oFrame.cmd == FAN_STATE_CHANGED)
         {
-            // g_chBuffer[4] is bFanOff = TRUE, when fan is off
+            // test
             ((BOOL)g_chBuffer[4]) ? OutputDebugString(L"fan off\n") :
                 OutputDebugString(L"fan on\n");
-			((BOOL)g_chBuffer[4]) ?
+            // g_chBuffer[4] is bFanOff = TRUE, when fan is off
+            ((BOOL)g_chBuffer[4]) ?
 				SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
 					, BM_SETCHECK
 					, (WPARAM)BST_UNCHECKED

@@ -26,6 +26,7 @@
 #define IDC_FAN_ON												33006
 #define IDC_PWM_FAN												33007
 #define IDC_RPM_FAN												33008
+#define IDC_FAN_STATE_CHANGED									33009
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101

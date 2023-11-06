@@ -22,6 +22,9 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 Statusbar g_oStatusbar;
 TabControl g_oTabControl;
+
+UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
+
 HWND g_hWndDlgTab0 = NULL;
 HWND g_hWndDlgTab1 = NULL;
 HWND g_hWndDlgTab2 = NULL;
@@ -268,12 +271,6 @@ INT_PTR CALLBACK Tab1Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 //*****************************************************************************
-//*                     CreateUpDnCtl
-//*
-//* Up/Down control used beside the IDC_PWM_FAN control in func Tab2Proc()
-//*
-//*****************************************************************************
-//*****************************************************************************
 //*                     Tab2Proc
 //*
 //* Fan control
@@ -289,6 +286,12 @@ INT_PTR CALLBACK Tab2Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         return (INT_PTR)FALSE;
     } // eof WM_INITDIALOG
+    case WM_COMMAND:
+    {
+        return onWmCommand_Tab2Proc(hDlg
+            , wParam
+        );
+    } // eof WM_COMMAND
     } // eof switch
 
     return (INT_PTR)FALSE;
