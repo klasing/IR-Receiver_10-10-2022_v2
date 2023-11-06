@@ -5,6 +5,7 @@
 //****************************************************************************
 extern Statusbar g_oStatusbar;
 extern HWND g_hWndDlgTab1;
+extern HWND g_hWndDlgTab2;
 
 //****************************************************************************
 //*                     global
@@ -406,6 +407,24 @@ BOOL receive(LPVOID lpVoid)
                 g_oStatusbar.setTextStatusbar(3, L"RTC in STM32 is set");
                 g_chBuffer[4] = ACK;
             }
+        }
+
+        if (g_oFrame.cmd == FAN_STATE_CHANGED)
+        {
+            // g_chBuffer[4] is bFanOff = TRUE, when fan is off
+            ((BOOL)g_chBuffer[4]) ? OutputDebugString(L"fan off\n") :
+                OutputDebugString(L"fan on\n");
+			((BOOL)g_chBuffer[4]) ?
+				SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+					, BM_SETCHECK
+					, (WPARAM)BST_UNCHECKED
+					, (LPARAM)0
+				) :
+				SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+					, BM_SETCHECK
+					, (WPARAM)BST_CHECKED
+					, (LPARAM)0
+				);
         }
 
         // the IR-receiver will return a g_oFrame.cmd value between

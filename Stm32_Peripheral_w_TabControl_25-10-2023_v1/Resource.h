@@ -32,7 +32,7 @@
 // command serial communication
 // write command
 #define WR_DATE_TIME											33621 // write date and time to STM32, to initialize the RTC
-
+#define FAN_STATE_CHANGED										33622 // receive fan state from STM32
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by Stm32_Peripheral_w_TabControl_25-10-2023_v1.rc
