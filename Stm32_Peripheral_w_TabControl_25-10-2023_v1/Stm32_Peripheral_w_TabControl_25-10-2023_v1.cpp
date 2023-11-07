@@ -23,7 +23,6 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 Statusbar g_oStatusbar;
 TabControl g_oTabControl;
 
-UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 
 HWND g_hWndDlgTab0 = NULL;
 HWND g_hWndDlgTab1 = NULL;

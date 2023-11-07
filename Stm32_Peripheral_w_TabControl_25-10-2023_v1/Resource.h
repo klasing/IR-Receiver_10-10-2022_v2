@@ -26,7 +26,7 @@
 #define IDC_FAN_ON												33006
 #define IDC_PWM_FAN												33007
 #define IDC_RPM_FAN												33008
-#define IDC_FAN_STATE_CHANGED									33009
+#define IDC_WR_FAN_STATE										33009
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101
@@ -34,6 +34,7 @@
 // write command
 #define WR_DATE_TIME											33621 // write date and time to STM32, to initialize the RTC
 #define FAN_STATE_CHANGED										33622 // receive fan state from STM32
+#define WR_FAN_STATE											33623 // transmit fan state to STM32
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by Stm32_Peripheral_w_TabControl_25-10-2023_v1.rc

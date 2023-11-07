@@ -6,7 +6,6 @@
 extern Statusbar g_oStatusbar;
 extern HWND g_hWndDlgTab1;
 extern HWND g_hWndDlgTab2;
-extern UCHAR g_chBuffer[BUFFER_MAX_SERIAL];
 
 //****************************************************************************
 //*                     global
@@ -16,7 +15,7 @@ FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
 BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
-
+extern UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
@@ -353,6 +352,13 @@ BOOL transmit(LPVOID lpVoid)
             , (WPARAM)0
             , (LPARAM)std::to_string(g_cTransmission).c_str()
         );
+
+        if (g_oFrame.cmd == WR_FAN_STATE)
+        {
+            OutputDebugString(L"fan state is transmitted\n");
+            // avoid repeatedly transmission of fan state
+            g_oFrame.cmd = WR_DATE_TIME;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -460,6 +466,24 @@ BOOL receive(LPVOID lpVoid)
                 , (WPARAM)0
                 , (LPARAM)g_oFrame.payload
             );
+            if (g_oFrame.cmd == 0xEEF)
+            {
+                // description: pause/play | back/?
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_CHECKED
+                    , (LPARAM)0
+                );
+            }
+            if (g_oFrame.cmd == 0xBEB)
+            {
+                // description: stop
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_UNCHECKED
+                    , (LPARAM)0
+                );
+            }
         }
     }
     

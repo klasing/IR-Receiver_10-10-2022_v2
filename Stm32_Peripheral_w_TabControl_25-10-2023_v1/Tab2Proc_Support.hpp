@@ -10,7 +10,8 @@
 //*                     extern
 //****************************************************************************
 extern HINSTANCE g_hInst;
-extern UCHAR g_chBuffer[BUFFER_MAX_SERIAL];
+extern FRAME g_oFrame;
+extern HANDLE g_hThreadTxRx;
 
 //****************************************************************************
 //*                     global
@@ -64,16 +65,17 @@ INT_PTR onWmCommand_Tab2Proc(const HWND& hDlg
 {
     switch (LOWORD(wParam))
     {
-    case IDC_FAN_STATE_CHANGED:
+    case IDC_WR_FAN_STATE:
     {
-        (SendMessage(GetDlgItem(hDlg, IDC_FAN_ON)
-            , BM_GETCHECK
-            , (WPARAM)0
-            , (LPARAM)0
-        ) == BST_UNCHECKED) ?
-            OutputDebugString(L"Fan is off\n") :
-            OutputDebugString(L"Fan is on\n");
-        return (INT_PTR)TRUE;
+		g_oFrame.cmd = WR_FAN_STATE;
+		g_oFrame.payload[0] = 1;
+		(SendMessage(GetDlgItem(hDlg, IDC_FAN_ON)
+			, BM_GETCHECK
+			, (WPARAM)0
+			, (LPARAM)0) == BST_UNCHECKED) ?
+			g_oFrame.payload[1] = (CHAR)TRUE :
+			g_oFrame.payload[1] = (CHAR)FALSE;
+		return (INT_PTR)TRUE;
     } // eof IDC_FAN_STATE_CHANGED
     } // eof switch
     return (INT_PTR)FALSE;
