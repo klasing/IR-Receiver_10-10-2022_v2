@@ -466,6 +466,7 @@ BOOL receive(LPVOID lpVoid)
                 , (WPARAM)0
                 , (LPARAM)g_oFrame.payload
             );
+            // fan on via IR-remote
             if (g_oFrame.cmd == 0xEEF)
             {
                 // description: pause/play | back/?
@@ -475,6 +476,7 @@ BOOL receive(LPVOID lpVoid)
                     , (LPARAM)0
                 );
             }
+            // fan off via IR-remote
             if (g_oFrame.cmd == 0xBEB)
             {
                 // description: stop
