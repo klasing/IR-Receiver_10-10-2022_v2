@@ -442,6 +442,13 @@ BOOL receive(LPVOID lpVoid)
 					, (WPARAM)BST_CHECKED
 					, (LPARAM)0
 				);
+            // isolate the percentagePwm
+            sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
+            SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
         }
 
         // the IR-receiver will return a g_oFrame.cmd value between
