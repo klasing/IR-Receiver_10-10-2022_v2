@@ -359,6 +359,17 @@ BOOL transmit(LPVOID lpVoid)
             // avoid repeatedly transmission of fan state
             g_oFrame.cmd = WR_DATE_TIME;
         }
+        else if (g_oFrame.cmd == WR_RELAY_STATE)
+        {
+            OutputDebugString(L"relay state is transmitted\n");
+            // avoid repeatedly transmission of relay state
+            g_oFrame.cmd = WR_DATE_TIME;
+        }
+        else if (g_oFrame.cmd == WR_DATE_TIME)
+        {
+            // polling
+            g_oFrame.cmd = RD_REG_TEMP;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -443,12 +454,14 @@ BOOL receive(LPVOID lpVoid)
 					, (LPARAM)0
 				);
             // isolate the percentagePwm
-            sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
-            SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
-                , WM_SETTEXT
-                , (WPARAM)0
-                , (LPARAM)g_chTextBuffer
-            );
+            //sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
+            //SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
+            //    , WM_SETTEXT
+            //    , (WPARAM)0
+            //    , (LPARAM)g_chTextBuffer
+            //);
+            //OutputDebugStringA(g_chTextBuffer);
+            //OutputDebugString(L"\n");
         }
 
         // the IR-receiver will return a g_oFrame.cmd value between
@@ -494,8 +507,15 @@ BOOL receive(LPVOID lpVoid)
                 );
             }
         }
+
+        if (g_oFrame.cmd == RD_REG_TEMP)
+        {
+            // tempory payload data from RD_REG_TEMP polling
+            sprintf_s(g_chTextBuffer, 8, "%c%c%c%c", g_chBuffer[4], g_chBuffer[5], g_chBuffer[6], '\n');
+            OutputDebugStringA(g_chTextBuffer);
+        }
     }
-    
+
     return EXIT_SUCCESS;
 }
 

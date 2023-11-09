@@ -27,6 +27,19 @@
 #define IDC_PWM_FAN												33007
 #define IDC_RPM_FAN												33008
 #define IDC_WR_FAN_STATE										33009
+#define IDC_RELAY1												33010
+#define IDC_RELAY2												33011
+#define IDC_RELAY3												33012
+#define IDC_RELAY4												33013
+#define IDC_RELAY5												33014
+#define IDC_RELAY6												33015
+#define IDC_RELAY7												33016
+#define IDC_RELAY8												33017
+#define IDC_WR_RELAY_STATE										33018
+#define IDC_TEMP_SENSOR1										33019
+#define IDC_TEMP_SENSOR2										33020
+#define IDC_TEMP_SENSOR3										33021
+#define IDC_TEMP_SENSOR4										33022
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101
@@ -35,6 +48,10 @@
 #define WR_DATE_TIME											33621 // write date and time to STM32, to initialize the RTC
 #define FAN_STATE_CHANGED										33622 // receive fan state from STM32
 #define WR_FAN_STATE											33623 // transmit fan state to STM32
+#define WR_RELAY_STATE											33624 // transmit relay state to STM32
+// read command
+#define RD_REG_TEMP												33625
+
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by Stm32_Peripheral_w_TabControl_25-10-2023_v1.rc

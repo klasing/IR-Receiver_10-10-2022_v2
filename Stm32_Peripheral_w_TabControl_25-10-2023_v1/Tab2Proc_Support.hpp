@@ -76,7 +76,7 @@ INT_PTR onWmCommand_Tab2Proc(const HWND& hDlg
 			g_oFrame.payload[1] = (CHAR)TRUE :
 			g_oFrame.payload[1] = (CHAR)FALSE;
 		return (INT_PTR)TRUE;
-    } // eof IDC_FAN_STATE_CHANGED
+    } // eof IDC_WR_FAN_STATE
     } // eof switch
     return (INT_PTR)FALSE;
 }
