@@ -352,13 +352,25 @@ BOOL transmit(LPVOID lpVoid)
             , (WPARAM)0
             , (LPARAM)std::to_string(g_cTransmission).c_str()
         );
+    }
 
-        if (g_oFrame.cmd == WR_FAN_STATE)
-        {
-            OutputDebugString(L"fan state is transmitted\n");
-            // avoid repeatedly transmission of fan state
-            g_oFrame.cmd = WR_DATE_TIME;
-        }
+    if (g_oFrame.cmd == WR_FAN_STATE)
+    {
+        OutputDebugString(L"WR_FAN_STATE is transmitted\n");
+        return EXIT_SUCCESS;
+    }
+    if (g_oFrame.cmd == WR_RELAY_STATE)
+    {
+        OutputDebugString(L"WR_RELAY_STATE is transmitted\n");
+        return EXIT_SUCCESS;
+    }
+    // polling
+    g_oFrame.cmd = RD_REG_TEMP;
+    OutputDebugString(L"RD_REG_TEMP is transmitted\n");
+
+    return EXIT_SUCCESS;
+}
+/*
         else if (g_oFrame.cmd == WR_RELAY_STATE)
         {
             OutputDebugString(L"relay state is transmitted\n");
@@ -370,10 +382,7 @@ BOOL transmit(LPVOID lpVoid)
             // polling
             g_oFrame.cmd = RD_REG_TEMP;
         }
-    }
-
-    return EXIT_SUCCESS;
-}
+*/
 //****************************************************************************
 //*                     receive
 //****************************************************************************
@@ -416,7 +425,7 @@ BOOL receive(LPVOID lpVoid)
                 , (WPARAM)0
                 , (LPARAM)std::to_string(g_cErrorCrc).c_str()
             );
-            return EXIT_FAILURE;
+            //do nothing while testing return EXIT_FAILURE;
         }
 
         // no crc error
@@ -434,36 +443,8 @@ BOOL receive(LPVOID lpVoid)
                 g_oStatusbar.setTextStatusbar(3, L"RTC in STM32 is set");
                 g_chBuffer[4] = ACK;
             }
+            return EXIT_SUCCESS;
         }
-
-        if (g_oFrame.cmd == FAN_STATE_CHANGED)
-        {
-            // test
-            ((BOOL)g_chBuffer[4]) ? OutputDebugString(L"fan off\n") :
-                OutputDebugString(L"fan on\n");
-            // g_chBuffer[4] is bFanOff = TRUE, when fan is off
-            ((BOOL)g_chBuffer[4]) ?
-				SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-					, BM_SETCHECK
-					, (WPARAM)BST_UNCHECKED
-					, (LPARAM)0
-				) :
-				SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-					, BM_SETCHECK
-					, (WPARAM)BST_CHECKED
-					, (LPARAM)0
-				);
-            // isolate the percentagePwm
-            //sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
-            //SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
-            //    , WM_SETTEXT
-            //    , (WPARAM)0
-            //    , (LPARAM)g_chTextBuffer
-            //);
-            //OutputDebugStringA(g_chTextBuffer);
-            //OutputDebugString(L"\n");
-        }
-
         // the IR-receiver will return a g_oFrame.cmd value between
         // 0xABF and 0xFFF
         if (g_oFrame.cmd >= 0xABF && g_oFrame.cmd <= 0xFFF)
@@ -506,7 +487,61 @@ BOOL receive(LPVOID lpVoid)
                     , (LPARAM)0
                 );
             }
+            return EXIT_SUCCESS;
         }
+        // the WR_FAN_STATE acknowledge is received
+        if (g_oFrame.cmd == WR_FAN_STATE && g_chBuffer[4] == ACK)
+        {
+            OutputDebugString(L"WR_FAN_STATE acknowledge is received\n");
+            g_oFrame.cmd = WR_DATE_TIME;
+            return EXIT_SUCCESS;
+        }
+        // the WR_RELAY_STATE acknowledge is received
+        if (g_oFrame.cmd == WR_RELAY_STATE && g_chBuffer[4] == ACK)
+        {
+            OutputDebugString(L"WR_RELAY_STATE acknowledge is received\n");
+            g_oFrame.cmd = WR_DATE_TIME;
+            return EXIT_SUCCESS;
+        }
+        // the RD_REG_TEMP data is received
+        if (g_oFrame.cmd == RD_REG_TEMP)
+        {
+            OutputDebugString(L"RD_REG_TEMP data is received\n");
+            return EXIT_SUCCESS;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+/*
+        if (g_oFrame.cmd == FAN_STATE_CHANGED)
+        {
+            // test
+            ((BOOL)g_chBuffer[4]) ? OutputDebugString(L"fan off\n") :
+                OutputDebugString(L"fan on\n");
+            // g_chBuffer[4] is bFanOff = TRUE, when fan is off
+            ((BOOL)g_chBuffer[4]) ?
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_UNCHECKED
+                    , (LPARAM)0
+                ) :
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_CHECKED
+                    , (LPARAM)0
+                );
+            // isolate the percentagePwm
+            //sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
+            //SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
+            //    , WM_SETTEXT
+            //    , (WPARAM)0
+            //    , (LPARAM)g_chTextBuffer
+            //);
+            //OutputDebugStringA(g_chTextBuffer);
+            //OutputDebugString(L"\n");
+        }
+
 
         if (g_oFrame.cmd == RD_REG_TEMP)
         {
@@ -514,8 +549,5 @@ BOOL receive(LPVOID lpVoid)
             sprintf_s(g_chTextBuffer, 8, "%c%c%c%c", g_chBuffer[4], g_chBuffer[5], g_chBuffer[6], '\n');
             OutputDebugStringA(g_chTextBuffer);
         }
-    }
-
-    return EXIT_SUCCESS;
-}
+*/
 
