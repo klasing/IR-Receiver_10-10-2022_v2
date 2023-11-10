@@ -22,7 +22,7 @@ extern UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { 0 };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
-CHAR g_chTextBuffer[8] = { 0 };
+CHAR g_chTextBuffer[16] = { 0 };
 BOOL g_bReadFanState = TRUE;
 
 //*****************************************************************************
@@ -565,6 +565,16 @@ BOOL receive(LPVOID lpVoid)
             // value lies between 0 .. 99, adjust this value to 1 .. 100
             sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
             SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
+            FLOAT fRPM = (FLOAT)(g_chBuffer[6] << 24) +
+                (FLOAT)(g_chBuffer[7] << 16) +
+                (FLOAT)(g_chBuffer[8] << 8) +
+                (FLOAT)g_chBuffer[9];
+            sprintf_s(g_chTextBuffer, 16, "%d", (UINT)fRPM);
+            SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_RPM_FAN)
                 , WM_SETTEXT
                 , (WPARAM)0
                 , (LPARAM)g_chTextBuffer
