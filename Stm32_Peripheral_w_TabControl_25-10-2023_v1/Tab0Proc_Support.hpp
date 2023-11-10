@@ -4,9 +4,11 @@
 //*                     extern
 //****************************************************************************
 extern Statusbar g_oStatusbar;
-extern HWND g_hWndDlgTab0;
-extern HWND g_hWndDlgTab1;
-extern HWND g_hWndDlgTab2;
+extern HWND g_hWndDlgTab0; // Serial comm.
+extern HWND g_hWndDlgTab1; // IR-remote
+extern HWND g_hWndDlgTab2; // Fan control
+extern HWND g_hWndDlgTab3; // Relay module
+extern HWND g_hWndDlgTab4; // Temp sensor
 
 //****************************************************************************
 //*                     global
@@ -560,6 +562,13 @@ BOOL receive(LPVOID lpVoid)
         if (g_oFrame.cmd == RD_FAN_STATE)
         {
             OutputDebugString(L"RD_FAN_STATE data is received\n");
+            // value lies between 0 .. 99, adjust this value to 1 .. 100
+            sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
+            SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
             g_oFrame.cmd = WR_DATE_TIME;
             // poll the next data item
             g_bReadFanState = FALSE;
@@ -569,6 +578,94 @@ BOOL receive(LPVOID lpVoid)
         if (g_oFrame.cmd == RD_REG_TEMP)
         {
             OutputDebugString(L"RD_REG_TEMP data is received\n");
+            // temp sensor 1
+            // combine the bytes
+            INT16 tempVal = ((INT16)g_chBuffer[4] << 4) | (g_chBuffer[5] >> 4);
+            // convert to 2's complement, since the temperature can be negative
+            if (tempVal > 0x7FF)
+            {
+                tempVal |= 0xF000;
+            }
+            // convert to float temperature value in degrees Celcius
+            float fTempCelsius = tempVal * .0625;
+            // convert the temperature to a decimal format
+            fTempCelsius *= 100;
+            sprintf_s(g_chTextBuffer, 8, "%u.%02u"
+                , (UINT)fTempCelsius / 100
+                , (UINT)fTempCelsius % 100
+            );
+            // set temperature value into edittext control
+            SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR1)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
+            // temp sensor 2
+            // combine the bytes
+            tempVal = ((INT16)g_chBuffer[6] << 4) | (g_chBuffer[7] >> 4);
+            // convert to 2's complement, since the temperature can be negative
+            if (tempVal > 0x7FF)
+            {
+                tempVal |= 0xF000;
+            }
+            // convert to float temperature value in degrees Celcius
+            fTempCelsius = tempVal * .0625;
+            // convert the temperature to a decimal format
+            fTempCelsius *= 100;
+            sprintf_s(g_chTextBuffer, 8, "%u.%02u"
+                , (UINT)fTempCelsius / 100
+                , (UINT)fTempCelsius % 100
+            );
+            // set temperature value into edittext control
+            SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR2)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
+            // temp sensor 3
+            // combine the bytes
+            tempVal = ((INT16)g_chBuffer[8] << 4) | (g_chBuffer[9] >> 4);
+            // convert to 2's complement, since the temperature can be negative
+            if (tempVal > 0x7FF)
+            {
+                tempVal |= 0xF000;
+            }
+            // convert to float temperature value in degrees Celcius
+            fTempCelsius = tempVal * .0625;
+            // convert the temperature to a decimal format
+            fTempCelsius *= 100;
+            sprintf_s(g_chTextBuffer, 8, "%u.%02u"
+                , (UINT)fTempCelsius / 100
+                , (UINT)fTempCelsius % 100
+            );
+            // set temperature value into edittext control
+            SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR3)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
+            // temp sensor 4
+            // combine the bytes
+            tempVal = ((INT16)g_chBuffer[10] << 4) | (g_chBuffer[11] >> 4);
+            // convert to 2's complement, since the temperature can be negative
+            if (tempVal > 0x7FF)
+            {
+                tempVal |= 0xF000;
+            }
+            // convert to float temperature value in degrees Celcius
+            fTempCelsius = tempVal * .0625;
+            // convert the temperature to a decimal format
+            fTempCelsius *= 100;
+            sprintf_s(g_chTextBuffer, 8, "%u.%02u"
+                , (UINT)fTempCelsius / 100
+                , (UINT)fTempCelsius % 100
+            );
+            // set temperature value into edittext control
+            SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR4)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
             g_oFrame.cmd = WR_DATE_TIME;
             // poll the first data item
             g_bReadFanState = TRUE;
