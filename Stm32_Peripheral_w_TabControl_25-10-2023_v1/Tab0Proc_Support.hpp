@@ -4,6 +4,7 @@
 //*                     extern
 //****************************************************************************
 extern Statusbar g_oStatusbar;
+extern HWND g_hWndDlgTab0;
 extern HWND g_hWndDlgTab1;
 extern HWND g_hWndDlgTab2;
 
@@ -20,6 +21,7 @@ UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
 CHAR g_chTextBuffer[8] = { 0 };
+BOOL g_bReadFanState = TRUE;
 
 //*****************************************************************************
 //*                     prototype
@@ -89,6 +91,8 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
     } // eof CONNECT_SERIAL
     case DISCONNECT_SERIAL:
     {
+        // kill timer
+        KillTimer(g_hWndDlgTab0, IDT_POLLING_TIMER);
         // terminate thread
         g_bContinueTxRx = FALSE;
         g_hThreadTxRx = INVALID_HANDLE_VALUE;
@@ -288,10 +292,41 @@ BOOL connect()
     return EXIT_SUCCESS;
 }
 //****************************************************************************
+//*                     PollingTimerProc
+//****************************************************************************
+VOID PollingTimerProc(HWND hWnd // handle to window, in this case g_hWndDlgTab0
+    , UINT uMsg                 // WM_TIMER message
+    , UINT_PTR idTimer          // in this case IDT_POLLING_TIMER
+    , DWORD dwTime)             // current system time
+{
+    if (uMsg == WM_TIMER)
+    {
+        OutputDebugString(L"timer expired\n");
+        // polling PWM and RPM from fan
+        if (g_bReadFanState)
+        {
+            g_oFrame.cmd = RD_FAN_STATE;
+            OutputDebugString(L"RD_FAN_STATE is transmitted\n");
+        }
+        else
+        {
+            // polling temperature sensor
+            g_oFrame.cmd = RD_REG_TEMP;
+            OutputDebugString(L"RD_REG_TEMP is transmitted\n");
+        }
+    }
+}
+//****************************************************************************
 //*                     TxRx
 //****************************************************************************
 DWORD WINAPI TxRx(LPVOID lpVoid)
 {
+    // set polling timer
+    SetTimer(g_hWndDlgTab0
+        , IDT_POLLING_TIMER
+        , 1000 // 1 s interval
+        , (TIMERPROC)PollingTimerProc
+    );
     // infinite loop
     while (g_bContinueTxRx)
     {
@@ -364,10 +399,6 @@ BOOL transmit(LPVOID lpVoid)
         OutputDebugString(L"WR_RELAY_STATE is transmitted\n");
         return EXIT_SUCCESS;
     }
-    // polling
-    g_oFrame.cmd = RD_REG_TEMP;
-    OutputDebugString(L"RD_REG_TEMP is transmitted\n");
-
     return EXIT_SUCCESS;
 }
 /*
@@ -489,6 +520,28 @@ BOOL receive(LPVOID lpVoid)
             }
             return EXIT_SUCCESS;
         }
+        if (g_oFrame.cmd == FAN_STATE_CHANGED)
+        {
+            OutputDebugString(L"FAN_STATE_CHANGED is received\n");
+            if ((BOOL)g_chBuffer[4])
+            {
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_UNCHECKED
+                    , (LPARAM)0
+                );
+            }
+            else
+            {
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_CHECKED
+                    , (LPARAM)0
+                );
+            }
+            g_oFrame.cmd = WR_DATE_TIME;
+            return EXIT_SUCCESS;
+        }
         // the WR_FAN_STATE acknowledge is received
         if (g_oFrame.cmd == WR_FAN_STATE && g_chBuffer[4] == ACK)
         {
@@ -503,10 +556,22 @@ BOOL receive(LPVOID lpVoid)
             g_oFrame.cmd = WR_DATE_TIME;
             return EXIT_SUCCESS;
         }
+        // the RD_FAN_STATE data is received
+        if (g_oFrame.cmd == RD_FAN_STATE)
+        {
+            OutputDebugString(L"RD_FAN_STATE data is received\n");
+            g_oFrame.cmd = WR_DATE_TIME;
+            // poll the next data item
+            g_bReadFanState = FALSE;
+            return EXIT_SUCCESS;
+        }
         // the RD_REG_TEMP data is received
         if (g_oFrame.cmd == RD_REG_TEMP)
         {
             OutputDebugString(L"RD_REG_TEMP data is received\n");
+            g_oFrame.cmd = WR_DATE_TIME;
+            // poll the first data item
+            g_bReadFanState = TRUE;
             return EXIT_SUCCESS;
         }
     }

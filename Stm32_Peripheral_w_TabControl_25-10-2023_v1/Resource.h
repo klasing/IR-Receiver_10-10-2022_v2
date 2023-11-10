@@ -43,6 +43,8 @@
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101
+// timer
+#define IDT_POLLING_TIMER										33200
 // command serial communication
 // write command
 #define WR_DATE_TIME											33621 // write date and time to STM32, to initialize the RTC
@@ -50,7 +52,8 @@
 #define WR_FAN_STATE											33623 // transmit fan state to STM32
 #define WR_RELAY_STATE											33624 // transmit relay state to STM32
 // read command
-#define RD_REG_TEMP												33625
+#define RD_FAN_STATE											33625
+#define RD_REG_TEMP												33626
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
