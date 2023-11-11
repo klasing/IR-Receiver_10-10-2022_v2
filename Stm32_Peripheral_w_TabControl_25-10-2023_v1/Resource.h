@@ -40,6 +40,10 @@
 #define IDC_TEMP_SENSOR2										33020
 #define IDC_TEMP_SENSOR3										33021
 #define IDC_TEMP_SENSOR4										33022
+#define IDC_ALERT_SENSOR1										33023
+#define IDC_ALERT_SENSOR2										33024
+#define IDC_ALERT_SENSOR3										33025
+#define IDC_ALERT_SENSOR4										33026
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101
