@@ -24,6 +24,7 @@ UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
 CHAR g_chTextBuffer[16] = { 0 };
 BOOL g_bReadFanState = TRUE;
+FLOAT old_fRPM = 0.;
 
 //*****************************************************************************
 //*                     prototype
@@ -573,7 +574,8 @@ BOOL receive(LPVOID lpVoid)
                 (FLOAT)(g_chBuffer[7] << 16) +
                 (FLOAT)(g_chBuffer[8] << 8) +
                 (FLOAT)g_chBuffer[9];
-            sprintf_s(g_chTextBuffer, 16, "%d", (UINT)fRPM);
+            if (fRPM != 0.) old_fRPM = fRPM;
+            sprintf_s(g_chTextBuffer, 16, "%d", (UINT)old_fRPM);
             SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_RPM_FAN)
                 , WM_SETTEXT
                 , (WPARAM)0
