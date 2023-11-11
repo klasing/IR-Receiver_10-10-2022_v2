@@ -304,18 +304,18 @@ VOID PollingTimerProc(HWND hWnd // handle to window, in this case g_hWndDlgTab0
 {
     if (uMsg == WM_TIMER)
     {
-        OutputDebugString(L"timer expired\n");
+        //OutputDebugString(L"timer expired\n");
         // polling PWM and RPM from fan
         if (g_bReadFanState)
         {
             g_oFrame.cmd = RD_FAN_STATE;
-            OutputDebugString(L"RD_FAN_STATE is transmitted\n");
+            //OutputDebugString(L"RD_FAN_STATE is transmitted\n");
         }
         else
         {
             // polling temperature sensor
             g_oFrame.cmd = RD_REG_TEMP;
-            OutputDebugString(L"RD_REG_TEMP is transmitted\n");
+            //OutputDebugString(L"RD_REG_TEMP is transmitted\n");
         }
     }
 }
@@ -394,29 +394,45 @@ BOOL transmit(LPVOID lpVoid)
 
     if (g_oFrame.cmd == WR_FAN_STATE)
     {
-        OutputDebugString(L"WR_FAN_STATE is transmitted\n");
+        //OutputDebugString(L"WR_FAN_STATE is transmitted\n");
         return EXIT_SUCCESS;
     }
     if (g_oFrame.cmd == WR_RELAY_STATE)
     {
-        OutputDebugString(L"WR_RELAY_STATE is transmitted\n");
+        //OutputDebugString(L"WR_RELAY_STATE is transmitted\n");
         return EXIT_SUCCESS;
     }
     return EXIT_SUCCESS;
 }
-/*
-        else if (g_oFrame.cmd == WR_RELAY_STATE)
-        {
-            OutputDebugString(L"relay state is transmitted\n");
-            // avoid repeatedly transmission of relay state
-            g_oFrame.cmd = WR_DATE_TIME;
-        }
-        else if (g_oFrame.cmd == WR_DATE_TIME)
-        {
-            // polling
-            g_oFrame.cmd = RD_REG_TEMP;
-        }
-*/
+//****************************************************************************
+//*                     bit12ToCelsius
+//****************************************************************************
+BOOL bit12ToCelsius(const WORD& wBit12
+    , const UINT& resourceId
+)
+{
+    INT16 tempVal = wBit12;
+    // convert to 2's complement, since the temperature can be negative
+    if (tempVal > 0x7FF)
+    {
+        tempVal |= 0xF000;
+    }
+    // convert to float temperature value in degrees Celcius
+    FLOAT fTempCelsius = tempVal * .0625;
+    // convert the temperature to a decimal format
+    fTempCelsius *= 100;
+    sprintf_s(g_chTextBuffer, 8, "%u.%02u"
+        , (UINT)fTempCelsius / 100
+        , (UINT)fTempCelsius % 100
+    );
+    // set temperature value into edittext control
+    SendMessageA(GetDlgItem(g_hWndDlgTab4, resourceId)
+        , WM_SETTEXT
+        , (WPARAM)0
+        , (LPARAM)g_chTextBuffer
+    );
+    return EXIT_SUCCESS;
+}
 //****************************************************************************
 //*                     receive
 //****************************************************************************
@@ -525,7 +541,7 @@ BOOL receive(LPVOID lpVoid)
         }
         if (g_oFrame.cmd == FAN_STATE_CHANGED)
         {
-            OutputDebugString(L"FAN_STATE_CHANGED is received\n");
+            //OutputDebugString(L"FAN_STATE_CHANGED is received\n");
             if ((BOOL)g_chBuffer[4])
             {
                 SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
@@ -548,21 +564,21 @@ BOOL receive(LPVOID lpVoid)
         // the WR_FAN_STATE acknowledge is received
         if (g_oFrame.cmd == WR_FAN_STATE && g_chBuffer[4] == ACK)
         {
-            OutputDebugString(L"WR_FAN_STATE acknowledge is received\n");
+            //OutputDebugString(L"WR_FAN_STATE acknowledge is received\n");
             g_oFrame.cmd = WR_DATE_TIME;
             return EXIT_SUCCESS;
         }
         // the WR_RELAY_STATE acknowledge is received
         if (g_oFrame.cmd == WR_RELAY_STATE && g_chBuffer[4] == ACK)
         {
-            OutputDebugString(L"WR_RELAY_STATE acknowledge is received\n");
+            //OutputDebugString(L"WR_RELAY_STATE acknowledge is received\n");
             g_oFrame.cmd = WR_DATE_TIME;
             return EXIT_SUCCESS;
         }
         // the RD_FAN_STATE data is received
         if (g_oFrame.cmd == RD_FAN_STATE)
         {
-            OutputDebugString(L"RD_FAN_STATE data is received\n");
+            //OutputDebugString(L"RD_FAN_STATE data is received\n");
             // value lies between 0 .. 99, adjust this value to 1 .. 100
             sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
             SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
@@ -589,94 +605,21 @@ BOOL receive(LPVOID lpVoid)
         // the RD_REG_TEMP data is received
         if (g_oFrame.cmd == RD_REG_TEMP)
         {
-            OutputDebugString(L"RD_REG_TEMP data is received\n");
+            //OutputDebugString(L"RD_REG_TEMP data is received\n");
             // temp sensor 1
-            // combine the bytes
-            INT16 tempVal = ((INT16)g_chBuffer[4] << 4) | (g_chBuffer[5] >> 4);
-            // convert to 2's complement, since the temperature can be negative
-            if (tempVal > 0x7FF)
-            {
-                tempVal |= 0xF000;
-            }
-            // convert to float temperature value in degrees Celcius
-            float fTempCelsius = tempVal * .0625;
-            // convert the temperature to a decimal format
-            fTempCelsius *= 100;
-            sprintf_s(g_chTextBuffer, 8, "%u.%02u"
-                , (UINT)fTempCelsius / 100
-                , (UINT)fTempCelsius % 100
+            // combine the bytes for param 1
+            bit12ToCelsius(((INT16)g_chBuffer[4] << 4) | (g_chBuffer[5] >> 4)
+                , IDC_TEMP_SENSOR1
             );
-            // set temperature value into edittext control
-            SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR1)
-                , WM_SETTEXT
-                , (WPARAM)0
-                , (LPARAM)g_chTextBuffer
+            // the other temp sensors
+            bit12ToCelsius(((INT16)g_chBuffer[6] << 4) | (g_chBuffer[7] >> 4)
+                , IDC_TEMP_SENSOR2
             );
-            // temp sensor 2
-            // combine the bytes
-            tempVal = ((INT16)g_chBuffer[6] << 4) | (g_chBuffer[7] >> 4);
-            // convert to 2's complement, since the temperature can be negative
-            if (tempVal > 0x7FF)
-            {
-                tempVal |= 0xF000;
-            }
-            // convert to float temperature value in degrees Celcius
-            fTempCelsius = tempVal * .0625;
-            // convert the temperature to a decimal format
-            fTempCelsius *= 100;
-            sprintf_s(g_chTextBuffer, 8, "%u.%02u"
-                , (UINT)fTempCelsius / 100
-                , (UINT)fTempCelsius % 100
+            bit12ToCelsius(((INT16)g_chBuffer[8] << 4) | (g_chBuffer[9] >> 4)
+                , IDC_TEMP_SENSOR3
             );
-            // set temperature value into edittext control
-            SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR2)
-                , WM_SETTEXT
-                , (WPARAM)0
-                , (LPARAM)g_chTextBuffer
-            );
-            // temp sensor 3
-            // combine the bytes
-            tempVal = ((INT16)g_chBuffer[8] << 4) | (g_chBuffer[9] >> 4);
-            // convert to 2's complement, since the temperature can be negative
-            if (tempVal > 0x7FF)
-            {
-                tempVal |= 0xF000;
-            }
-            // convert to float temperature value in degrees Celcius
-            fTempCelsius = tempVal * .0625;
-            // convert the temperature to a decimal format
-            fTempCelsius *= 100;
-            sprintf_s(g_chTextBuffer, 8, "%u.%02u"
-                , (UINT)fTempCelsius / 100
-                , (UINT)fTempCelsius % 100
-            );
-            // set temperature value into edittext control
-            SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR3)
-                , WM_SETTEXT
-                , (WPARAM)0
-                , (LPARAM)g_chTextBuffer
-            );
-            // temp sensor 4
-            // combine the bytes
-            tempVal = ((INT16)g_chBuffer[10] << 4) | (g_chBuffer[11] >> 4);
-            // convert to 2's complement, since the temperature can be negative
-            if (tempVal > 0x7FF)
-            {
-                tempVal |= 0xF000;
-            }
-            // convert to float temperature value in degrees Celcius
-            fTempCelsius = tempVal * .0625;
-            // convert the temperature to a decimal format
-            fTempCelsius *= 100;
-            sprintf_s(g_chTextBuffer, 8, "%u.%02u"
-                , (UINT)fTempCelsius / 100
-                , (UINT)fTempCelsius % 100
-            );
-            // set temperature value into edittext control
-            SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR4)
-                , WM_SETTEXT
-                , (WPARAM)0
-                , (LPARAM)g_chTextBuffer
+            bit12ToCelsius(((INT16)g_chBuffer[10] << 4) | (g_chBuffer[11] >> 4)
+                , IDC_TEMP_SENSOR4
             );
             g_oFrame.cmd = WR_DATE_TIME;
             // poll the first data item
@@ -687,41 +630,3 @@ BOOL receive(LPVOID lpVoid)
 
     return EXIT_SUCCESS;
 }
-/*
-        if (g_oFrame.cmd == FAN_STATE_CHANGED)
-        {
-            // test
-            ((BOOL)g_chBuffer[4]) ? OutputDebugString(L"fan off\n") :
-                OutputDebugString(L"fan on\n");
-            // g_chBuffer[4] is bFanOff = TRUE, when fan is off
-            ((BOOL)g_chBuffer[4]) ?
-                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-                    , BM_SETCHECK
-                    , (WPARAM)BST_UNCHECKED
-                    , (LPARAM)0
-                ) :
-                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-                    , BM_SETCHECK
-                    , (WPARAM)BST_CHECKED
-                    , (LPARAM)0
-                );
-            // isolate the percentagePwm
-            //sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
-            //SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
-            //    , WM_SETTEXT
-            //    , (WPARAM)0
-            //    , (LPARAM)g_chTextBuffer
-            //);
-            //OutputDebugStringA(g_chTextBuffer);
-            //OutputDebugString(L"\n");
-        }
-
-
-        if (g_oFrame.cmd == RD_REG_TEMP)
-        {
-            // tempory payload data from RD_REG_TEMP polling
-            sprintf_s(g_chTextBuffer, 8, "%c%c%c%c", g_chBuffer[4], g_chBuffer[5], g_chBuffer[6], '\n');
-            OutputDebugStringA(g_chTextBuffer);
-        }
-*/
-
