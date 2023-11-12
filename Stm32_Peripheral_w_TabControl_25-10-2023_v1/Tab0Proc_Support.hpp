@@ -14,7 +14,7 @@ extern HWND g_hWndDlgTab4; // Temp sensor
 //*                     global
 //****************************************************************************
 // Resource Aquisition Is Initialisation RAII 
-FRAME g_oFrame = { SOH, 0, STX, { '\0' }, ETX, ETB, EOT };
+FRAME g_oFrame = { SOH, 0, STX, { 0 }, ETX, ETB, EOT };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
 BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
@@ -359,6 +359,7 @@ BOOL transmit(LPVOID lpVoid)
     {
         g_chBuffer[i + 4] = g_oFrame.payload[i + 1];
     }
+    // TODO: this must go
     g_chBuffer[34] = '\0';
     g_chBuffer[35] = g_oFrame.etx;
     g_chBuffer[36] = g_oFrame.etb;
@@ -402,6 +403,11 @@ BOOL transmit(LPVOID lpVoid)
         //OutputDebugString(L"WR_RELAY_STATE is transmitted\n");
         return EXIT_SUCCESS;
     }
+    if (g_oFrame.cmd == WR_TEMP_RANGE)
+    {
+        OutputDebugString(L"WR_TEMP_RANGE is transmitted\n");
+        return EXIT_SUCCESS;
+    }
     return EXIT_SUCCESS;
 }
 //****************************************************************************
@@ -421,9 +427,10 @@ BOOL bit12ToCelsius(const WORD& wBit12
     FLOAT fTempCelsius = tempVal * .0625;
     // convert the temperature to a decimal format
     fTempCelsius *= 100;
-    sprintf_s(g_chTextBuffer, 8, "%u.%02u"
-        , (UINT)fTempCelsius / 100
-        , (UINT)fTempCelsius % 100
+    // TODO: check for temp below zero
+    sprintf_s(g_chTextBuffer, 8, "%d.%02u"//"%u.%02u"
+        , (INT)fTempCelsius / 100//(UINT)fTempCelsius / 100
+        , (UINT)fTempCelsius % 100//(UINT)fTempCelsius % 100
     );
     // set temperature value into edittext control
     SendMessageA(GetDlgItem(g_hWndDlgTab4, resourceId)
@@ -431,6 +438,26 @@ BOOL bit12ToCelsius(const WORD& wBit12
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
     );
+    return EXIT_SUCCESS;
+}
+//****************************************************************************
+//*                     isolateAlertBit
+//****************************************************************************
+BOOL isolateAlertBit(const WORD& wBit12
+    , const UINT& resourceId
+)
+{
+    (wBit12 & 2) ?
+        SendMessage(GetDlgItem(g_hWndDlgTab4, resourceId)
+            , BM_SETCHECK
+            , (WPARAM)BST_CHECKED
+            , (LPARAM)0
+        ) :
+        SendMessage(GetDlgItem(g_hWndDlgTab4, resourceId)
+            , BM_SETCHECK
+            , (WPARAM)BST_UNCHECKED
+            , (LPARAM)0
+        );
     return EXIT_SUCCESS;
 }
 //****************************************************************************
@@ -457,10 +484,10 @@ BOOL receive(LPVOID lpVoid)
     {
         // check crc
         // isolate received crc from g_chBuffer
-        UINT32 rxValCrc = (g_chBuffer[38] << 24)
-            | (g_chBuffer[39] << 16)
-            | (g_chBuffer[40] << 8)
-            | (g_chBuffer[41]);
+        UINT32 rxValCrc = (g_chBuffer[39] << 24)
+            | (g_chBuffer[40] << 16)
+            | (g_chBuffer[41] << 8)
+            | (g_chBuffer[42]);
 
         // calculate crc
         calcCrcEx(g_chBuffer, LEN_FRAME, g_valCrc);
@@ -579,6 +606,21 @@ BOOL receive(LPVOID lpVoid)
         if (g_oFrame.cmd == RD_FAN_STATE)
         {
             //OutputDebugString(L"RD_FAN_STATE data is received\n");
+            // TODO: can't be done, if done the fan can't be turned on from
+            // the laptop
+            //// fan on/off
+            //((BOOL)g_chBuffer[4]) ?
+            //    SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+            //        , BM_SETCHECK
+            //        , (WPARAM)BST_UNCHECKED
+            //        , (LPARAM)0
+            //    ) :
+            //    SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+            //        , BM_SETCHECK
+            //        , (WPARAM)BST_CHECKED
+            //        , (LPARAM)0
+            //    );            
+            // PWM
             // value lies between 0 .. 99, adjust this value to 1 .. 100
             sprintf_s(g_chTextBuffer, 8, "%d", g_chBuffer[5] + 1);
             SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
@@ -586,6 +628,7 @@ BOOL receive(LPVOID lpVoid)
                 , (WPARAM)0
                 , (LPARAM)g_chTextBuffer
             );
+            // RPM
             FLOAT fRPM = (FLOAT)(g_chBuffer[6] << 24) +
                 (FLOAT)(g_chBuffer[7] << 16) +
                 (FLOAT)(g_chBuffer[8] << 8) +
@@ -603,6 +646,7 @@ BOOL receive(LPVOID lpVoid)
             return EXIT_SUCCESS;
         }
         // the RD_REG_TEMP data is received
+        // and also the other registers: REG_CNFG, REG_T_LO, REG_T_HI
         if (g_oFrame.cmd == RD_REG_TEMP)
         {
             //OutputDebugString(L"RD_REG_TEMP data is received\n");
@@ -611,19 +655,75 @@ BOOL receive(LPVOID lpVoid)
             bit12ToCelsius(((INT16)g_chBuffer[4] << 4) | (g_chBuffer[5] >> 4)
                 , IDC_TEMP_SENSOR1
             );
-            // the other temp sensors
-            bit12ToCelsius(((INT16)g_chBuffer[6] << 4) | (g_chBuffer[7] >> 4)
+            isolateAlertBit(((INT16)g_chBuffer[6] << 4) | (g_chBuffer[7] >> 4)
+                , IDC_ALERT_SENSOR1
+            );
+            // temp low sensor 1
+            bit12ToCelsius(((INT16)g_chBuffer[8] << 4) | (g_chBuffer[9] >> 4)
+                , IDC_TEMP_LO_SENSOR1
+            );
+            // temp high sensor 1
+            bit12ToCelsius(((INT16)g_chBuffer[10] << 4) | (g_chBuffer[11] >> 4)
+                , IDC_TEMP_HI_SENSOR1
+            );
+            // temp sensor 2
+            // combine the bytes for param 1
+            bit12ToCelsius(((INT16)g_chBuffer[12] << 4) | (g_chBuffer[13] >> 4)
                 , IDC_TEMP_SENSOR2
             );
-            bit12ToCelsius(((INT16)g_chBuffer[8] << 4) | (g_chBuffer[9] >> 4)
+            isolateAlertBit(((INT16)g_chBuffer[14] << 4) | (g_chBuffer[15] >> 4)
+                , IDC_ALERT_SENSOR2
+            );
+            // temp low sensor 2
+            bit12ToCelsius(((INT16)g_chBuffer[16] << 4) | (g_chBuffer[17] >> 4)
+                , IDC_TEMP_LO_SENSOR2
+            );
+            // temp high sensor 2
+            bit12ToCelsius(((INT16)g_chBuffer[18] << 4) | (g_chBuffer[19] >> 4)
+                , IDC_TEMP_HI_SENSOR2
+            );
+            // temp sensor 3
+            // combine the bytes for param 1
+            bit12ToCelsius(((INT16)g_chBuffer[20] << 4) | (g_chBuffer[21] >> 4)
                 , IDC_TEMP_SENSOR3
             );
-            bit12ToCelsius(((INT16)g_chBuffer[10] << 4) | (g_chBuffer[11] >> 4)
+            isolateAlertBit(((INT16)g_chBuffer[22] << 4) | (g_chBuffer[23] >> 4)
+                , IDC_ALERT_SENSOR3
+            );
+            // temp low sensor 2
+            bit12ToCelsius(((INT16)g_chBuffer[24] << 4) | (g_chBuffer[25] >> 4)
+                , IDC_TEMP_LO_SENSOR3
+            );
+            // temp high sensor 2
+            bit12ToCelsius(((INT16)g_chBuffer[26] << 4) | (g_chBuffer[27] >> 4)
+                , IDC_TEMP_HI_SENSOR3
+            );
+            // temp sensor 4
+            // combine the bytes for param 1
+            bit12ToCelsius(((INT16)g_chBuffer[28] << 4) | (g_chBuffer[29] >> 4)
                 , IDC_TEMP_SENSOR4
+            );
+            isolateAlertBit(((INT16)g_chBuffer[30] << 4) | (g_chBuffer[31] >> 4)
+                , IDC_ALERT_SENSOR4
+            );
+            // temp low sensor 2
+            bit12ToCelsius(((INT16)g_chBuffer[32] << 4) | (g_chBuffer[33] >> 4)
+                , IDC_TEMP_LO_SENSOR4
+            );
+            // temp high sensor 2
+            bit12ToCelsius(((INT16)g_chBuffer[34] << 4) | (g_chBuffer[35] >> 4)
+                , IDC_TEMP_HI_SENSOR4
             );
             g_oFrame.cmd = WR_DATE_TIME;
             // poll the first data item
             g_bReadFanState = TRUE;
+            return EXIT_SUCCESS;
+        }
+        // the WR_TEMP_RANGE acknowledge is received
+        if (g_oFrame.cmd == WR_TEMP_RANGE && g_chBuffer[4] == ACK)
+        {
+            OutputDebugString(L"WR_TEMP_RANGE acknowledge is received\n");
+            g_oFrame.cmd = WR_DATE_TIME;
             return EXIT_SUCCESS;
         }
     }

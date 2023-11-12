@@ -11,8 +11,8 @@
 #define NAK														21
 // serial communication
 #define LEN_DATE_TIME											7
-#define LEN_MAX_ENTRY											31
-#define LEN_FRAME												38
+#define LEN_MAX_ENTRY											32//31
+#define LEN_FRAME												39//38//9
 #define DELAY_4HZ_SERIAL										125 // 2 * 125 = 250, is 4 times per second, is 4 Hz
 #define BUFFER_MAX_SERIAL										512
 #define LEN_CRC													4
@@ -44,6 +44,15 @@
 #define IDC_ALERT_SENSOR2										33024
 #define IDC_ALERT_SENSOR3										33025
 #define IDC_ALERT_SENSOR4										33026
+#define IDC_TEMP_HI_SENSOR1										33627
+#define IDC_TEMP_HI_SENSOR2										33628
+#define IDC_TEMP_HI_SENSOR3										33629
+#define IDC_TEMP_HI_SENSOR4										33630
+#define IDC_TEMP_LO_SENSOR1										33631
+#define IDC_TEMP_LO_SENSOR2										33632
+#define IDC_TEMP_LO_SENSOR3										33633
+#define IDC_TEMP_LO_SENSOR4										33634
+#define IDC_WR_TEMP_RANGE										33635
 // message
 #define CONNECT_SERIAL											33100
 #define DISCONNECT_SERIAL										33101
@@ -53,11 +62,12 @@
 // write command
 #define WR_DATE_TIME											33621 // write date and time to STM32, to initialize the RTC
 #define FAN_STATE_CHANGED										33622 // receive fan state from STM32
-#define WR_FAN_STATE											33623 // transmit fan state to STM32
-#define WR_RELAY_STATE											33624 // transmit relay state to STM32
+#define WR_FAN_STATE											33623 // write fan state to STM32
+#define WR_RELAY_STATE											33624 // write relay state to STM32
+#define WR_TEMP_RANGE											33625 // write temp range to STM32
 // read command
-#define RD_FAN_STATE											33625
-#define RD_REG_TEMP												33626
+#define RD_FAN_STATE											33626
+#define RD_REG_TEMP												33627
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

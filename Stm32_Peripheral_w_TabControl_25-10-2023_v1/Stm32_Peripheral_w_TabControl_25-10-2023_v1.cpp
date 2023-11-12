@@ -339,6 +339,20 @@ INT_PTR CALLBACK Tab3Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //*****************************************************************************
 INT_PTR CALLBACK Tab4Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    switch (uMsg)
+    {
+    case WM_INITDIALOG:
+    {
+        return (INT_PTR)FALSE;
+    } // eof WM_INITDIALOG
+    case WM_COMMAND:
+    {
+        return onWmCommand_Tab4Proc(hDlg
+            , wParam
+        );
+    } // eof WM_COMMAND
+    } // eof switch
+    
     return (INT_PTR)FALSE;
 }
 
