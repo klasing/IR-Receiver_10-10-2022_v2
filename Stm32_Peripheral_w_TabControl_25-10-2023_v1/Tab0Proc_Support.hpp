@@ -8,6 +8,8 @@ extern Statusbar g_oStatusbar;
 //****************************************************************************
 //*                     global
 //****************************************************************************
+const FLOAT DEFAULT_T_LO = 15.;
+const FLOAT DEFAULT_T_HI = 16.;
 // Resource Aquisition Is Initialisation RAII 
 FRAME g_oFrame = { SOH, 0, STX, { 0 }, ETX, ETB, EOT };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
@@ -15,9 +17,10 @@ BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 // no need to initialise
 std::queue<tagFRAME> g_queue;
-CHAR g_chBuffer[BUFFER_MAX_SERIAL] = { '\0' };
+UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { '\0' };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
+UINT g_cErrorCrc = 0;
 
 //*****************************************************************************
 //*                     prototype
@@ -165,11 +168,112 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
 }
 
 //****************************************************************************
+//*                     clcsToBit
+//****************************************************************************
+//UINT16 clcsToBit(const HWND& hWnd, TEMP& oTemp)
+//{
+//    CHAR chBuffer[LEN_TEMP_IN_CLCS] = { 0 };
+//    std::string str = "";
+//    FLOAT fTemp = 0.;
+//    // get value from edittext control
+//    SendMessageA(hWnd
+//        , WM_GETTEXT
+//        , (WPARAM)8
+//        , (LPARAM)chBuffer
+//    );
+//    str = chBuffer;
+//    fTemp = std::stof(str);
+//    fTemp /= 0.0625;
+//    oTemp.fTempInClcs = fTemp;
+//    oTemp.fTempInClcsTimes100 = fTemp * 100;
+//    return (UINT16)fTemp << 4;
+//}
+
+//****************************************************************************
 //*                     receive
 //****************************************************************************
 BOOL receive(LPVOID lpVoid)
 {
     OutputDebugString(L"receive()\n");
+    // receive
+    DWORD dwNofByteTransferred = 0;
+    ReadFile(g_hComm
+        , &g_chBuffer
+        , LEN_FRAME + LEN_CRC
+        , &dwNofByteTransferred
+        , NULL
+    );
+
+    // connection is lost
+    if (dwNofByteTransferred == 0)
+    {
+        // disregard and simply return with EXIT_FAILURE
+        return EXIT_FAILURE;
+    }
+    else if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
+    {
+        // check crc
+        // isolate received crc from g_chBuffer
+        UINT32 rxValCrc = (g_chBuffer[LEN_FRAME + 0] << 24)
+            | (g_chBuffer[LEN_FRAME + 1] << 16)
+            | (g_chBuffer[LEN_FRAME + 2] << 8)
+            | (g_chBuffer[LEN_FRAME + 3]);
+
+        // calculate crc
+        calcCrcEx(g_chBuffer, LEN_FRAME, g_valCrc);
+
+        // compare received CRC with calculated CRC
+        if (rxValCrc != g_valCrc)
+        {
+            OutputDebugString(L"crc error\n");
+            // crc error
+            ++g_cErrorCrc;
+            SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_ERROR_CRC)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)std::to_string(g_cErrorCrc).c_str()
+            );
+            // do nothing, simply return failed
+            return EXIT_FAILURE;
+        }
+        // no crc error
+        // save the received command into the frame
+        g_oFrame.cmd = g_chBuffer[1] << 8 | g_chBuffer[2];
+        // save the received payload into the frame
+        for (int i = 0; i < LEN_MAX_ENTRY; i++)
+        {
+            g_oFrame.payload[i] = g_chBuffer[i + 4];
+        }
+
+        if (g_oFrame.cmd == WR_DATE_TIME)
+        {
+            // finish setting the RTC in the STM32
+            // receive ACK: the laptop will continuesly send ACK
+            if (g_chBuffer[4] == ACK)
+            {
+                g_oStatusbar.setTextStatusbar(3, L"RTC in STM32 is set");
+            }
+            if (g_chBuffer[4] == ESC)
+            {
+                OutputDebugString(L"move over to WR_TEMP_RANGE\n");
+                g_queue.pop();
+                g_oFrame.cmd = WR_TEMP_RANGE;
+                INT16 iTempLo = (INT16)(DEFAULT_T_LO / 0.0625) << 4;
+                INT16 iTempHi = (INT16)(DEFAULT_T_HI / 0.0625) << 4;
+                g_oFrame.payload[0] = (iTempLo & 0xFF00) >> 8;
+                g_oFrame.payload[1] = (iTempLo & 0x00FF);
+                g_oFrame.payload[2] = (iTempHi & 0xFF00) >> 8;
+                g_oFrame.payload[3] = (iTempHi & 0x00FF);
+                g_queue.push(g_oFrame);
+            }
+            return EXIT_SUCCESS;
+        }
+        if (g_oFrame.cmd == WR_TEMP_RANGE)
+        {
+            OutputDebugString(L"WR_TEMP_RANGE\n");
+        }
+    }
+
     return EXIT_SUCCESS;
 }
 
@@ -330,10 +434,9 @@ BOOL date_time_for_serial(CHAR* pszDateTime)
     // day......: t.tm_mday
     // month....: (t.tm_mon + 1)
     // year.....: (t.tm_year % 100)
-    sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 2, "%c%c%c%c%c%c%c%c"
-        // the first character in the payload holds the length of the payload
-        // in this case lenPayload (1) + LEN_DATE_TIME (7) + null character (1)
-        , LEN_DATE_TIME
+    sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c%c"
+        // size pszDateTime buffer is
+        // LEN_DATE_TIME plus one space for null character
         , ((t.tm_hour / 10) << 4) | (t.tm_hour % 10)
         , ((t.tm_min / 10) << 4) | (t.tm_min % 10)
         , ((t.tm_sec / 10) << 4) | (t.tm_sec % 10)

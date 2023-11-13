@@ -10,6 +10,7 @@
 // characters used in g_oFrame.payload for acknowledgement
 #define ACK														6
 #define NAK														21
+#define ESC														27
 // serial communication
 #define LEN_MAX_ENTRY											32	// max length payload
 #define BUFFER_MAX_SERIAL										512
@@ -65,6 +66,7 @@
 // serial communication
 // write
 #define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
+#define WR_TEMP_RANGE											33601 // write default temperature range to STM32, for sensor 1 to 4
 
 //// crc
 //#define INIT_CRC												0xFFFFFFFF
