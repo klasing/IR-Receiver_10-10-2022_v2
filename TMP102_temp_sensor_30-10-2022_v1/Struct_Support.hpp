@@ -19,6 +19,7 @@ typedef struct tagFRAME
 
 typedef struct tagCONFIGURATION
 {
+	// declaring bit fields
 	UINT8 oneShot : 1;
 	UINT8 resolution : 2;
 	UINT8 faultQueue : 2;

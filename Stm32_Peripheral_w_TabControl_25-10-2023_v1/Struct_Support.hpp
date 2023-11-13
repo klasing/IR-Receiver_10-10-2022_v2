@@ -11,11 +11,11 @@
 //****************************************************************************
 typedef struct tagFRAME
 {
-	const CHAR soh;
-	UINT16 cmd;
-	const CHAR stx;
-	CHAR payload[LEN_MAX_ENTRY];
-	const CHAR etx;
-	const CHAR etb;
-	const CHAR eot;
-} FRAME, *PFRAME;
+	const CHAR soh;					// 1
+	UINT16 cmd;						// 2
+	const CHAR stx;					// 1
+	CHAR payload[LEN_MAX_ENTRY];	// 32
+	const CHAR etx;					// 1
+	const CHAR etb;					// 1
+	const CHAR eot;					// 1
+} FRAME, *PFRAME;					// 39 byte total
