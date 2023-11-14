@@ -18,6 +18,8 @@
 #define DELAY_4HZ_SERIAL										125 // 2 * 125 = 250, is 4 times per second, is 4 Hz
 #define LEN_FRAME												39
 #define LEN_CRC													4
+
+#define LEN_MAX_TEXT_BUFFER										8
 // control
 // common
 #define IDC_STATUSBAR											33000
@@ -64,9 +66,12 @@
 #define IDC_TEMP_LO_SENSOR4										33134
 #define IDC_WR_TEMP_RANGE										33135 // button that applies temp range
 // serial communication
-// write
-#define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
-#define WR_TEMP_RANGE											33601 // write default temperature range to STM32, for sensor 1 to 4
+#define WR_NOP													33600 // no operation, but keep transmission alive
+#define WR_DATE_TIME											33601 // write date and time to STM32, to initialize the RTC
+#define WR_TEMP_RANGE											33602 // write default temperature range to STM32, for sensor 1 to 4
+#define FAN_STATE_CHANGED										33603 // fan state changed by left rotary switch on STM32
+#define RD_FAN_RPM												33604 // read fan rpm from STM32
+#define WR_RELAY_STATE											33605 // write relay state to STM32
 
 //// crc
 //#define INIT_CRC												0xFFFFFFFF

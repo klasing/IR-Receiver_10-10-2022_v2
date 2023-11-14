@@ -4,6 +4,8 @@
 //*                     extern
 //****************************************************************************
 extern Statusbar g_oStatusbar;
+extern HWND g_hWndDlgTab1;
+extern HWND g_hWndDlgTab2;
 
 //****************************************************************************
 //*                     global
@@ -21,6 +23,8 @@ UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { '\0' };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
+CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER] = { 0 };
+UINT16 g_old_rpm = 0;
 
 //*****************************************************************************
 //*                     prototype
@@ -270,7 +274,111 @@ BOOL receive(LPVOID lpVoid)
         }
         if (g_oFrame.cmd == WR_TEMP_RANGE)
         {
-            OutputDebugString(L"WR_TEMP_RANGE\n");
+            // the temp range is set only after a STM32 reboot
+            if (g_chBuffer[4] == ACK)
+            {
+                g_oStatusbar.setTextStatusbar(3, L"Temp Range in STM32 is set");
+                //OutputDebugString(L"Temp range in STM32 is set\n");
+                g_queue.pop();
+            }
+            return EXIT_SUCCESS;
+
+        }
+        // the IR-receiver will return a g_oFrame.cmd value between
+        // 0xABF and 0xFFF
+        if (g_oFrame.cmd >= 0xABF && g_oFrame.cmd <= 0xFFF)
+        {
+            // set g_oFrame.cmnd in edittext IDC_CODE
+            sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "0x%X", g_oFrame.cmd);
+            SendMessageA(GetDlgItem(g_hWndDlgTab1, IDC_CODE)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
+            // transfer payload from g_chBuffer to g_oFrame.payload
+            for (int i = 0; i < LEN_MAX_ENTRY; i++)
+            {
+                g_oFrame.payload[i] = g_chBuffer[i + 4];
+            }
+            // set g_oFrame.payload in edittext IDC_DESCRIPTION
+            // all string are 30 characters plus a null character
+            SendMessageA(GetDlgItem(g_hWndDlgTab1, IDC_DESCRIPTION)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_oFrame.payload
+            );
+            // fan on via IR-remote
+            if (g_oFrame.cmd == 0xEEF)
+            {
+                // description: pause/play | back/?
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_CHECKED
+                    , (LPARAM)0
+                );
+            }
+            // fan off via IR-remote
+            if (g_oFrame.cmd == 0xBEB)
+            {
+                // description: stop
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_UNCHECKED
+                    , (LPARAM)0
+                );
+            }
+            return EXIT_SUCCESS;
+        }
+        if (g_oFrame.cmd == FAN_STATE_CHANGED)
+        {
+            OutputDebugString(L"FAN_STATE_CHANGED\n");
+            ((BOOL)g_chBuffer[4]) ?
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_UNCHECKED
+                    , (LPARAM)0
+                )
+                :
+                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+                    , BM_SETCHECK
+                    , (WPARAM)BST_CHECKED
+                    , (LPARAM)0
+                );
+            // value lies between 0 .. 99, adjust this value to 1 .. 100
+            // add 1 to the value given in g_chBuffer[5]
+            sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "%d", g_chBuffer[5] + 1);
+            SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
+
+            g_oFrame.cmd = RD_FAN_RPM;
+            g_queue.push(g_oFrame);
+
+            return EXIT_SUCCESS;
+        }
+        if (g_oFrame.cmd == RD_FAN_RPM)
+        {
+            OutputDebugString(L"RD_FAN_RPM\n");
+
+            UINT16 iRPM = (g_chBuffer[4] << 8) | g_chBuffer[5];
+            if (iRPM > 0) g_old_rpm = iRPM;
+            sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "%d", g_old_rpm);// iRPM);
+            SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_RPM_FAN)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)g_chTextBuffer
+            );
+            
+            return EXIT_SUCCESS;
+        }
+        if (g_oFrame.cmd == WR_RELAY_STATE)
+        {
+            OutputDebugString(L"WR_RELAY_STATE\n");
+            g_oFrame.cmd = RD_FAN_RPM;
+            if (!g_queue.empty()) g_queue.pop();
+            g_queue.push(g_oFrame);
         }
     }
 
@@ -284,7 +392,17 @@ BOOL transmit(LPVOID lpVoid)
 {
     OutputDebugString(L"transmit()\n");
 
+    if (g_queue.empty())
+    {
+       return EXIT_FAILURE;
+    }
+
     FRAME oFrame = g_queue.front();
+
+    if (oFrame.cmd == WR_NOP)
+    {
+        OutputDebugString(L"WR_NOP transmitted\n");
+    }
 
     // transfer frame to buffer
     g_chBuffer[0] = oFrame.soh;
