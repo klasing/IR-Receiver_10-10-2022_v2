@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Stm32_Peripheral_w_TabContr
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "STM32-Win32_rs232_communication_15-11-2023_v1", "STM32-Win32_rs232_communication_15-11-2023_v1\STM32-Win32_rs232_communication_15-11-2023_v1.vcxproj", "{61252156-C834-4B38-ABC2-11D7580C26CE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Stm32_peripheral_w_TabControl_25-10-2023_v2", "Stm32_peripheral_w_TabControl_25-10-2023_v2\Stm32_peripheral_w_TabControl_25-10-2023_v2.vcxproj", "{6A622201-B98B-411F-A647-4B9D44C6CFAF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -81,6 +83,14 @@ Global
 		{61252156-C834-4B38-ABC2-11D7580C26CE}.Release|x64.Build.0 = Release|x64
 		{61252156-C834-4B38-ABC2-11D7580C26CE}.Release|x86.ActiveCfg = Release|Win32
 		{61252156-C834-4B38-ABC2-11D7580C26CE}.Release|x86.Build.0 = Release|Win32
+		{6A622201-B98B-411F-A647-4B9D44C6CFAF}.Debug|x64.ActiveCfg = Debug|x64
+		{6A622201-B98B-411F-A647-4B9D44C6CFAF}.Debug|x64.Build.0 = Debug|x64
+		{6A622201-B98B-411F-A647-4B9D44C6CFAF}.Debug|x86.ActiveCfg = Debug|Win32
+		{6A622201-B98B-411F-A647-4B9D44C6CFAF}.Debug|x86.Build.0 = Debug|Win32
+		{6A622201-B98B-411F-A647-4B9D44C6CFAF}.Release|x64.ActiveCfg = Release|x64
+		{6A622201-B98B-411F-A647-4B9D44C6CFAF}.Release|x64.Build.0 = Release|x64
+		{6A622201-B98B-411F-A647-4B9D44C6CFAF}.Release|x86.ActiveCfg = Release|Win32
+		{6A622201-B98B-411F-A647-4B9D44C6CFAF}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
