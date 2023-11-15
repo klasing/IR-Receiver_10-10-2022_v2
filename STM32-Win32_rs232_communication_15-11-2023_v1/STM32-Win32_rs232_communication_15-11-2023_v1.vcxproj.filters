@@ -27,6 +27,15 @@
     <ClInclude Include="STM32-Win32_rs232_communication_15-11-2023_v1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Tab0Proc_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Crc_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Struct_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="STM32-Win32_rs232_communication_15-11-2023_v1.cpp">
@@ -43,6 +52,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="STM32-Win32_rs232_communication_15-11-2023_v1.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Resource\st_logo.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

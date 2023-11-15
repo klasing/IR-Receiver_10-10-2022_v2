@@ -1,3 +1,37 @@
+// crc
+#define INIT_CRC												0xFFFFFFFF
+#define POLY_CRC												0x04C11DB7
+// frame
+#define SOH														1
+#define STX														2
+#define ETX														3
+#define ETB														23
+#define EOT														4
+// characters used in g_oFrame.payload for acknowledgement
+#define ACK														6
+#define NAK														21
+// serial communication
+#define LEN_MAX_ENTRY											32	// max length payload
+#define BUFFER_MAX_SERIAL										512
+#define DELAY_4HZ_SERIAL										125 // 2 * 125 = 250, is 4 times per second, is 4 Hz
+#define LEN_FRAME												39
+#define LEN_CRC													4
+
+#define LEN_MAX_TEXT_BUFFER										8
+// control
+// common
+#define IDC_STATUSBAR											33000
+#define IDC_TABCONTROL											33001
+// resource
+#define CONNECT_SERIAL											33100
+#define DISCONNECT_SERIAL										33101
+#define IDC_NOF_TRANSMISSION									33102
+#define IDC_NOF_ERROR_CRC										33103
+// serial communication
+#define NOP														33600 // no operation, but keep transmission going
+#define OTHER													33601 // other operation
+#define OTHER1													33602 // another operation
+
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by STM32-Win32_rs232_communication_15-11-2023_v1.rc
