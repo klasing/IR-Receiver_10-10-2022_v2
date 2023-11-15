@@ -107,6 +107,8 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
         // set connect state
 		g_oStatusbar.setTextStatusbar(0, L"STM32 disconnected");
 
+        for (int i = 0; i < g_queue.size(); i++) g_queue.pop();
+
         return (INT_PTR)TRUE;
     } // eof DISCONNECT_SERIAL
     } // eof switch
