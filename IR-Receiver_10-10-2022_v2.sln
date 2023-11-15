@@ -15,6 +15,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IR-Receiver_and_RTC_27-12-2
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Stm32_Peripheral_w_TabControl_25-10-2023_v1", "Stm32_Peripheral_w_TabControl_25-10-2023_v1\Stm32_Peripheral_w_TabControl_25-10-2023_v1.vcxproj", "{703763A1-83D1-406C-94D0-A49864B2F70F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "STM32-Win32_rs232_communication_15-11-2023_v1", "STM32-Win32_rs232_communication_15-11-2023_v1\STM32-Win32_rs232_communication_15-11-2023_v1.vcxproj", "{61252156-C834-4B38-ABC2-11D7580C26CE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -71,6 +73,14 @@ Global
 		{703763A1-83D1-406C-94D0-A49864B2F70F}.Release|x64.Build.0 = Release|x64
 		{703763A1-83D1-406C-94D0-A49864B2F70F}.Release|x86.ActiveCfg = Release|Win32
 		{703763A1-83D1-406C-94D0-A49864B2F70F}.Release|x86.Build.0 = Release|Win32
+		{61252156-C834-4B38-ABC2-11D7580C26CE}.Debug|x64.ActiveCfg = Debug|x64
+		{61252156-C834-4B38-ABC2-11D7580C26CE}.Debug|x64.Build.0 = Debug|x64
+		{61252156-C834-4B38-ABC2-11D7580C26CE}.Debug|x86.ActiveCfg = Debug|Win32
+		{61252156-C834-4B38-ABC2-11D7580C26CE}.Debug|x86.Build.0 = Debug|Win32
+		{61252156-C834-4B38-ABC2-11D7580C26CE}.Release|x64.ActiveCfg = Release|x64
+		{61252156-C834-4B38-ABC2-11D7580C26CE}.Release|x64.Build.0 = Release|x64
+		{61252156-C834-4B38-ABC2-11D7580C26CE}.Release|x86.ActiveCfg = Release|Win32
+		{61252156-C834-4B38-ABC2-11D7580C26CE}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
