@@ -127,10 +127,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Crc_Support.hpp" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Statusbar.hpp" />
     <ClInclude Include="Stm32_peripheral_w_TabControl_25-10-2023_v2.h" />
+    <ClInclude Include="Struct_Support.hpp" />
     <ClInclude Include="Tab0Proc_Support.hpp" />
     <ClInclude Include="TabControl.hpp" />
     <ClInclude Include="targetver.h" />
