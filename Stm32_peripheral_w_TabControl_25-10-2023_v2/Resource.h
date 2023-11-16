@@ -29,6 +29,7 @@
 // serial communication
 #define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
 #define WR_TEMP_RANGE_SENSOR									33601 // write temperature range to all sensors
+#define NOP														33602 // no operation
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

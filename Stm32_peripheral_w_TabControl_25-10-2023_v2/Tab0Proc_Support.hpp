@@ -21,7 +21,7 @@ HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 std::queue<tagFRAME> g_queue;
 UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { '\0' };
 UINT32 g_valCrc = 0;
-//UINT g_cTransmission = 0;
+UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
 //CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER] = { 0 };
 //UINT16 g_old_rpm = 0;
@@ -65,16 +65,6 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             // set connect state
             g_oStatusbar.setTextStatusbar(0, L"STM32 connected");
 
-            // prepare for writing temperature range sensor
-            g_oFrame.cmd = WR_DATE_TIME;
-            INT16 iTempLo = (INT16)(DEFAULT_T_LO / 0.0625) << 4;
-            INT16 iTempHi = (INT16)(DEFAULT_T_HI / 0.0625) << 4;
-            g_oFrame.payload[0] = (iTempLo & 0xFF00) >> 8;
-            g_oFrame.payload[1] = (iTempLo & 0x00FF);
-            g_oFrame.payload[2] = (iTempHi & 0xFF00) >> 8;
-            g_oFrame.payload[3] = (iTempHi & 0x00FF);
-            g_queue.push(g_oFrame);
-
             // get the date and time for synchronising the real time clock (RTC)
             // in the STM32
             date_time_for_serial(g_oFrame.payload);
@@ -84,6 +74,20 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             // start the communication by transferring the date and time
             // to the STM32
             g_oFrame.cmd = WR_DATE_TIME;
+            g_queue.push(g_oFrame);
+
+            // prepare for writing temperature range sensor
+            g_oFrame.cmd = WR_TEMP_RANGE_SENSOR;
+            INT16 iTempLo = (INT16)(DEFAULT_T_LO / 0.0625) << 4;
+            INT16 iTempHi = (INT16)(DEFAULT_T_HI / 0.0625) << 4;
+            g_oFrame.payload[0] = (iTempLo & 0xFF00) >> 8;
+            g_oFrame.payload[1] = (iTempLo & 0x00FF);
+            g_oFrame.payload[2] = (iTempHi & 0xFF00) >> 8;
+            g_oFrame.payload[3] = (iTempHi & 0x00FF);
+            g_queue.push(g_oFrame);
+
+            // prepare for no operation
+            g_oFrame.cmd = NOP;
             g_queue.push(g_oFrame);
 
             // enable infinite loop
@@ -227,7 +231,8 @@ BOOL receive(LPVOID lpVoid)
             if (g_oFrame.payload[0] == ACK)
             {
                 OutputDebugString(L"ACK WR_DATE_TIME\n");
-                g_queue.pop();
+                g_oStatusbar.setTextStatusbar(3, L"RTC in STM32 is set");
+                if (g_queue.size() > 1) g_queue.pop();
                 return EXIT_SUCCESS;
             }
             if (g_oFrame.payload[0] == NAK)
@@ -241,6 +246,8 @@ BOOL receive(LPVOID lpVoid)
             if (g_oFrame.payload[0] == ACK)
             {
                 OutputDebugString(L"ACK WR_TEMP_RANGE_SENSOR\n");
+                g_oStatusbar.setTextStatusbar(3, L"Temperature range is set");
+                if (g_queue.size() > 1) g_queue.pop();
                 return EXIT_SUCCESS;
             }
             if (g_oFrame.payload[0] == NAK)
@@ -249,7 +256,21 @@ BOOL receive(LPVOID lpVoid)
                 return EXIT_FAILURE;
             }
         }
-//            // finish setting the RTC in the STM32
+        if (g_oFrame.cmd == NOP)
+        {
+            if (g_oFrame.payload[0] == ACK)
+            {
+                OutputDebugString(L"ACK NOP\n");
+                g_oStatusbar.setTextStatusbar(3, L"No operation");
+                return EXIT_SUCCESS;
+            }
+            if (g_oFrame.payload[0] == NAK)
+            {
+                OutputDebugString(L"NAK NOP\n");
+                return EXIT_FAILURE;
+            }
+        }
+        //            // finish setting the RTC in the STM32
 //            // receive ACK: the laptop will continuesly send ACK
 //            if (g_chBuffer[4] == ACK)
 //            {
@@ -396,7 +417,9 @@ BOOL transmit(LPVOID lpVoid)
 
     FRAME oFrame = g_queue.front();
 
-    if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"WR_DATE_TIME transmitted\n");
+    if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");
+    if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_TEMP_RANGE_SENSOR\n");
+    if (oFrame.cmd == NOP) OutputDebugString(L"transmit NOP\n");
 
     // transfer frame to buffer
     g_chBuffer[0] = oFrame.soh;
@@ -418,27 +441,27 @@ BOOL transmit(LPVOID lpVoid)
     g_chBuffer[41] = (g_valCrc & 0x0000FF00) >> 8;
     g_chBuffer[42] = (g_valCrc & 0x000000FF);
 
-//    // transmit
-//    DWORD dwNofByteTransferred = 0;
-//    WriteFile(g_hComm
-//        , &g_chBuffer
-//        , LEN_FRAME + LEN_CRC
-//        , &dwNofByteTransferred
-//        , NULL
-//    );
-//
-//    // when dwNofByteTransferred is LEN_FRAME + LEN_CRC then the transmission
-//    // is completed
-//    if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
-//    {
-//        ++g_cTransmission;
-//        SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_TRANSMISSION)
-//            , WM_SETTEXT
-//            , (WPARAM)0
-//            , (LPARAM)std::to_string(g_cTransmission).c_str()
-//        );
-//    }
-//
+    // transmit
+    DWORD dwNofByteTransferred = 0;
+    WriteFile(g_hComm
+        , &g_chBuffer
+        , LEN_FRAME + LEN_CRC
+        , &dwNofByteTransferred
+        , NULL
+    );
+
+    // when dwNofByteTransferred is LEN_FRAME + LEN_CRC then the transmission
+    // is completed
+    if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
+    {
+        ++g_cTransmission;
+        SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_TRANSMISSION)
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)std::to_string(g_cTransmission).c_str()
+        );
+    }
+
     return EXIT_SUCCESS;
 }
 
