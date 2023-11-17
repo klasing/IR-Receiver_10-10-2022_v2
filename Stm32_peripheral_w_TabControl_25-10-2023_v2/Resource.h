@@ -17,6 +17,8 @@
 #define DELAY_4HZ_SERIAL										125 // 2 * 125 = 250, is 4 times per second, is 4 Hz
 #define LEN_FRAME												39
 #define LEN_CRC													4
+
+#define LEN_MAX_TEXT_BUFFER										16
 // control
 // common
 #define IDC_STATUSBAR											33000
@@ -64,7 +66,7 @@
 #define BTN_STATE_SENSOR										33135 // button that applies temp range
 // serial communication
 #define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
-#define WR_TEMP_RANGE_SENSOR									33601 // write temperature range to all sensors
+#define WR_RANGE_SENSOR											33601 // write temperature range to all sensors
 #define NOP														33602 // no operation
 
 //{{NO_DEPENDENCIES}}

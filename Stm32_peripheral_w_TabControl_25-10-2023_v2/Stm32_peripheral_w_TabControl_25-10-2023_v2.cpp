@@ -169,13 +169,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         g_oTabControl.setItem(0, (PWCHAR)L"Serial comm.");
         g_hWndDlgTab0 = g_oTabControl.hWndDlg[0];
         g_oTabControl.setItem(1, (PWCHAR)L"IR-remote");
-        g_hWndDlgTab0 = g_oTabControl.hWndDlg[1];
+        g_hWndDlgTab1 = g_oTabControl.hWndDlg[1];
         g_oTabControl.setItem(2, (PWCHAR)L"Fan control");
-        g_hWndDlgTab0 = g_oTabControl.hWndDlg[2];
+        g_hWndDlgTab2 = g_oTabControl.hWndDlg[2];
         g_oTabControl.setItem(3, (PWCHAR)L"Relay module");
-        g_hWndDlgTab0 = g_oTabControl.hWndDlg[3];
+        g_hWndDlgTab3 = g_oTabControl.hWndDlg[3];
         g_oTabControl.setItem(4, (PWCHAR)L"Temp. sensor");
-        g_hWndDlgTab0 = g_oTabControl.hWndDlg[4];
+        g_hWndDlgTab4 = g_oTabControl.hWndDlg[4];
 
         return DefWindowProc(hWnd, message, wParam, lParam);
     } // eof WM_NCCREATE

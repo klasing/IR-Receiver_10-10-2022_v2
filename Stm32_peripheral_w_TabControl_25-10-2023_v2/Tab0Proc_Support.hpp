@@ -23,7 +23,7 @@ UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { '\0' };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
-//CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER] = { 0 };
+CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER] = { 0 };
 //UINT16 g_old_rpm = 0;
 
 //*****************************************************************************
@@ -33,6 +33,7 @@ DWORD               WINAPI TxRx(LPVOID lpVoid);
 BOOL                set_date_time(const CHAR* pszDateTime);
 BOOL                date_time_for_serial(CHAR* pszDateTime);
 BOOL                connect();
+BOOL                setRangeSensor();               // in Tab4Proc_Support.hpp
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
@@ -77,7 +78,7 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             g_queue.push(g_oFrame);
 
             // prepare for writing temperature range sensor
-            g_oFrame.cmd = WR_TEMP_RANGE_SENSOR;
+            g_oFrame.cmd = WR_RANGE_SENSOR;
             INT16 iTempLo = (INT16)(DEFAULT_T_LO / 0.0625) << 4;
             INT16 iTempHi = (INT16)(DEFAULT_T_HI / 0.0625) << 4;
             g_oFrame.payload[0] = (iTempLo & 0xFF00) >> 8;
@@ -219,18 +220,19 @@ BOOL receive(LPVOID lpVoid)
                 return EXIT_FAILURE;
             }
         }
-        if (g_oFrame.cmd == WR_TEMP_RANGE_SENSOR)
+        if (g_oFrame.cmd == WR_RANGE_SENSOR)
         {
             if (g_oFrame.payload[0] == ACK)
             {
-                OutputDebugString(L"ACK WR_TEMP_RANGE_SENSOR\n");
+                OutputDebugString(L"ACK WR_RANGE_SENSOR\n");
                 g_oStatusbar.setTextStatusbar(3, L"Temperature range is set");
                 if (g_queue.size() > 1) g_queue.pop();
+                setRangeSensor();
                 return EXIT_SUCCESS;
             }
             if (g_oFrame.payload[0] == NAK)
             {
-                OutputDebugString(L"NAK WR_TEMP_RANGE_SENSOR\n");
+                OutputDebugString(L"NAK WR_STATE_SENSOR\n");
                 return EXIT_FAILURE;
             }
         }
@@ -267,7 +269,7 @@ BOOL transmit(LPVOID lpVoid)
     FRAME oFrame = g_queue.front();
 
     if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");
-    if (oFrame.cmd == WR_TEMP_RANGE_SENSOR) OutputDebugString(L"transmit WR_TEMP_RANGE_SENSOR\n");
+    if (oFrame.cmd == WR_RANGE_SENSOR) OutputDebugString(L"transmit WR_RANGE_SENSOR\n");
     if (oFrame.cmd == NOP) OutputDebugString(L"transmit NOP\n");
 
     // transfer frame to buffer
