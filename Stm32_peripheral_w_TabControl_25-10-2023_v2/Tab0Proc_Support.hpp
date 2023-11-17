@@ -148,28 +148,6 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
 }
 
 //****************************************************************************
-//*                     clcsToBit
-//****************************************************************************
-//UINT16 clcsToBit(const HWND& hWnd, TEMP& oTemp)
-//{
-//    CHAR chBuffer[LEN_TEMP_IN_CLCS] = { 0 };
-//    std::string str = "";
-//    FLOAT fTemp = 0.;
-//    // get value from edittext control
-//    SendMessageA(hWnd
-//        , WM_GETTEXT
-//        , (WPARAM)8
-//        , (LPARAM)chBuffer
-//    );
-//    str = chBuffer;
-//    fTemp = std::stof(str);
-//    fTemp /= 0.0625;
-//    oTemp.fTempInClcs = fTemp;
-//    oTemp.fTempInClcsTimes100 = fTemp * 100;
-//    return (UINT16)fTemp << 4;
-//}
-
-//****************************************************************************
 //*                     receive
 //****************************************************************************
 BOOL receive(LPVOID lpVoid)
@@ -270,135 +248,6 @@ BOOL receive(LPVOID lpVoid)
                 return EXIT_FAILURE;
             }
         }
-        //            // finish setting the RTC in the STM32
-//            // receive ACK: the laptop will continuesly send ACK
-//            if (g_chBuffer[4] == ACK)
-//            {
-//                g_oStatusbar.setTextStatusbar(3, L"RTC in STM32 is set");
-//            }
-//            if (g_chBuffer[4] == ESC)
-//            {
-//                OutputDebugString(L"move over to WR_TEMP_RANGE\n");
-//                g_queue.pop();
-//                g_oFrame.cmd = WR_TEMP_RANGE;
-//                INT16 iTempLo = (INT16)(DEFAULT_T_LO / 0.0625) << 4;
-//                INT16 iTempHi = (INT16)(DEFAULT_T_HI / 0.0625) << 4;
-//                g_oFrame.payload[0] = (iTempLo & 0xFF00) >> 8;
-//                g_oFrame.payload[1] = (iTempLo & 0x00FF);
-//                g_oFrame.payload[2] = (iTempHi & 0xFF00) >> 8;
-//                g_oFrame.payload[3] = (iTempHi & 0x00FF);
-//                g_queue.push(g_oFrame);
-//            }
-//            return EXIT_SUCCESS;
-//        }
-//        if (g_oFrame.cmd == WR_TEMP_RANGE)
-//        {
-//            // the temp range is set only after a STM32 reboot
-//            if (g_chBuffer[4] == ACK)
-//            {
-//                g_oStatusbar.setTextStatusbar(3, L"Temp Range in STM32 is set");
-//                //OutputDebugString(L"Temp range in STM32 is set\n");
-//                g_queue.pop();
-//            }
-//            return EXIT_SUCCESS;
-//
-//        }
-//        // the IR-receiver will return a g_oFrame.cmd value between
-//        // 0xABF and 0xFFF
-//        if (g_oFrame.cmd >= 0xABF && g_oFrame.cmd <= 0xFFF)
-//        {
-//            // set g_oFrame.cmnd in edittext IDC_CODE
-//            sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "0x%X", g_oFrame.cmd);
-//            SendMessageA(GetDlgItem(g_hWndDlgTab1, IDC_CODE)
-//                , WM_SETTEXT
-//                , (WPARAM)0
-//                , (LPARAM)g_chTextBuffer
-//            );
-//            // transfer payload from g_chBuffer to g_oFrame.payload
-//            for (int i = 0; i < LEN_MAX_ENTRY; i++)
-//            {
-//                g_oFrame.payload[i] = g_chBuffer[i + 4];
-//            }
-//            // set g_oFrame.payload in edittext IDC_DESCRIPTION
-//            // all string are 30 characters plus a null character
-//            SendMessageA(GetDlgItem(g_hWndDlgTab1, IDC_DESCRIPTION)
-//                , WM_SETTEXT
-//                , (WPARAM)0
-//                , (LPARAM)g_oFrame.payload
-//            );
-//            // fan on via IR-remote
-//            if (g_oFrame.cmd == 0xEEF)
-//            {
-//                // description: pause/play | back/?
-//                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-//                    , BM_SETCHECK
-//                    , (WPARAM)BST_CHECKED
-//                    , (LPARAM)0
-//                );
-//            }
-//            // fan off via IR-remote
-//            if (g_oFrame.cmd == 0xBEB)
-//            {
-//                // description: stop
-//                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-//                    , BM_SETCHECK
-//                    , (WPARAM)BST_UNCHECKED
-//                    , (LPARAM)0
-//                );
-//            }
-//            return EXIT_SUCCESS;
-//        }
-//        if (g_oFrame.cmd == FAN_STATE_CHANGED)
-//        {
-//            OutputDebugString(L"FAN_STATE_CHANGED\n");
-//            ((BOOL)g_chBuffer[4]) ?
-//                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-//                    , BM_SETCHECK
-//                    , (WPARAM)BST_UNCHECKED
-//                    , (LPARAM)0
-//                )
-//                :
-//                SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-//                    , BM_SETCHECK
-//                    , (WPARAM)BST_CHECKED
-//                    , (LPARAM)0
-//                );
-//            // value lies between 0 .. 99, adjust this value to 1 .. 100
-//            // add 1 to the value given in g_chBuffer[5]
-//            sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "%d", g_chBuffer[5] + 1);
-//            SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_PWM_FAN)
-//                , WM_SETTEXT
-//                , (WPARAM)0
-//                , (LPARAM)g_chTextBuffer
-//            );
-//
-//            g_oFrame.cmd = RD_FAN_RPM;
-//            g_queue.push(g_oFrame);
-//
-//            return EXIT_SUCCESS;
-//        }
-//        if (g_oFrame.cmd == RD_FAN_RPM)
-//        {
-//            OutputDebugString(L"RD_FAN_RPM\n");
-//
-//            UINT16 iRPM = (g_chBuffer[4] << 8) | g_chBuffer[5];
-//            if (iRPM > 0) g_old_rpm = iRPM;
-//            sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "%d", g_old_rpm);// iRPM);
-//            SendMessageA(GetDlgItem(g_hWndDlgTab2, IDC_RPM_FAN)
-//                , WM_SETTEXT
-//                , (WPARAM)0
-//                , (LPARAM)g_chTextBuffer
-//            );
-//            
-//            return EXIT_SUCCESS;
-//        }
-//        if (g_oFrame.cmd == WR_RELAY_STATE)
-//        {
-//            OutputDebugString(L"WR_RELAY_STATE\n");
-//            g_oFrame.cmd = RD_FAN_RPM;
-//            if (!g_queue.empty()) g_queue.pop();
-//            g_queue.push(g_oFrame);
-//        }
     }
 
     // command from STM32 is not recognized
@@ -418,7 +267,7 @@ BOOL transmit(LPVOID lpVoid)
     FRAME oFrame = g_queue.front();
 
     if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");
-    if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_TEMP_RANGE_SENSOR\n");
+    if (oFrame.cmd == WR_TEMP_RANGE_SENSOR) OutputDebugString(L"transmit WR_TEMP_RANGE_SENSOR\n");
     if (oFrame.cmd == NOP) OutputDebugString(L"transmit NOP\n");
 
     // transfer frame to buffer
