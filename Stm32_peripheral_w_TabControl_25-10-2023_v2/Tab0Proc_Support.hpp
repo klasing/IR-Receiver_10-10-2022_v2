@@ -4,8 +4,8 @@
 //*                     extern
 //****************************************************************************
 extern Statusbar g_oStatusbar;
-//extern HWND g_hWndDlgTab1;
-//extern HWND g_hWndDlgTab2;
+extern HWND g_hWndDlgTab1;
+extern HWND g_hWndDlgTab4;
 
 //****************************************************************************
 //*                     global
@@ -13,7 +13,8 @@ extern Statusbar g_oStatusbar;
 const FLOAT DEFAULT_T_LO = 15.;
 const FLOAT DEFAULT_T_HI = 16.;
 // Resource Aquisition Is Initialisation RAII 
-FRAME g_oFrame = { SOH, 0, STX, { 0 }, ETX, ETB, EOT };
+FRAME g_oFrameTx = { SOH, 0, STX, { 0 }, ETX, ETB, EOT };
+FRAME g_oFrameRx = { SOH, 0, STX, { 0 }, ETX, ETB, EOT };
 HANDLE g_hComm = INVALID_HANDLE_VALUE;
 BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
@@ -24,7 +25,6 @@ UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
 UINT g_cErrorCrc = 0;
 CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER] = { 0 };
-//UINT16 g_old_rpm = 0;
 
 //*****************************************************************************
 //*                     prototype
@@ -33,7 +33,7 @@ DWORD               WINAPI TxRx(LPVOID lpVoid);
 BOOL                set_date_time(const CHAR* pszDateTime);
 BOOL                date_time_for_serial(CHAR* pszDateTime);
 BOOL                connect();
-BOOL                setRangeSensor();               // in Tab4Proc_Support.hpp
+BOOL                clear_queue_and_add_one_cmd();
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
@@ -68,28 +68,44 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
 
             // get the date and time for synchronising the real time clock (RTC)
             // in the STM32
-            date_time_for_serial(g_oFrame.payload);
+            date_time_for_serial(g_oFrameTx.payload);
             // set date time on statusbar, by using the g_oFrame.payload as a buffer
-            set_date_time(g_oFrame.payload);
+            set_date_time(g_oFrameTx.payload);
 
             // start the communication by transferring the date and time
             // to the STM32
-            g_oFrame.cmd = WR_DATE_TIME;
-            g_queue.push(g_oFrame);
+            g_oFrameTx.cmd = WR_DATE_TIME;
+            g_queue.push(g_oFrameTx);
 
             // prepare for writing temperature range sensor
-            g_oFrame.cmd = WR_RANGE_SENSOR;
+            g_oFrameTx.cmd = WR_RANGE_SENSOR;
             INT16 iTempLo = (INT16)(DEFAULT_T_LO / 0.0625) << 4;
             INT16 iTempHi = (INT16)(DEFAULT_T_HI / 0.0625) << 4;
-            g_oFrame.payload[0] = (iTempLo & 0xFF00) >> 8;
-            g_oFrame.payload[1] = (iTempLo & 0x00FF);
-            g_oFrame.payload[2] = (iTempHi & 0xFF00) >> 8;
-            g_oFrame.payload[3] = (iTempHi & 0x00FF);
-            g_queue.push(g_oFrame);
+            // sensor 1
+            g_oFrameTx.payload[0] = (iTempLo & 0xFF00) >> 8;
+            g_oFrameTx.payload[1] = (iTempLo & 0x00FF);
+            g_oFrameTx.payload[2] = (iTempHi & 0xFF00) >> 8;
+            g_oFrameTx.payload[3] = (iTempHi & 0x00FF);
+            // sensor 2
+            g_oFrameTx.payload[4] = (iTempLo & 0xFF00) >> 8;
+            g_oFrameTx.payload[5] = (iTempLo & 0x00FF);
+            g_oFrameTx.payload[6] = (iTempHi & 0xFF00) >> 8;
+            g_oFrameTx.payload[7] = (iTempHi & 0x00FF);
+            // sensor 3
+            g_oFrameTx.payload[8] = (iTempLo & 0xFF00) >> 8;
+            g_oFrameTx.payload[9] = (iTempLo & 0x00FF);
+            g_oFrameTx.payload[10] = (iTempHi & 0xFF00) >> 8;
+            g_oFrameTx.payload[11] = (iTempHi & 0x00FF);
+            // sensor 4
+            g_oFrameTx.payload[12] = (iTempLo & 0xFF00) >> 8;
+            g_oFrameTx.payload[13] = (iTempLo & 0x00FF);
+            g_oFrameTx.payload[14] = (iTempHi & 0xFF00) >> 8;
+            g_oFrameTx.payload[15] = (iTempHi & 0x00FF);
+            g_queue.push(g_oFrameTx);
 
             // prepare for no operation
-            g_oFrame.cmd = NOP;
-            g_queue.push(g_oFrame);
+            g_oFrameTx.cmd = NOP;
+            g_queue.push(g_oFrameTx);            
 
             // enable infinite loop
             g_bContinueTxRx = TRUE;
@@ -149,6 +165,41 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
 }
 
 //****************************************************************************
+//*                     setRangeSensor
+//****************************************************************************
+BOOL setRangeSensor()
+{
+    OutputDebugString(L"setRangeSensor()\n");
+    UINT16 aResourceId[8] = { IDC_TEMP_HI_SENSOR1
+        , IDC_TEMP_HI_SENSOR2
+        , IDC_TEMP_HI_SENSOR3
+        , IDC_TEMP_HI_SENSOR4
+        , IDC_TEMP_LO_SENSOR1
+        , IDC_TEMP_LO_SENSOR2
+        , IDC_TEMP_LO_SENSOR3
+        , IDC_TEMP_LO_SENSOR4
+    };
+    sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "%.02f", DEFAULT_T_HI);
+    for (int i = 0; i < 4; i++)
+    {
+        SendMessageA(GetDlgItem(g_hWndDlgTab4, aResourceId[i])
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)g_chTextBuffer
+        );
+    }
+    sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "%.02f", DEFAULT_T_LO);
+    for (int i = 4; i < 8; i++)
+    {
+        SendMessageA(GetDlgItem(g_hWndDlgTab4, aResourceId[i])
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)g_chTextBuffer
+        );
+    }
+    return EXIT_SUCCESS;
+}
+//****************************************************************************
 //*                     receive
 //****************************************************************************
 BOOL receive(LPVOID lpVoid)
@@ -198,58 +249,75 @@ BOOL receive(LPVOID lpVoid)
         }
         // no crc error
         // save the received command into the frame
-        g_oFrame.cmd = g_chBuffer[1] << 8 | g_chBuffer[2];
+        g_oFrameRx.cmd = g_chBuffer[1] << 8 | g_chBuffer[2];
         // save the received payload into the frame
         for (int i = 0; i < LEN_MAX_ENTRY; i++)
         {
-            g_oFrame.payload[i] = g_chBuffer[i + 4];
+            g_oFrameRx.payload[i] = g_chBuffer[i + 4];
         }
 
-        if (g_oFrame.cmd == WR_DATE_TIME)
+        if (g_oFrameRx.cmd == WR_DATE_TIME)
         {
-            if (g_oFrame.payload[0] == ACK)
+            if (g_chBuffer[4] == ACK)
             {
                 OutputDebugString(L"ACK WR_DATE_TIME\n");
-                g_oStatusbar.setTextStatusbar(3, L"RTC in STM32 is set");
+                //g_oStatusbar.setTextStatusbar(3, L"RTC in STM32 is set");
                 if (g_queue.size() > 1) g_queue.pop();
                 return EXIT_SUCCESS;
             }
-            if (g_oFrame.payload[0] == NAK)
+            if (g_oFrameRx.payload[0] == NAK)
             {
                 OutputDebugString(L"NAK WR_DATE_TIME\n");
                 return EXIT_FAILURE;
             }
         }
-        if (g_oFrame.cmd == WR_RANGE_SENSOR)
+        if (g_oFrameRx.cmd == WR_RANGE_SENSOR)
         {
-            if (g_oFrame.payload[0] == ACK)
+            if (g_oFrameRx.payload[0] == ACK)
             {
                 OutputDebugString(L"ACK WR_RANGE_SENSOR\n");
-                g_oStatusbar.setTextStatusbar(3, L"Temperature range is set");
+                //g_oStatusbar.setTextStatusbar(3, L"Temperature range is set");
                 if (g_queue.size() > 1) g_queue.pop();
                 setRangeSensor();
                 return EXIT_SUCCESS;
             }
-            if (g_oFrame.payload[0] == NAK)
+            if (g_oFrameRx.payload[0] == NAK)
             {
                 OutputDebugString(L"NAK WR_STATE_SENSOR\n");
                 return EXIT_FAILURE;
             }
-        }
-        if (g_oFrame.cmd == NOP)
+        }       
+        if (g_oFrameRx.cmd == WR_STATE_RELAY)
         {
-            if (g_oFrame.payload[0] == ACK)
+            if (g_oFrameRx.payload[0] == ACK)
             {
-                OutputDebugString(L"ACK NOP\n");
-                g_oStatusbar.setTextStatusbar(3, L"No operation");
+                OutputDebugString(L"ACK WR_STATE_RELAY\n");
+                //g_oStatusbar.setTextStatusbar(3, L"Relays set");
+                if (g_queue.size() == 1) g_queue.pop();
+                g_oFrameTx.cmd = NOP;
+                g_queue.push(g_oFrameTx);
                 return EXIT_SUCCESS;
             }
-            if (g_oFrame.payload[0] == NAK)
+            if (g_oFrameRx.payload[0] == NAK)
+            {
+                OutputDebugString(L"NAK WR_STATE_RELAY\n");
+                return EXIT_FAILURE;
+            }
+        }
+        if (g_oFrameRx.cmd == NOP)
+        {
+            if (g_oFrameRx.payload[0] == ACK)
+            {
+                OutputDebugString(L"ACK NOP\n");
+                //g_oStatusbar.setTextStatusbar(3, L"No operation");
+                return EXIT_SUCCESS;
+            }
+            if (g_oFrameRx.payload[0] == NAK)
             {
                 OutputDebugString(L"NAK NOP\n");
                 return EXIT_FAILURE;
             }
-        }
+        }        
     }
 
     // command from STM32 is not recognized
@@ -270,6 +338,8 @@ BOOL transmit(LPVOID lpVoid)
 
     if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");
     if (oFrame.cmd == WR_RANGE_SENSOR) OutputDebugString(L"transmit WR_RANGE_SENSOR\n");
+    if (oFrame.cmd == WR_STATE_FAN) OutputDebugString(L"transmit WR_STATE_FAN\n");
+    if (oFrame.cmd == WR_STATE_RELAY) OutputDebugString(L"transmit WR_STATE_RELAY\n");
     if (oFrame.cmd == NOP) OutputDebugString(L"transmit NOP\n");
 
     // transfer frame to buffer
@@ -506,6 +576,30 @@ BOOL connect()
     {
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     clear_queue_and_add_one_cmd
+//****************************************************************************
+BOOL clear_queue_and_add_one_cmd()
+{
+    if (g_queue.empty()) return EXIT_FAILURE;
+
+    // suspend thread
+    SuspendThread(g_hThreadTxRx);
+    // this seems a reasonable delay
+    Sleep(500);
+
+    // empty the queue
+    while (g_queue.size() > 0) g_queue.pop();
+
+    // add frame to the queue
+    g_queue.push(g_oFrameTx);
+
+    // resume thread
+    ResumeThread(g_hThreadTxRx);
 
     return EXIT_SUCCESS;
 }

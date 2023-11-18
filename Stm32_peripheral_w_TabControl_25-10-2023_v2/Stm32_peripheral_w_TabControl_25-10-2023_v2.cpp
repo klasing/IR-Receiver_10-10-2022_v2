@@ -80,7 +80,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
     {
-        if (IsDialogMessage(g_hWndDlgTab0, &msg))
+        if (IsDialogMessage(g_hWndDlgTab0, &msg) ||
+            IsDialogMessage(g_hWndDlgTab3, &msg))
         {
             continue;
         }
@@ -290,6 +291,22 @@ INT_PTR CALLBACK Tab2Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //*****************************************************************************
 INT_PTR CALLBACK Tab3Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    switch (uMsg)
+    {
+    case WM_INITDIALOG:
+    {
+        onWmInitDialog_Tab3Proc(hDlg);
+
+        return (INT_PTR)FALSE;
+    } // eof WM_INITDIALOG
+    case WM_COMMAND:
+    {
+        return onWmCommand_Tab3Proc(hDlg
+            , wParam
+        );
+    } // eof WM_COMMAND
+    } // eof switch
+
     return (INT_PTR)FALSE;
 }
 
