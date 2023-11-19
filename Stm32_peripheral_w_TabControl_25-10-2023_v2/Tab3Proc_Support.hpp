@@ -81,7 +81,7 @@ INT_PTR onWmCommand_Tab3Proc(const HWND& hDlg
 		clear_queue_and_add_one_cmd();
 
 		return (INT_PTR)TRUE;
-	} // eof IDC_WR_RELAY_STATE
+	} // eof BTN_STATE_RELAY
 	} // eof switch
 
 	return (INT_PTR)FALSE;

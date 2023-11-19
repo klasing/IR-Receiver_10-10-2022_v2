@@ -81,26 +81,26 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             g_oFrameTx.cmd = WR_RANGE_SENSOR;
             INT16 iTempLo = (INT16)(DEFAULT_T_LO / 0.0625) << 4;
             INT16 iTempHi = (INT16)(DEFAULT_T_HI / 0.0625) << 4;
-            // sensor 1
-            g_oFrameTx.payload[0] = (iTempLo & 0xFF00) >> 8;
-            g_oFrameTx.payload[1] = (iTempLo & 0x00FF);
-            g_oFrameTx.payload[2] = (iTempHi & 0xFF00) >> 8;
-            g_oFrameTx.payload[3] = (iTempHi & 0x00FF);
-            // sensor 2
-            g_oFrameTx.payload[4] = (iTempLo & 0xFF00) >> 8;
-            g_oFrameTx.payload[5] = (iTempLo & 0x00FF);
-            g_oFrameTx.payload[6] = (iTempHi & 0xFF00) >> 8;
-            g_oFrameTx.payload[7] = (iTempHi & 0x00FF);
-            // sensor 3
-            g_oFrameTx.payload[8] = (iTempLo & 0xFF00) >> 8;
-            g_oFrameTx.payload[9] = (iTempLo & 0x00FF);
-            g_oFrameTx.payload[10] = (iTempHi & 0xFF00) >> 8;
-            g_oFrameTx.payload[11] = (iTempHi & 0x00FF);
-            // sensor 4
-            g_oFrameTx.payload[12] = (iTempLo & 0xFF00) >> 8;
-            g_oFrameTx.payload[13] = (iTempLo & 0x00FF);
-            g_oFrameTx.payload[14] = (iTempHi & 0xFF00) >> 8;
-            g_oFrameTx.payload[15] = (iTempHi & 0x00FF);
+            //// sensor 1
+            //g_oFrameTx.payload[0] = (iTempLo & 0xFF00) >> 8;
+            //g_oFrameTx.payload[1] = (iTempLo & 0x00FF);
+            //g_oFrameTx.payload[2] = (iTempHi & 0xFF00) >> 8;
+            //g_oFrameTx.payload[3] = (iTempHi & 0x00FF);
+            //// sensor 2
+            //g_oFrameTx.payload[4] = (iTempLo & 0xFF00) >> 8;
+            //g_oFrameTx.payload[5] = (iTempLo & 0x00FF);
+            //g_oFrameTx.payload[6] = (iTempHi & 0xFF00) >> 8;
+            //g_oFrameTx.payload[7] = (iTempHi & 0x00FF);
+            //// sensor 3
+            //g_oFrameTx.payload[8] = (iTempLo & 0xFF00) >> 8;
+            //g_oFrameTx.payload[9] = (iTempLo & 0x00FF);
+            //g_oFrameTx.payload[10] = (iTempHi & 0xFF00) >> 8;
+            //g_oFrameTx.payload[11] = (iTempHi & 0x00FF);
+            //// sensor 4
+            //g_oFrameTx.payload[12] = (iTempLo & 0xFF00) >> 8;
+            //g_oFrameTx.payload[13] = (iTempLo & 0x00FF);
+            //g_oFrameTx.payload[14] = (iTempHi & 0xFF00) >> 8;
+            //g_oFrameTx.payload[15] = (iTempHi & 0x00FF);
             g_queue.push(g_oFrameTx);
 
             // prepare for no operation
@@ -283,7 +283,7 @@ BOOL receive(LPVOID lpVoid)
             }
             if (g_oFrameRx.payload[0] == NAK)
             {
-                OutputDebugString(L"NAK WR_STATE_SENSOR\n");
+                OutputDebugString(L"NAK WR_RANGE_SENSOR\n");
                 return EXIT_FAILURE;
             }
         }       

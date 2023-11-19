@@ -63,7 +63,7 @@
 #define IDC_TEMP_LO_SENSOR2										33132
 #define IDC_TEMP_LO_SENSOR3										33133
 #define IDC_TEMP_LO_SENSOR4										33134
-#define BTN_STATE_SENSOR										33135 // button that applies temp range
+#define BTN_RANGE_SENSOR										33135 // button that applies temp range
 // serial communication
 #define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
 #define WR_RANGE_SENSOR											33601 // write temperature range to all sensors
