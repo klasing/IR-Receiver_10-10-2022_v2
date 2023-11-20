@@ -36,13 +36,72 @@ BOOL                connect();
 BOOL                clear_queue_and_add_one_cmd();
 
 //****************************************************************************
+//*                     setRangeSensor
+//****************************************************************************
+BOOL setRangeSensor(const FRAME& oFrame)
+{
+    OutputDebugString(L"setRangeSensor()\n");
+
+	UINT16 aResourceId[8] = { IDC_TEMP_LO_SENSOR1
+	, IDC_TEMP_HI_SENSOR1
+	, IDC_TEMP_LO_SENSOR2
+	, IDC_TEMP_HI_SENSOR2
+	, IDC_TEMP_LO_SENSOR3
+	, IDC_TEMP_HI_SENSOR3
+	, IDC_TEMP_LO_SENSOR4
+	, IDC_TEMP_HI_SENSOR4
+	};
+    INT16 iTemp;
+    FLOAT fTemp, fTempTimes100;
+
+    for (int s = 0; s < 4; s++)
+    {
+        // temp low sensor s
+        iTemp = oFrame.payload[s * 4 + 0] << 4 | oFrame.payload[s * 4 + 1] >> 4;
+        // no 2's complement calculation
+        fTemp = (FLOAT)(iTemp * 0.0625);
+        fTempTimes100 = fTemp * 100.;
+        sprintf_s(g_chTextBuffer
+            , LEN_MAX_TEXT_BUFFER
+            , "%d.%02d"
+            , ((INT)fTempTimes100 / 100)
+            , ((INT)fTempTimes100 % 100)
+        );
+        SendMessageA(GetDlgItem(g_hWndDlgTab4, aResourceId[s * 2 + 0])
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)g_chTextBuffer
+        );
+
+        // temp high sensor s
+        iTemp = oFrame.payload[s * 4 + 2] << 4 | oFrame.payload[s * 4 + 3] >> 4;
+        // no 2's complement calculation
+        fTemp = (FLOAT)(iTemp * 0.0625);
+        fTempTimes100 = fTemp * 100.;
+        sprintf_s(g_chTextBuffer
+            , LEN_MAX_TEXT_BUFFER
+            , "%d.%02d"
+            , ((INT)fTempTimes100 / 100)
+            , ((INT)fTempTimes100 % 100)
+        );
+        SendMessageA(GetDlgItem(g_hWndDlgTab4, aResourceId[s * 2 + 1])
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)g_chTextBuffer
+        );
+    }
+
+    return EXIT_SUCCESS;
+}
+
+//****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
 //****************************************************************************
 BOOL onWmInitDialog_Tab0Proc(const HWND& hDlg)
 {
     // disable button DISCONNECT_SERIAL
     EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
-    
+
     return EXIT_SUCCESS;
 }
 //****************************************************************************
@@ -81,26 +140,13 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             g_oFrameTx.cmd = WR_RANGE_SENSOR;
             INT16 iTempLo = (INT16)(DEFAULT_T_LO / 0.0625) << 4;
             INT16 iTempHi = (INT16)(DEFAULT_T_HI / 0.0625) << 4;
-            //// sensor 1
-            //g_oFrameTx.payload[0] = (iTempLo & 0xFF00) >> 8;
-            //g_oFrameTx.payload[1] = (iTempLo & 0x00FF);
-            //g_oFrameTx.payload[2] = (iTempHi & 0xFF00) >> 8;
-            //g_oFrameTx.payload[3] = (iTempHi & 0x00FF);
-            //// sensor 2
-            //g_oFrameTx.payload[4] = (iTempLo & 0xFF00) >> 8;
-            //g_oFrameTx.payload[5] = (iTempLo & 0x00FF);
-            //g_oFrameTx.payload[6] = (iTempHi & 0xFF00) >> 8;
-            //g_oFrameTx.payload[7] = (iTempHi & 0x00FF);
-            //// sensor 3
-            //g_oFrameTx.payload[8] = (iTempLo & 0xFF00) >> 8;
-            //g_oFrameTx.payload[9] = (iTempLo & 0x00FF);
-            //g_oFrameTx.payload[10] = (iTempHi & 0xFF00) >> 8;
-            //g_oFrameTx.payload[11] = (iTempHi & 0x00FF);
-            //// sensor 4
-            //g_oFrameTx.payload[12] = (iTempLo & 0xFF00) >> 8;
-            //g_oFrameTx.payload[13] = (iTempLo & 0x00FF);
-            //g_oFrameTx.payload[14] = (iTempHi & 0xFF00) >> 8;
-            //g_oFrameTx.payload[15] = (iTempHi & 0x00FF);
+            for (int s = 0; s < 4; s++)
+            {
+                g_oFrameTx.payload[s * 4 + 0] = (iTempLo & 0xFF00) >> 8;
+                g_oFrameTx.payload[s * 4 + 1] = (iTempLo & 0x00FF);
+                g_oFrameTx.payload[s * 4 + 2] = (iTempHi & 0xFF00) >> 8;
+                g_oFrameTx.payload[s * 4 + 3] = (iTempHi & 0x00FF);
+            }
             g_queue.push(g_oFrameTx);
 
             // prepare for no operation
@@ -164,41 +210,6 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
     return (INT_PTR)FALSE;
 }
 
-//****************************************************************************
-//*                     setRangeSensor
-//****************************************************************************
-BOOL setRangeSensor()
-{
-    OutputDebugString(L"setRangeSensor()\n");
-    UINT16 aResourceId[8] = { IDC_TEMP_HI_SENSOR1
-        , IDC_TEMP_HI_SENSOR2
-        , IDC_TEMP_HI_SENSOR3
-        , IDC_TEMP_HI_SENSOR4
-        , IDC_TEMP_LO_SENSOR1
-        , IDC_TEMP_LO_SENSOR2
-        , IDC_TEMP_LO_SENSOR3
-        , IDC_TEMP_LO_SENSOR4
-    };
-    sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "%.02f", DEFAULT_T_HI);
-    for (int i = 0; i < 4; i++)
-    {
-        SendMessageA(GetDlgItem(g_hWndDlgTab4, aResourceId[i])
-            , WM_SETTEXT
-            , (WPARAM)0
-            , (LPARAM)g_chTextBuffer
-        );
-    }
-    sprintf_s(g_chTextBuffer, LEN_MAX_TEXT_BUFFER, "%.02f", DEFAULT_T_LO);
-    for (int i = 4; i < 8; i++)
-    {
-        SendMessageA(GetDlgItem(g_hWndDlgTab4, aResourceId[i])
-            , WM_SETTEXT
-            , (WPARAM)0
-            , (LPARAM)g_chTextBuffer
-        );
-    }
-    return EXIT_SUCCESS;
-}
 //****************************************************************************
 //*                     receive
 //****************************************************************************
@@ -278,7 +289,7 @@ BOOL receive(LPVOID lpVoid)
                 OutputDebugString(L"ACK WR_RANGE_SENSOR\n");
                 //g_oStatusbar.setTextStatusbar(3, L"Temperature range is set");
                 if (g_queue.size() > 1) g_queue.pop();
-                setRangeSensor();
+                setRangeSensor(g_oFrameTx);
                 return EXIT_SUCCESS;
             }
             if (g_oFrameRx.payload[0] == NAK)

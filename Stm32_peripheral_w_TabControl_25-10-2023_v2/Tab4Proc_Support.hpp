@@ -26,34 +26,58 @@ BOOL onWmInitDialog_Tab4Proc(const HWND& hDlg)
 //*                     clcsToBit
 //****************************************************************************
 BOOL clcsToBit(const HWND& hDlg
-	, const UINT16 aResourceId[4][2]
+	, const UINT16 aResourceId[8]
 )
 {
-	for (int c = 0; c < 4; c++)
+	FLOAT fTemp = 0.;
+	INT16 iTemp;
+
+	for (int s = 0; s < 4; s++)
 	{
-		for (int r = 0; r < 2; r++)
+		// temp low sensor s
+		SendMessageA(GetDlgItem(hDlg, aResourceId[s * 2 + 0])
+			, WM_GETTEXT
+			, (LPARAM)LEN_MAX_TEXT_BUFFER
+			, (WPARAM)g_chTextBuffer
+		);
+		// try to convert string to float
+		try
 		{
-			FLOAT fTemp = 0.;
-			SendMessageA(GetDlgItem(hDlg, aResourceId[r][c])
-				, WM_GETTEXT
-				, (LPARAM)LEN_MAX_TEXT_BUFFER
-				, (WPARAM)g_chTextBuffer
-			);
-			// try to convert string to float
-			try
-			{
-				fTemp = std::stof(g_chTextBuffer);
-			}
-			catch (const std::exception e)
-			{
-				return EXIT_FAILURE;
-			}
-			// conversion succeeded
-			fTemp /= 0.0625;
-			INT16 iTemp = (INT16)fTemp << 4;
-			g_oFrameTx.payload[c * 2 + r + 0] = (iTemp & 0xFF00) >> 8;
-			g_oFrameTx.payload[c * 2 + r + 1] = (iTemp & 0xFF);
+			fTemp = std::stof(g_chTextBuffer);
 		}
+		catch (const std::exception e)
+		{
+			return EXIT_FAILURE;
+		}
+		// conversion succeeded
+		fTemp /= 0.0625;
+		iTemp = (INT16)fTemp;
+		// no 2's complement calculation
+		g_oFrameTx.payload[s * 4 + 0] = (iTemp & 0x0FF0) >> 4;
+		g_oFrameTx.payload[s * 4 + 1] = (iTemp & 0x000F) << 4;
+
+		// temp high sensor s
+		SendMessageA(GetDlgItem(hDlg, aResourceId[s * 2 + 1])
+			, WM_GETTEXT
+			, (LPARAM)LEN_MAX_TEXT_BUFFER
+			, (WPARAM)g_chTextBuffer
+		);
+		// try to convert string to float
+		try
+		{
+			fTemp = std::stof(g_chTextBuffer);
+		}
+		catch (const std::exception e)
+		{
+			return EXIT_FAILURE;
+		}
+		// conversion succeeded
+		fTemp /= 0.0625;
+		iTemp = (INT16)fTemp;
+		// no 2's complement calculation
+		// temp high sensor 2
+		g_oFrameTx.payload[s * 4 + 2] = (iTemp & 0x0FF0) >> 4;
+		g_oFrameTx.payload[s * 4 + 3] = (iTemp & 0x000F) << 4;
 	}
 
 	return EXIT_SUCCESS;
@@ -66,10 +90,14 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
 	, const WPARAM& wParam
 )
 {
-	static const UINT16 aResourceId[4][2] = { { IDC_TEMP_LO_SENSOR1, IDC_TEMP_HI_SENSOR1 }
-		, { IDC_TEMP_LO_SENSOR2, IDC_TEMP_HI_SENSOR2 }
-		, { IDC_TEMP_LO_SENSOR3, IDC_TEMP_HI_SENSOR3 }
-		, { IDC_TEMP_LO_SENSOR4, IDC_TEMP_HI_SENSOR4 }
+	static const UINT16 aResourceId[8] = { IDC_TEMP_LO_SENSOR1
+		, IDC_TEMP_HI_SENSOR1
+		, IDC_TEMP_LO_SENSOR2
+		, IDC_TEMP_HI_SENSOR2
+		, IDC_TEMP_LO_SENSOR3
+		, IDC_TEMP_HI_SENSOR3
+		, IDC_TEMP_LO_SENSOR4
+		, IDC_TEMP_HI_SENSOR4
 	};
 
 	switch (LOWORD(wParam))
@@ -83,6 +111,7 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
 		}
 		// conversion completed
 		OutputDebugString(L"conversion completed\n");
+		setRangeSensor(g_oFrameTx);
 
 		g_oFrameTx.cmd = WR_RANGE_SENSOR;
 		// payload is already filled
