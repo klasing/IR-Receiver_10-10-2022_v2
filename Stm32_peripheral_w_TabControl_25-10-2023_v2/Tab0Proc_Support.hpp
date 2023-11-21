@@ -95,6 +95,103 @@ BOOL setRangeSensor(const FRAME& oFrame)
 }
 
 //****************************************************************************
+//*                     setTempSensor
+//****************************************************************************
+BOOL setTempSensor()
+{
+    OutputDebugString(L"setTempSensor()\n");
+
+    INT16 iVal;
+    FLOAT fTempInCelcius;
+    FLOAT fTempInCelciusTimes100;
+
+    // g_oFrameRx.payload[0] is received for an ACK/NAK
+    // sensor 1
+    iVal = g_oFrameRx.payload[1] << 4 | g_oFrameRx.payload[2] >> 4;
+    if (iVal & 0x8000)
+    {
+        iVal = ~iVal;
+        iVal += 1;
+    }
+    fTempInCelcius = (FLOAT)(iVal * 0.0625);
+    fTempInCelciusTimes100 = fTempInCelcius * 100.;
+    sprintf_s(g_chTextBuffer
+        , LEN_MAX_TEXT_BUFFER
+        , "%d.%02d"
+        , ((INT)fTempInCelciusTimes100 / 100)
+        , ((INT)fTempInCelciusTimes100 % 100)
+    );
+    SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR1)
+        , WM_SETTEXT
+        , (WPARAM)0
+        , (LPARAM)g_chTextBuffer
+    );
+
+    // sensor 2
+    iVal = g_oFrameRx.payload[3] << 4 | g_oFrameRx.payload[4] >> 4;
+    if (iVal & 0x8000)
+    {
+        iVal = ~iVal;
+        iVal += 1;
+    }
+    fTempInCelcius = (FLOAT)(iVal * 0.0625);
+    fTempInCelciusTimes100 = fTempInCelcius * 100.;
+    sprintf_s(g_chTextBuffer
+        , LEN_MAX_TEXT_BUFFER
+        , "%d.%02d"
+        , ((INT)fTempInCelciusTimes100 / 100)
+        , ((INT)fTempInCelciusTimes100 % 100)
+    );
+    SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR2)
+        , WM_SETTEXT
+        , (WPARAM)0
+        , (LPARAM)g_chTextBuffer
+    );
+    // sensor 3
+    iVal = g_oFrameRx.payload[5] << 4 | g_oFrameRx.payload[6] >> 4;
+    if (iVal & 0x8000)
+    {
+        iVal = ~iVal;
+        iVal += 1;
+    }
+    fTempInCelcius = (FLOAT)(iVal * 0.0625);
+    fTempInCelciusTimes100 = fTempInCelcius * 100.;
+    sprintf_s(g_chTextBuffer
+        , LEN_MAX_TEXT_BUFFER
+        , "%d.%02d"
+        , ((INT)fTempInCelciusTimes100 / 100)
+        , ((INT)fTempInCelciusTimes100 % 100)
+    );
+    SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR3)
+        , WM_SETTEXT
+        , (WPARAM)0
+        , (LPARAM)g_chTextBuffer
+    );
+    // sensor 4
+    iVal = g_oFrameRx.payload[7] << 4 | g_oFrameRx.payload[8] >> 4;
+    if (iVal & 0x8000)
+    {
+        iVal = ~iVal;
+        iVal += 1;
+    }
+    fTempInCelcius = (FLOAT)(iVal * 0.0625);
+    fTempInCelciusTimes100 = fTempInCelcius * 100.;
+    sprintf_s(g_chTextBuffer
+        , LEN_MAX_TEXT_BUFFER
+        , "%d.%02d"
+        , ((INT)fTempInCelciusTimes100 / 100)
+        , ((INT)fTempInCelciusTimes100 % 100)
+    );
+    SendMessageA(GetDlgItem(g_hWndDlgTab4, IDC_TEMP_SENSOR4)
+        , WM_SETTEXT
+        , (WPARAM)0
+        , (LPARAM)g_chTextBuffer
+    );
+
+    return EXIT_SUCCESS;
+}
+
+//****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
 //****************************************************************************
 BOOL onWmInitDialog_Tab0Proc(const HWND& hDlg)
@@ -149,9 +246,15 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             }
             g_queue.push(g_oFrameTx);
 
+            // prepare for read temperature sensor
+            g_oFrameTx.cmd = RD_TEMP_SENSOR;
+            g_queue.push(g_oFrameTx);
+
+            /*
             // prepare for no operation
             g_oFrameTx.cmd = NOP;
-            g_queue.push(g_oFrameTx);            
+            g_queue.push(g_oFrameTx);
+            */
 
             // enable infinite loop
             g_bContinueTxRx = TRUE;
@@ -315,6 +418,21 @@ BOOL receive(LPVOID lpVoid)
                 return EXIT_FAILURE;
             }
         }
+        if (g_oFrameRx.cmd == RD_TEMP_SENSOR)
+        {
+            if (g_oFrameRx.payload[0] == ACK)
+            {
+                OutputDebugString(L"ACK RD_TEMP_SENSOR\n");
+                setTempSensor();
+                //g_oStatusbar.setTextStatusbar(3, L"No operation");
+                return EXIT_SUCCESS;
+            }
+            if (g_oFrameRx.payload[0] == NAK)
+            {
+                OutputDebugString(L"NAK RD_TEMP_SENSOR\n");
+                return EXIT_FAILURE;
+            }
+        }
         if (g_oFrameRx.cmd == NOP)
         {
             if (g_oFrameRx.payload[0] == ACK)
@@ -351,6 +469,7 @@ BOOL transmit(LPVOID lpVoid)
     if (oFrame.cmd == WR_RANGE_SENSOR) OutputDebugString(L"transmit WR_RANGE_SENSOR\n");
     if (oFrame.cmd == WR_STATE_FAN) OutputDebugString(L"transmit WR_STATE_FAN\n");
     if (oFrame.cmd == WR_STATE_RELAY) OutputDebugString(L"transmit WR_STATE_RELAY\n");
+    if (oFrame.cmd == RD_TEMP_SENSOR) OutputDebugString(L"transmit RD_TEMP_SENSOR\n");
     if (oFrame.cmd == NOP) OutputDebugString(L"transmit NOP\n");
 
     // transfer frame to buffer

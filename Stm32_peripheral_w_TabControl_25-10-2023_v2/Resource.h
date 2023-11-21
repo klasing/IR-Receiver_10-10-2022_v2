@@ -69,7 +69,8 @@
 #define WR_RANGE_SENSOR											33601 // write temperature range to all sensors
 #define WR_STATE_FAN											33602 // write state fan (On/Off)
 #define WR_STATE_RELAY											33603 // write state to all relays
-#define NOP														33604 // no operation
+#define RD_TEMP_SENSOR											33604 // read temperature from all sensors
+#define NOP														33605 // no operation
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
