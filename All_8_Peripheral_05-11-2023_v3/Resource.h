@@ -7,6 +7,9 @@
 #define ETX														3
 #define ETB														23
 #define EOT														4
+// characters used in g_oFrame.payload for acknowledgement
+#define ACK														6
+#define NAK														21
 // serial communication
 #define LEN_DATE_TIME											7
 #define LEN_MAX_ENTRY											32	// max length payload
@@ -61,6 +64,9 @@
 #define BTN_RANGE_SENSOR										33135 // button that applies temp range
 // serial communication
 #define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
+#define RD_STATE_FAN											33610 // read state fan
+#define RD_STATE_RELAY											33611 // read state to all relays
+#define RD_RANGE_SENSOR											33612 // read temperature range from all sensors
 
 #define IDT_TIMER												33999
 

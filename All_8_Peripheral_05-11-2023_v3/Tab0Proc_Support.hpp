@@ -17,6 +17,7 @@ std::queue<tagFRAME> g_queue;
 UCHAR g_chBuffer[BUFFER_MAX_SERIAL] = { '\0' };
 UINT32 g_valCrc = 0;
 UINT g_cTransmission = 0;
+UINT g_cErrorCrc = 0;
 BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 BOOL g_bTransmit = FALSE;
@@ -84,9 +85,18 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             date_time_for_serial(g_oFrame.payload);
             // set date time on statusbar, by using the g_oFrame.payload as a buffer
             set_date_time(g_oFrame.payload);
-            // start the communication by transfering the date and time
-            // to the STM32
+            // start the communication
+            // 1) write the date and time to the STM32
             g_oFrame.cmd = WR_DATE_TIME;
+            g_queue.push(g_oFrame);
+            // 2) read state of the fan
+            g_oFrame.cmd = RD_STATE_FAN;
+            g_queue.push(g_oFrame);
+            // 3) read state of the relays
+            g_oFrame.cmd = RD_STATE_RELAY;
+            g_queue.push(g_oFrame);
+            // 4) read temperature range of all sensors
+            g_oFrame.cmd = RD_RANGE_SENSOR;
             g_queue.push(g_oFrame);
             // enable infinite loop
             g_bContinueTxRx = TRUE;
@@ -353,7 +363,7 @@ void TimerProc(HWND hWnd
         OutputDebugString(L"WM_TIMER timer elapsed\n");
         // toggle between transmit and receive
         if (g_bSwitch) g_bTransmit = !g_bTransmit;
-        if (g_bTransmit) transmit(nullptr); else receive(nullptr);
+        if (g_bTransmit) transmit(g_hWndDlgTab0); else receive(g_hWndDlgTab0);
     }
 }
 
@@ -366,6 +376,9 @@ BOOL transmit(LPVOID lpVoid)
     if (g_queue.empty()) return EXIT_FAILURE;
     FRAME oFrame = g_queue.front();
     if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");
+    if (oFrame.cmd == RD_STATE_FAN) OutputDebugString(L"transmit RD_STATE_FAN\n");
+    if (oFrame.cmd == RD_STATE_RELAY) OutputDebugString(L"transmit RD_STATE_RELAY\n");
+    if (oFrame.cmd == RD_RANGE_SENSOR) OutputDebugString(L"transmit RD_RANGE_SENSOR\n");
 
     // transfer frame to buffer
     g_chBuffer[0] = oFrame.soh;
@@ -417,5 +430,116 @@ BOOL transmit(LPVOID lpVoid)
 BOOL receive(LPVOID lpVoid)
 {
     OutputDebugString(L"receive()\n");
+    // receive
+    DWORD dwNofByteTransferred = 0;
+    ReadFile(g_hComm
+        , &g_chBuffer
+        , LEN_FRAME + LEN_CRC
+        , &dwNofByteTransferred
+        , NULL
+    );
+    // connection is lost
+    if (dwNofByteTransferred == 0)
+    {
+        OutputDebugString(L"no bytes received from STM32\n");
+        // disregard and simply return with EXIT_FAILURE
+        return EXIT_FAILURE;
+    }
+    else if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
+    {
+        // check crc
+        // isolate received crc from g_chBuffer
+        UINT32 rxValCrc = (g_chBuffer[LEN_FRAME + 0] << 24)
+            | (g_chBuffer[LEN_FRAME + 1] << 16)
+            | (g_chBuffer[LEN_FRAME + 2] << 8)
+            | (g_chBuffer[LEN_FRAME + 3]);
+        // calculate crc
+        calcCrcEx(g_chBuffer, LEN_FRAME, g_valCrc);
+        // compare received CRC with calculated CRC
+        if (rxValCrc != g_valCrc)
+        {
+            OutputDebugString(L"crc error\n");
+            // crc error
+            ++g_cErrorCrc;
+            SendMessageA(GetDlgItem((HWND)lpVoid, IDC_NOF_ERROR_CRC)
+                , WM_SETTEXT
+                , (WPARAM)0
+                , (LPARAM)std::to_string(g_cErrorCrc).c_str()
+            );
+            // do nothing, simply return failed
+            return EXIT_FAILURE;
+        }
+        // no crc error
+        // save the received command into the frame
+        g_oFrame.cmd = g_chBuffer[1] << 8 | g_chBuffer[2];
+        // save the received payload into the frame
+        for (int i = 0; i < LEN_MAX_ENTRY; i++)
+        {
+            g_oFrame.payload[i] = g_chBuffer[i + 4];
+        }
+        switch (g_oFrame.cmd)
+        {
+        case (WR_DATE_TIME):
+        {
+            if (g_chBuffer[4] == ACK)
+            {
+                OutputDebugString(L"ACK WR_DATE_TIME\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[4] == NAK)
+            {
+                OutputDebugString(L"NAK WR_DATE_TIME\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof WR_DATE_TIME
+        case (RD_STATE_FAN):
+        {
+            if (g_chBuffer[4] == ACK)
+            { 
+                OutputDebugString(L"ACK RD_STATE_FAN\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[4] == NAK)
+            {
+                OutputDebugString(L"NAK RD_STATE_FAN\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_STATE_FAN
+        case (RD_STATE_RELAY):
+        {
+            if (g_chBuffer[4] == ACK)
+            {
+                OutputDebugString(L"ACK RD_STATE_RELAY\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[4] == NAK)
+            {
+                OutputDebugString(L"NAK RD_STATE_RELAY\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_STATE_RELAY
+        case (RD_RANGE_SENSOR):
+        {
+            if (g_chBuffer[4] == ACK)
+            {
+                OutputDebugString(L"ACK RD_RANGE_SENSOR\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[4] == NAK)
+            {
+                OutputDebugString(L"NAK RD_RANGE_SENSOR\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_RANGE_SENSOR
+        } // eof switch
+    }
     return EXIT_SUCCESS;
 }
