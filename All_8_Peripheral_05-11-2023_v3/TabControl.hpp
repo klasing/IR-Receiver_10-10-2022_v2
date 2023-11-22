@@ -171,6 +171,7 @@ public:
 				{
 					// show the window belonging to the active tab item
 					ShowWindow(hWndDlg[i], SW_SHOW);
+					// set the focus on the window belonging to the active tab item
 					switch (i)
 					{
 					case 0:

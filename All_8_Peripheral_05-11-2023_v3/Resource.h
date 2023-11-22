@@ -1,8 +1,19 @@
 // crc
 #define INIT_CRC												0xFFFFFFFF
 #define POLY_CRC												0x04C11DB7
+// frame
+#define SOH														1
+#define STX														2
+#define ETX														3
+#define ETB														23
+#define EOT														4
 // serial communication
+#define LEN_DATE_TIME											7
 #define LEN_MAX_ENTRY											32	// max length payload
+#define LEN_FRAME												39
+#define LEN_CRC													4
+#define BUFFER_MAX_SERIAL										512
+#define DELAY_HALFHZ_SERIAL										1000 // 2 * 1000 = 2000, is 0.5 time per second is 1/2 Hz
 // control
 // common
 #define IDC_STATUSBAR											33000
@@ -48,6 +59,10 @@
 #define IDC_TEMP_LO_SENSOR3										33133
 #define IDC_TEMP_LO_SENSOR4										33134
 #define BTN_RANGE_SENSOR										33135 // button that applies temp range
+// serial communication
+#define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
+
+#define IDT_TIMER												33999
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

@@ -257,9 +257,9 @@ INT_PTR CALLBACK Tab0Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } // eof WM_INITDIALOG
     case WM_COMMAND:
     {
-        //return onWmCommand_Tab0Proc(hDlg
-        //    , wParam
-        //);
+        return onWmCommand_Tab0Proc(hDlg
+            , wParam
+        );
     } // eof WM_COMMAND
     } // eof switch
 
@@ -284,9 +284,9 @@ INT_PTR CALLBACK Tab1Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } // eof WM_INITDIALOG
     case WM_COMMAND:
     {
-        //return onWmCommand_Tab1Proc(hDlg
-        //    , wParam
-        //);
+        return onWmCommand_Tab1Proc(hDlg
+            , wParam
+        );
     } // eof WM_COMMAND
     } // eof switch
 
@@ -311,9 +311,9 @@ INT_PTR CALLBACK Tab2Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } // eof WM_INITDIALOG
     case WM_COMMAND:
     {
-        //return onWmCommand_Tab2Proc(hDlg
-        //    , wParam
-        //);
+        return onWmCommand_Tab2Proc(hDlg
+            , wParam
+        );
     } // eof WM_COMMAND
     } // eof switch
 
@@ -338,9 +338,9 @@ INT_PTR CALLBACK Tab3Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } // eof WM_INITDIALOG
     case WM_COMMAND:
     {
-        //return onWmCommand_Tab3Proc(hDlg
-        //    , wParam
-        //);
+        return onWmCommand_Tab3Proc(hDlg
+            , wParam
+        );
     } // eof WM_COMMAND
     } // eof switch
 
@@ -365,9 +365,9 @@ INT_PTR CALLBACK Tab4Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     } // eof WM_INITDIALOG
     case WM_COMMAND:
     {
-        //return onWmCommand_Tab4Proc(hDlg
-        //    , wParam
-        //);
+        return onWmCommand_Tab4Proc(hDlg
+            , wParam
+        );
     } // eof WM_COMMAND
     } // eof switch
 
