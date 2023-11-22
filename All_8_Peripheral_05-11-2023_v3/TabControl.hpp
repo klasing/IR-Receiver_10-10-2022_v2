@@ -4,6 +4,11 @@
 //*****************************************************************************
 #include "framework.h"
 
+//****************************************************************************
+//*                     extern
+//****************************************************************************
+extern BOOL g_bContinueTxRx;
+
 //*****************************************************************************
 //*                     TabControl
 //*****************************************************************************
@@ -169,12 +174,20 @@ public:
 					switch (i)
 					{
 					case 0:
-						// set the focus on the first applicable control, must be a func PostMessage()
-						PostMessage(hWndDlg[i]
-							, WM_NEXTDLGCTL
-							, (WPARAM)GetDlgItem(hWndDlg[i], CONNECT_SERIAL)
-							, (LPARAM)TRUE
-						);
+						if (g_bContinueTxRx)
+							// set the focus on the first applicable control, must be a func PostMessage()
+							PostMessage(hWndDlg[i]
+								, WM_NEXTDLGCTL
+								, (WPARAM)GetDlgItem(hWndDlg[i], DISCONNECT_SERIAL)
+								, (LPARAM)TRUE
+							);
+						else
+							// set the focus on the first applicable control, must be a func PostMessage()
+							PostMessage(hWndDlg[i]
+								, WM_NEXTDLGCTL
+								, (WPARAM)GetDlgItem(hWndDlg[i], CONNECT_SERIAL)
+								, (LPARAM)TRUE
+							);
 						break;
 					case 1:
 						break;
