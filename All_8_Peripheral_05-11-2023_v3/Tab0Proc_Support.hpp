@@ -22,6 +22,7 @@ BOOL g_bContinueTxRx = FALSE;
 HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 BOOL g_bTransmit = FALSE;
 BOOL g_bSwitch = TRUE;
+CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER] = { 0 };
 
 //*****************************************************************************
 //*                     prototype
@@ -33,6 +34,8 @@ DWORD               WINAPI TxRx(LPVOID lpVoid);
 void                TimerProc(HWND hWnd, UINT uint, UINT_PTR pUint, DWORD dword);
 BOOL                transmit(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
+BOOL                setStateFan(const FRAME& oFrame);
+BOOL                setStateRelay(const FRAME& oFrame);
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
@@ -499,6 +502,7 @@ BOOL receive(LPVOID lpVoid)
             if (g_chBuffer[4] == ACK)
             { 
                 OutputDebugString(L"ACK RD_STATE_FAN\n");
+                setStateFan(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
                 return EXIT_SUCCESS;
             }
@@ -514,6 +518,7 @@ BOOL receive(LPVOID lpVoid)
             if (g_chBuffer[4] == ACK)
             {
                 OutputDebugString(L"ACK RD_STATE_RELAY\n");
+                setStateRelay(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
                 return EXIT_SUCCESS;
             }
