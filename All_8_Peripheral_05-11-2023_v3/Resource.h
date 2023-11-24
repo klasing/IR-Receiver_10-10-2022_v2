@@ -68,6 +68,7 @@
 #define RD_STATE_FAN											33610 // read state fan
 #define RD_STATE_RELAY											33611 // read state to all relays
 #define RD_RANGE_SENSOR											33612 // read temperature range from all sensors
+#define RD_TEMP_SENSOR											33613 // read temperature and alert from all sensors
 
 #define IDT_TIMER												33999
 

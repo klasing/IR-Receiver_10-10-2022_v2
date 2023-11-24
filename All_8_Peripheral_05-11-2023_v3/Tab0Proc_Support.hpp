@@ -36,6 +36,9 @@ BOOL                transmit(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
 BOOL                setStateFan(const FRAME& oFrame);
 BOOL                setStateRelay(const FRAME& oFrame);
+BOOL                setRangeSensor(const FRAME& oFrame);
+BOOL                setTempSensor(const FRAME& oFrame);
+BOOL                reorganize_queue();
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
@@ -95,9 +98,11 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             // 2) read state of the fan
             g_oFrame.cmd = RD_STATE_FAN;
             g_queue.push(g_oFrame);
+            /*
             // 3) read state of the relays
             g_oFrame.cmd = RD_STATE_RELAY;
             g_queue.push(g_oFrame);
+            */
             // 4) read temperature range of all sensors
             g_oFrame.cmd = RD_RANGE_SENSOR;
             g_queue.push(g_oFrame);
@@ -147,6 +152,8 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
         g_oStatusbar.setTextStatusbar(1, L"");
         // disable infinite loop
         g_bContinueTxRx = FALSE;
+        // make empty queue
+        while (!g_queue.empty()) g_queue.pop();
 
         return (INT_PTR)TRUE;
     } // eof DISCONNECT_SERIAL
@@ -382,6 +389,7 @@ BOOL transmit(LPVOID lpVoid)
     if (oFrame.cmd == RD_STATE_FAN) OutputDebugString(L"transmit RD_STATE_FAN\n");
     if (oFrame.cmd == RD_STATE_RELAY) OutputDebugString(L"transmit RD_STATE_RELAY\n");
     if (oFrame.cmd == RD_RANGE_SENSOR) OutputDebugString(L"transmit RD_RANGE_SENSOR\n");
+    if (oFrame.cmd == RD_TEMP_SENSOR) OutputDebugString(L"transmit RD_TEMP_SENSOR\n");
 
     // transfer frame to buffer
     g_chBuffer[0] = oFrame.soh;
@@ -534,7 +542,9 @@ BOOL receive(LPVOID lpVoid)
             if (g_chBuffer[4] == ACK)
             {
                 OutputDebugString(L"ACK RD_RANGE_SENSOR\n");
+                setRangeSensor(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
+                reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[4] == NAK)
@@ -544,7 +554,37 @@ BOOL receive(LPVOID lpVoid)
             }
             break;
         } // eof RD_RANGE_SENSOR
+        case (RD_TEMP_SENSOR):
+        {
+            if (g_chBuffer[4] == ACK)
+            {
+                OutputDebugString(L"ACK RD_TEMP_SENSOR\n");
+                setTempSensor(g_oFrame);
+                if (g_queue.size() > 0) g_queue.pop();
+                reorganize_queue();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[4] == NAK)
+            {
+                OutputDebugString(L"NAK RD_TEMP_SENSOR\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_STATE_FAN
         } // eof switch
     }
+    return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     reorganize_queue
+//****************************************************************************
+BOOL reorganize_queue()
+{
+    g_oFrame.cmd = RD_STATE_FAN;
+    g_queue.push(g_oFrame);
+    g_oFrame.cmd = RD_TEMP_SENSOR;
+    g_queue.push(g_oFrame);
+
     return EXIT_SUCCESS;
 }
