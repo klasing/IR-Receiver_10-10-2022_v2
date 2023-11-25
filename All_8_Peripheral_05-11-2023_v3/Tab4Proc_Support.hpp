@@ -5,6 +5,12 @@
 //****************************************************************************
 extern HWND g_hWndDlgTab4;
 extern CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER];
+extern FRAME g_oFrame;
+
+//****************************************************************************
+//*                     prototype
+//****************************************************************************
+BOOL clcsToBit(const HWND& hDlg, const UINT16 aResourceId[8]);
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab4Proc
@@ -22,11 +28,40 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
     , const WPARAM& wParam
 )
 {
+    static const UINT16 aResourceId[8] = { IDC_TEMP_LO_SENSOR1
+        , IDC_TEMP_HI_SENSOR1
+        , IDC_TEMP_LO_SENSOR2
+        , IDC_TEMP_HI_SENSOR2
+        , IDC_TEMP_LO_SENSOR3
+        , IDC_TEMP_HI_SENSOR3
+        , IDC_TEMP_LO_SENSOR4
+        , IDC_TEMP_HI_SENSOR4
+    };
+
     switch (LOWORD(wParam))
     {
     case BTN_RANGE_SENSOR:
     {
         OutputDebugString(L"BTN_RANGE_SENSOR\n");
+        if (clcsToBit(hDlg, aResourceId) == EXIT_FAILURE)
+        {
+            g_oStatusbar.setTextStatusbar(3, L"Apply failed");
+            // error: do nothiong
+        }
+        // conversion completed
+        OutputDebugString(L"conversion completed\n");        
+
+        g_oFrame.cmd = WR_RANGE_SENSOR;
+        // payload is already filled
+        // kill timer
+        KillTimer(g_hWndDlgTab0, IDT_TIMER);
+        g_queue.push(g_oFrame);
+        // set timer
+        SetTimer(g_hWndDlgTab0
+            , IDT_TIMER
+            , DELAY_HALFHZ_SERIAL
+            , (TIMERPROC)TimerProc
+        );
 
         return (INT_PTR)TRUE;
     } // eof BTN_RANGE_SENSOR
@@ -242,6 +277,19 @@ BOOL setTempSensor(const FRAME& oFrame)
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
     );
+    // alert bit
+	((oFrame.payload[2] & 1) == 1) ?
+		SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR1)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		)
+		:
+		SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR1)
+			, BM_SETCHECK
+			, (WPARAM)BST_UNCHECKED
+			, (LPARAM)0
+		);
     //*/
 
     ///*
@@ -265,6 +313,19 @@ BOOL setTempSensor(const FRAME& oFrame)
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
     );
+    // alert bit
+    ((oFrame.payload[4] & 1) == 1) ?
+        SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR2)
+            , BM_SETCHECK
+            , (WPARAM)BST_CHECKED
+            , (LPARAM)0
+        )
+        :
+        SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR2)
+            , BM_SETCHECK
+            , (WPARAM)BST_UNCHECKED
+            , (LPARAM)0
+        );
     //*/
 
     ///*
@@ -288,6 +349,19 @@ BOOL setTempSensor(const FRAME& oFrame)
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
     );
+    // alert bit
+    ((oFrame.payload[6] & 1) == 1) ?
+        SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR3)
+            , BM_SETCHECK
+            , (WPARAM)BST_CHECKED
+            , (LPARAM)0
+        )
+        :
+        SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR3)
+            , BM_SETCHECK
+            , (WPARAM)BST_UNCHECKED
+            , (LPARAM)0
+        );
     //*/
 
     ///*
@@ -311,7 +385,81 @@ BOOL setTempSensor(const FRAME& oFrame)
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
     );
+    // alert bit
+    ((oFrame.payload[8] & 1) == 1) ?
+        SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR4)
+            , BM_SETCHECK
+            , (WPARAM)BST_CHECKED
+            , (LPARAM)0
+        )
+        :
+        SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR4)
+            , BM_SETCHECK
+            , (WPARAM)BST_UNCHECKED
+            , (LPARAM)0
+        );
     //*/
 
     return EXIT_SUCCESS;
 }
+
+//****************************************************************************
+//*                     clcsToBit
+//****************************************************************************
+BOOL clcsToBit(const HWND& hDlg
+    , const UINT16 aResourceId[8]
+)
+{
+    FLOAT fTemp = 0.;
+    INT16 iTemp;
+
+    for (int s = 0; s < 4; s++)
+    {
+        // 1) temp low sensor s
+        SendMessageA(GetDlgItem(hDlg, aResourceId[s * 2 + 0])
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            return EXIT_FAILURE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (INT16)fTemp << 4;
+        // no 2's complement calculation
+        g_oFrame.payload[s * 4 + 0] = (iTemp & 0xFF00) >> 8;
+        g_oFrame.payload[s * 4 + 1] = (iTemp & 0x00FF);
+
+        // 2) temp high sensor s
+        SendMessageA(GetDlgItem(hDlg, aResourceId[s * 2 + 1])
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            return EXIT_FAILURE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (INT16)fTemp << 4;
+        // no 2's complement calculation
+        g_oFrame.payload[s * 4 + 2] = (iTemp & 0xFF00) >> 8;
+        g_oFrame.payload[s * 4 + 3] = (iTemp & 0x00FF);
+    }
+
+    return EXIT_SUCCESS;
+}
+

@@ -65,6 +65,7 @@
 #define BTN_RANGE_SENSOR										33135 // button that applies temp range
 // serial communication
 #define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
+#define WR_RANGE_SENSOR											33601 // write range sensor to all sensors
 #define RD_STATE_FAN											33610 // read state fan
 #define RD_STATE_RELAY											33611 // read state to all relays
 #define RD_RANGE_SENSOR											33612 // read temperature range from all sensors

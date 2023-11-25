@@ -153,7 +153,7 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
         // disable infinite loop
         g_bContinueTxRx = FALSE;
         // make empty queue
-        while (!g_queue.empty()) g_queue.pop();
+        g_queue = { };
 
         return (INT_PTR)TRUE;
     } // eof DISCONNECT_SERIAL
@@ -386,6 +386,7 @@ BOOL transmit(LPVOID lpVoid)
     if (g_queue.empty()) return EXIT_FAILURE;
     FRAME oFrame = g_queue.front();
     if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");
+    if (oFrame.cmd == WR_RANGE_SENSOR) OutputDebugString(L"transmit WR_RANGE_SENSOR\n");
     if (oFrame.cmd == RD_STATE_FAN) OutputDebugString(L"transmit RD_STATE_FAN\n");
     if (oFrame.cmd == RD_STATE_RELAY) OutputDebugString(L"transmit RD_STATE_RELAY\n");
     if (oFrame.cmd == RD_RANGE_SENSOR) OutputDebugString(L"transmit RD_RANGE_SENSOR\n");
@@ -505,6 +506,22 @@ BOOL receive(LPVOID lpVoid)
             }
             break;
         } // eof WR_DATE_TIME
+        case (WR_RANGE_SENSOR):
+        {
+            if (g_chBuffer[4] == ACK)
+            {
+                OutputDebugString(L"ACK WR_RANGE_SENSOR **********\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[4] == NAK)
+            {
+                OutputDebugString(L"NAK WR_RANGE_SENSOR\n");
+                return EXIT_FAILURE;
+            }
+            break;
+
+        } // eof WR_RANGE_SENSOR
         case (RD_STATE_FAN):
         {
             if (g_chBuffer[4] == ACK)
