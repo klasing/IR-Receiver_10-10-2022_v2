@@ -10,7 +10,10 @@ extern FRAME g_oFrame;
 //****************************************************************************
 //*                     prototype
 //****************************************************************************
-BOOL clcsToBit(const HWND& hDlg, const UINT16 aResourceId[8]);
+BOOL clcsToBit(const HWND& hDlg
+    , const UINT16 aResourceId[8]
+    , CHAR payload[]
+);
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab4Proc
@@ -43,7 +46,8 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
     case BTN_RANGE_SENSOR:
     {
         OutputDebugString(L"BTN_RANGE_SENSOR\n");
-        if (clcsToBit(hDlg, aResourceId) == EXIT_FAILURE)
+        CHAR payload[LEN_MAX_ENTRY];
+        if (clcsToBit(hDlg, aResourceId, payload) == EXIT_FAILURE)
         {
             g_oStatusbar.setTextStatusbar(3, L"Apply failed");
             // error: do nothiong
@@ -51,10 +55,13 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
         // conversion completed
         OutputDebugString(L"conversion completed\n");        
 
-        g_oFrame.cmd = WR_RANGE_SENSOR;
-        // payload is already filled
         // kill timer
         KillTimer(g_hWndDlgTab0, IDT_TIMER);
+        g_oFrame.cmd = WR_RANGE_SENSOR;
+        // transfer payload
+        for (int i = 0; i < LEN_MAX_ENTRY; i++) 
+            g_oFrame.payload[i] = payload[i];
+        // ??? payload is already filled
         g_queue.push(g_oFrame);
         // set timer
         SetTimer(g_hWndDlgTab0
@@ -408,6 +415,7 @@ BOOL setTempSensor(const FRAME& oFrame)
 //****************************************************************************
 BOOL clcsToBit(const HWND& hDlg
     , const UINT16 aResourceId[8]
+    , CHAR payload[]
 )
 {
     FLOAT fTemp = 0.;
@@ -432,10 +440,11 @@ BOOL clcsToBit(const HWND& hDlg
         }
         // conversion succeeded
         fTemp /= 0.0625;
-        iTemp = (INT16)fTemp << 4;
+        iTemp = (INT16)fTemp;
         // no 2's complement calculation
-        g_oFrame.payload[s * 4 + 0] = (iTemp & 0xFF00) >> 8;
-        g_oFrame.payload[s * 4 + 1] = (iTemp & 0x00FF);
+        payload[s * 4 + 0] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        payload[s * 4 + 1] = (iTemp & 0x000F) << 4;
 
         // 2) temp high sensor s
         SendMessageA(GetDlgItem(hDlg, aResourceId[s * 2 + 1])
@@ -454,10 +463,11 @@ BOOL clcsToBit(const HWND& hDlg
         }
         // conversion succeeded
         fTemp /= 0.0625;
-        iTemp = (INT16)fTemp << 4;
+        iTemp = (INT16)fTemp;
         // no 2's complement calculation
-        g_oFrame.payload[s * 4 + 2] = (iTemp & 0xFF00) >> 8;
-        g_oFrame.payload[s * 4 + 3] = (iTemp & 0x00FF);
+        payload[s * 4 + 0] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        payload[s * 4 + 1] = (iTemp & 0x000F) << 4;
     }
 
     return EXIT_SUCCESS;
