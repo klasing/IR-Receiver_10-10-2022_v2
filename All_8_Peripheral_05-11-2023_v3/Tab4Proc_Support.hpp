@@ -46,22 +46,216 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
     case BTN_RANGE_SENSOR:
     {
         OutputDebugString(L"BTN_RANGE_SENSOR\n");
-        CHAR payload[LEN_MAX_ENTRY];
-        if (clcsToBit(hDlg, aResourceId, payload) == EXIT_FAILURE)
+        FLOAT fTemp = 0.;
+        UINT16 iTemp;
+
+        // 1.L) low range temp sensor
+        SendMessageA(GetDlgItem(hDlg, IDC_TEMP_LO_SENSOR1)
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
         {
-            g_oStatusbar.setTextStatusbar(3, L"Apply failed");
-            // error: do nothiong
+            fTemp = std::stof(g_chTextBuffer);
         }
-        // conversion completed
-        OutputDebugString(L"conversion completed\n");        
+        catch (const std::exception e)
+        {
+            // no transmission
+            return (INT_PTR)TRUE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (UINT16)fTemp;
+        g_oFrame.payload[0] = (iTemp & 0x0FF0) >> 4;
+        g_oFrame.payload[1] = (iTemp & 0x000F) << 4;
+        /*
+        iTemp = (INT16)fTemp;
+        // no 2's complement calculation
+        g_oFrame.payload[0] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        g_oFrame.payload[1] = (iTemp & 0x000F) << 4;
+        */
+
+        // 1.H) high range temp sensor
+        SendMessageA(GetDlgItem(hDlg, IDC_TEMP_HI_SENSOR1)
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            // no transmission
+            return (INT_PTR)TRUE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (UINT16)fTemp;
+        g_oFrame.payload[2] = (iTemp & 0x0FF0) >> 4;
+        g_oFrame.payload[3] = (iTemp & 0x000F) << 4;
+        /*
+        iTemp = (INT16)fTemp;
+        // no 2's complement calculation
+        g_oFrame.payload[2] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        g_oFrame.payload[3] = (iTemp & 0x000F) << 4;
+        */
+
+        /*
+        // 2.L) low range temp sensor
+        SendMessageA(GetDlgItem(hDlg, IDC_TEMP_LO_SENSOR2)
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            // no transmission
+            return (INT_PTR)TRUE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (INT16)fTemp;
+        // no 2's complement calculation
+        g_oFrame.payload[4] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        g_oFrame.payload[5] = (iTemp & 0x000F) << 4;
+
+        // 2.H) high range temp sensor
+        SendMessageA(GetDlgItem(hDlg, IDC_TEMP_HI_SENSOR2)
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            // no transmission
+            return (INT_PTR)TRUE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (INT16)fTemp;
+        // no 2's complement calculation
+        g_oFrame.payload[6] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        g_oFrame.payload[7] = (iTemp & 0x000F) << 4;
+
+        // 3.L) low range temp sensor
+        SendMessageA(GetDlgItem(hDlg, IDC_TEMP_LO_SENSOR3)
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            // no transmission
+            return (INT_PTR)TRUE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (INT16)fTemp;
+        // no 2's complement calculation
+        g_oFrame.payload[8] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        g_oFrame.payload[9] = (iTemp & 0x000F) << 4;
+
+        // 3.H) high range temp sensor
+        SendMessageA(GetDlgItem(hDlg, IDC_TEMP_HI_SENSOR3)
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            // no transmission
+            return (INT_PTR)TRUE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (INT16)fTemp;
+        // no 2's complement calculation
+        g_oFrame.payload[10] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        g_oFrame.payload[11] = (iTemp & 0x000F) << 4;
+
+        // 4.L) low range temp sensor
+        SendMessageA(GetDlgItem(hDlg, IDC_TEMP_LO_SENSOR4)
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            // no transmission
+            return (INT_PTR)TRUE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (INT16)fTemp;
+        // no 2's complement calculation
+        g_oFrame.payload[12] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        g_oFrame.payload[13] = (iTemp & 0x000F) << 4;
+
+        // 4.H) high range temp sensor
+        SendMessageA(GetDlgItem(hDlg, IDC_TEMP_HI_SENSOR4)
+            , WM_GETTEXT
+            , (LPARAM)LEN_MAX_TEXT_BUFFER
+            , (WPARAM)g_chTextBuffer
+        );
+        // try to convert string to float
+        try
+        {
+            fTemp = std::stof(g_chTextBuffer);
+        }
+        catch (const std::exception e)
+        {
+            // no transmission
+            return (INT_PTR)TRUE;
+        }
+        // conversion succeeded
+        fTemp /= 0.0625;
+        iTemp = (INT16)fTemp;
+        // no 2's complement calculation
+        g_oFrame.payload[14] = (iTemp & 0x0FF0) >> 4;
+        // shift left 4 to get 12-bit left justified
+        g_oFrame.payload[15] = (iTemp & 0x000F) << 4;
+        */
 
         // kill timer
         KillTimer(g_hWndDlgTab0, IDT_TIMER);
         g_oFrame.cmd = WR_RANGE_SENSOR;
-        // transfer payload
-        for (int i = 0; i < LEN_MAX_ENTRY; i++) 
-            g_oFrame.payload[i] = payload[i];
-        // ??? payload is already filled
         g_queue.push(g_oFrame);
         // set timer
         SetTimer(g_hWndDlgTab0
@@ -127,7 +321,7 @@ BOOL setRangeSensor(const FRAME& oFrame)
         , (LPARAM)g_chTextBuffer
     );
 
-
+    /*
     // sensor 2
     val = oFrame.payload[5] << 4 | oFrame.payload[6] >> 4;
     if (val & 0x8000)
@@ -250,6 +444,7 @@ BOOL setRangeSensor(const FRAME& oFrame)
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
     );
+    */
 
     return EXIT_SUCCESS;
 }
@@ -263,9 +458,9 @@ BOOL setTempSensor(const FRAME& oFrame)
     FLOAT fTempInCelsius;
     FLOAT fTempInCelsiusTimes100;
 
-    ///*
     // sensor 1
-    val = oFrame.payload[1] << 4 | oFrame.payload[2] >> 4;
+    // the INT8/UINT8 casting is IMPORTANT!!!
+    val = ((INT8)oFrame.payload[1] << 4) | ((UINT8)oFrame.payload[2] >> 4);
     if (val & 0x8000)
     {
         val = ~val;
@@ -285,7 +480,7 @@ BOOL setTempSensor(const FRAME& oFrame)
         , (LPARAM)g_chTextBuffer
     );
     // alert bit
-	((oFrame.payload[2] & 1) == 1) ?
+	((oFrame.payload[2] & 2) == 2) ?
 		SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR1)
 			, BM_SETCHECK
 			, (WPARAM)BST_CHECKED
@@ -297,11 +492,11 @@ BOOL setTempSensor(const FRAME& oFrame)
 			, (WPARAM)BST_UNCHECKED
 			, (LPARAM)0
 		);
-    //*/
 
-    ///*
+    /*
     // sensor 2
-    val = oFrame.payload[3] << 4 | oFrame.payload[4] >> 4;
+    // the INT8/UINT8 casting is IMPORTANT!!!
+    val = ((INT8)oFrame.payload[3] << 4) | ((UINT8)oFrame.payload[4] >> 4);
     if (val & 0x8000)
     {
         val = ~val;
@@ -319,9 +514,9 @@ BOOL setTempSensor(const FRAME& oFrame)
         , WM_SETTEXT
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
-    );
+    );    
     // alert bit
-    ((oFrame.payload[4] & 1) == 1) ?
+    ((oFrame.payload[4] & 2) == 2) ?
         SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR2)
             , BM_SETCHECK
             , (WPARAM)BST_CHECKED
@@ -332,12 +527,11 @@ BOOL setTempSensor(const FRAME& oFrame)
             , BM_SETCHECK
             , (WPARAM)BST_UNCHECKED
             , (LPARAM)0
-        );
-    //*/
+        );    
 
-    ///*
     // sensor 3
-    val = oFrame.payload[5] << 4 | oFrame.payload[6] >> 4;
+    // the INT8/UINT8 casting is IMPORTANT!!!
+    val = ((INT8)oFrame.payload[5] << 4) | ((UINT8)oFrame.payload[6] >> 4);
     if (val & 0x8000)
     {
         val = ~val;
@@ -355,9 +549,9 @@ BOOL setTempSensor(const FRAME& oFrame)
         , WM_SETTEXT
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
-    );
+    );    
     // alert bit
-    ((oFrame.payload[6] & 1) == 1) ?
+    ((oFrame.payload[6] & 2) == 2) ?
         SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR3)
             , BM_SETCHECK
             , (WPARAM)BST_CHECKED
@@ -368,12 +562,11 @@ BOOL setTempSensor(const FRAME& oFrame)
             , BM_SETCHECK
             , (WPARAM)BST_UNCHECKED
             , (LPARAM)0
-        );
-    //*/
+        );    
 
-    ///*
     // sensor 4
-    val = oFrame.payload[7] << 4 | oFrame.payload[8] >> 4;
+    // the INT8/UINT8 casting is IMPORTANT!!!
+    val = ((INT8)oFrame.payload[7] << 4) | ((UINT8)oFrame.payload[8] >> 4);
     if (val & 0x8000)
     {
         val = ~val;
@@ -391,9 +584,9 @@ BOOL setTempSensor(const FRAME& oFrame)
         , WM_SETTEXT
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
-    );
+    );    
     // alert bit
-    ((oFrame.payload[8] & 1) == 1) ?
+    ((oFrame.payload[8] & 2) == 2) ?
         SendMessage(GetDlgItem(g_hWndDlgTab4, IDC_ALERT_SENSOR4)
             , BM_SETCHECK
             , (WPARAM)BST_CHECKED
@@ -405,7 +598,7 @@ BOOL setTempSensor(const FRAME& oFrame)
             , (WPARAM)BST_UNCHECKED
             , (LPARAM)0
         );
-    //*/
+    */
 
     return EXIT_SUCCESS;
 }
@@ -413,6 +606,7 @@ BOOL setTempSensor(const FRAME& oFrame)
 //****************************************************************************
 //*                     clcsToBit
 //****************************************************************************
+/*
 BOOL clcsToBit(const HWND& hDlg
     , const UINT16 aResourceId[8]
     , CHAR payload[]
@@ -472,4 +666,4 @@ BOOL clcsToBit(const HWND& hDlg
 
     return EXIT_SUCCESS;
 }
-
+*/
