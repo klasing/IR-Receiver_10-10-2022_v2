@@ -151,7 +151,7 @@ public:
 	//* lParam: pointer to NMHDR
 	//*
 	//************************************************************************
-	BOOL onWmNotify(const LPARAM& lParam)
+	INT_PTR onWmNotify(const LPARAM& lParam)
 	{
 		LPNMHDR lpNmHdr = (LPNMHDR)lParam;
 		switch (lpNmHdr->code)
@@ -224,6 +224,9 @@ public:
 					ShowWindow(hWndDlg[i], SW_HIDE);
 				}
 			}
+			// when switching between pages on a tab control
+			// a control may loose its focus
+			// by hitting the tab-key the focus will be restored
 			break;
 		} // eof TCN_SELCHANGE
 		case NM_CLICK:
@@ -232,7 +235,7 @@ public:
 		} // eof NM_CLICK
 		} // eof switch
 		// the return value is ignored
-		return TRUE;
+		return (INT_PTR)TRUE;
 	}
 private:
 };
