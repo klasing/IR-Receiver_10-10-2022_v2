@@ -32,41 +32,43 @@
 #define IDC_DESCRIPTION											33105
 
 #define IDC_FAN_ON												33106
-#define IDC_PWM_FAN												33107
-#define IDC_RPM_FAN												33108
-#define BTN_STATE_FAN											33109 // button that applies fan state
+#define IDC_FAN_ON_OFF											33107
+#define IDC_PWM_FAN												33108
+#define IDC_RPM_FAN												33109
+#define BTN_STATE_FAN											33110 // button that applies fan state
 
-#define IDC_RELAY1												33110
-#define IDC_RELAY2												33111
-#define IDC_RELAY3												33112
-#define IDC_RELAY4												33113
-#define IDC_RELAY5												33114
-#define IDC_RELAY6												33115
-#define IDC_RELAY7												33116
-#define IDC_RELAY8												33117
-#define BTN_STATE_RELAY											33118 // button that applies relay state
+#define IDC_RELAY1												33111
+#define IDC_RELAY2												33112
+#define IDC_RELAY3												33113
+#define IDC_RELAY4												33114
+#define IDC_RELAY5												33115
+#define IDC_RELAY6												33116
+#define IDC_RELAY7												33117
+#define IDC_RELAY8												33118
+#define BTN_STATE_RELAY											33119 // button that applies relay state
 
-#define IDC_TEMP_SENSOR1										33119
-#define IDC_TEMP_SENSOR2										33120
-#define IDC_TEMP_SENSOR3										33121
-#define IDC_TEMP_SENSOR4										33122
-#define IDC_ALERT_SENSOR1										33123
-#define IDC_ALERT_SENSOR2										33124
-#define IDC_ALERT_SENSOR3										33125
-#define IDC_ALERT_SENSOR4										33126
-#define IDC_TEMP_HI_SENSOR1										33127
-#define IDC_TEMP_HI_SENSOR2										33128
-#define IDC_TEMP_HI_SENSOR3										33129
-#define IDC_TEMP_HI_SENSOR4										33130
-#define IDC_TEMP_LO_SENSOR1										33131
-#define IDC_TEMP_LO_SENSOR2										33132
-#define IDC_TEMP_LO_SENSOR3										33133
-#define IDC_TEMP_LO_SENSOR4										33134
-#define BTN_RANGE_SENSOR										33135 // button that applies temp range
+#define IDC_TEMP_SENSOR1										33120
+#define IDC_TEMP_SENSOR2										33121
+#define IDC_TEMP_SENSOR3										33122
+#define IDC_TEMP_SENSOR4										33123
+#define IDC_ALERT_SENSOR1										33124
+#define IDC_ALERT_SENSOR2										33125
+#define IDC_ALERT_SENSOR3										33126
+#define IDC_ALERT_SENSOR4										33127
+#define IDC_TEMP_HI_SENSOR1										33128
+#define IDC_TEMP_HI_SENSOR2										33129
+#define IDC_TEMP_HI_SENSOR3										33130
+#define IDC_TEMP_HI_SENSOR4										33131
+#define IDC_TEMP_LO_SENSOR1										33132
+#define IDC_TEMP_LO_SENSOR2										33133
+#define IDC_TEMP_LO_SENSOR3										33134
+#define IDC_TEMP_LO_SENSOR4										33135
+#define BTN_RANGE_SENSOR										33136 // button that applies temp range
 // serial communication
 #define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
-#define WR_STATE_RELAY											33601 // write state of all relays to STM32
-#define WR_RANGE_SENSOR											33602 // write range sensor to all sensors
+#define WR_STATE_FAN											33601 // write state fan
+#define WR_STATE_RELAY											33602 // write state of all relays to STM32
+#define WR_RANGE_SENSOR											33603 // write range sensor to all sensors
 #define RD_STATE_FAN											33610 // read state fan
 #define RD_STATE_RELAY											33611 // read state to all relays
 #define RD_RANGE_SENSOR											33612 // read temperature range from all sensors

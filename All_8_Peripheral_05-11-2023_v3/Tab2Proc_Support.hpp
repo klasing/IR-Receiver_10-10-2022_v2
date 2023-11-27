@@ -28,6 +28,24 @@ INT_PTR onWmCommand_Tab2Proc(const HWND& hDlg
 	{
         OutputDebugString(L"BTN_STATE_FAN\n");
 
+        // TODO: there will be a confusion when STM32 sets the old state
+        //       in the checkbox while the user has altered the state
+        // kill timer
+        KillTimer(g_hWndDlgTab0, IDT_TIMER);
+        g_oFrame.cmd = WR_STATE_FAN;
+        g_oFrame.payload[0] = (SendMessage(GetDlgItem(hDlg, IDC_FAN_ON)
+            , BM_GETCHECK
+            , (WPARAM)0
+            , (LPARAM)0)) ?
+            1 : 0;
+        g_queue.push(g_oFrame);
+        // set timer
+        SetTimer(g_hWndDlgTab0
+            , IDT_TIMER
+            , DELAY_HALFHZ_SERIAL
+            , (TIMERPROC)TimerProc
+        );
+
 		return (INT_PTR)TRUE;
 	} // eof BTN_STATE_FAN
     } // eof switch
@@ -41,22 +59,38 @@ INT_PTR onWmCommand_Tab2Proc(const HWND& hDlg
 //****************************************************************************
 BOOL setStateFan(const FRAME& oFrame)
 {
-    // bFanOff is true, result in 0 (type int)
-    // bFanOff is false, results in 1 (type int)
+	// bFanOff is true, result in 0 (type int)
+	// bFanOff is false, results in 1 (type int)
     (((UINT8)oFrame.payload[1] >> 7) == 0) ?
         // fan is off
-        SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-            , BM_SETCHECK
-            , (WPARAM)BST_UNCHECKED
-            , (LPARAM)0
+        SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON_OFF)
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)L"OFF"
         )
         :
         // fan is on
-        SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-            , BM_SETCHECK
-            , (WPARAM)BST_CHECKED
-            , (LPARAM)0
+        SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON_OFF)
+            , WM_SETTEXT
+            , (WPARAM)0
+            , (LPARAM)L"ON"
         );
+    /*
+	(((UINT8)oFrame.payload[1] >> 7) == 0) ?
+		// fan is off
+		SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+			, BM_SETCHECK
+			, (WPARAM)BST_UNCHECKED
+			, (LPARAM)0
+		)
+		:
+		// fan is on
+		SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
+			, BM_SETCHECK
+			, (WPARAM)BST_CHECKED
+			, (LPARAM)0
+		);
+    */
     // percentagePWM
     // value lies between 0 .. 99, adjust this value to 1 .. 100
     // add 1 to the value given in oFrame.payload[1]
