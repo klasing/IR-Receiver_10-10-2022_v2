@@ -42,7 +42,7 @@ INT_PTR onWmCommand_Tab2Proc(const HWND& hDlg
 BOOL setStateFan(const FRAME& oFrame)
 {
     // bFanOff is true, result in 0 (type int)
-    // bFanOff is false, results in 1 (type int
+    // bFanOff is false, results in 1 (type int)
     (((UINT8)oFrame.payload[1] >> 7) == 0) ?
         // fan is off
         SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
