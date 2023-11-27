@@ -45,9 +45,11 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
     {
     case BTN_RANGE_SENSOR:
     {
+        // TODO: non integer values are not processed resulting in
+        // TODO: lower(value) and as such send to STM32
         OutputDebugString(L"BTN_RANGE_SENSOR\n");
         FLOAT fTemp = 0.;
-        UINT16 iTemp;
+        INT16 iTemp;
 
         // 1.L) low range temp sensor
         SendMessageA(GetDlgItem(hDlg, IDC_TEMP_LO_SENSOR1)
@@ -67,16 +69,11 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
         }
         // conversion succeeded
         fTemp /= 0.0625;
-        iTemp = (UINT16)fTemp;
-        g_oFrame.payload[0] = (iTemp & 0x0FF0) >> 4;
-        g_oFrame.payload[1] = (iTemp & 0x000F) << 4;
-        /*
         iTemp = (INT16)fTemp;
         // no 2's complement calculation
         g_oFrame.payload[0] = (iTemp & 0x0FF0) >> 4;
         // shift left 4 to get 12-bit left justified
         g_oFrame.payload[1] = (iTemp & 0x000F) << 4;
-        */
 
         // 1.H) high range temp sensor
         SendMessageA(GetDlgItem(hDlg, IDC_TEMP_HI_SENSOR1)
@@ -96,18 +93,12 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
         }
         // conversion succeeded
         fTemp /= 0.0625;
-        iTemp = (UINT16)fTemp;
-        g_oFrame.payload[2] = (iTemp & 0x0FF0) >> 4;
-        g_oFrame.payload[3] = (iTemp & 0x000F) << 4;
-        /*
         iTemp = (INT16)fTemp;
         // no 2's complement calculation
         g_oFrame.payload[2] = (iTemp & 0x0FF0) >> 4;
         // shift left 4 to get 12-bit left justified
         g_oFrame.payload[3] = (iTemp & 0x000F) << 4;
-        */
 
-        /*
         // 2.L) low range temp sensor
         SendMessageA(GetDlgItem(hDlg, IDC_TEMP_LO_SENSOR2)
             , WM_GETTEXT
@@ -251,7 +242,6 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
         g_oFrame.payload[14] = (iTemp & 0x0FF0) >> 4;
         // shift left 4 to get 12-bit left justified
         g_oFrame.payload[15] = (iTemp & 0x000F) << 4;
-        */
 
         // kill timer
         KillTimer(g_hWndDlgTab0, IDT_TIMER);
@@ -321,7 +311,6 @@ BOOL setRangeSensor(const FRAME& oFrame)
         , (LPARAM)g_chTextBuffer
     );
 
-    /*
     // sensor 2
     val = oFrame.payload[5] << 4 | oFrame.payload[6] >> 4;
     if (val & 0x8000)
@@ -444,7 +433,6 @@ BOOL setRangeSensor(const FRAME& oFrame)
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
     );
-    */
 
     return EXIT_SUCCESS;
 }
@@ -493,7 +481,6 @@ BOOL setTempSensor(const FRAME& oFrame)
 			, (LPARAM)0
 		);
 
-    /*
     // sensor 2
     // the INT8/UINT8 casting is IMPORTANT!!!
     val = ((INT8)oFrame.payload[3] << 4) | ((UINT8)oFrame.payload[4] >> 4);
@@ -598,7 +585,6 @@ BOOL setTempSensor(const FRAME& oFrame)
             , (WPARAM)BST_UNCHECKED
             , (LPARAM)0
         );
-    */
 
     return EXIT_SUCCESS;
 }
