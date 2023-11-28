@@ -39,6 +39,9 @@ BOOL                setStateRelay(const FRAME& oFrame);
 BOOL                setRangeSensor(const FRAME& oFrame);
 BOOL                setTempSensor(const FRAME& oFrame);
 BOOL                reorganize_queue();
+BOOL                enableButtonStateFan();
+BOOL                enableButtonStateRelay();
+BOOL                enableButtonRangeSensor();
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
@@ -512,6 +515,7 @@ BOOL receive(LPVOID lpVoid)
             {
                 OutputDebugString(L"ACK WR_STATE_FAN\n");
                 if (g_queue.size() > 0) g_queue.pop();
+                enableButtonStateFan();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[4] == NAK)
@@ -527,6 +531,7 @@ BOOL receive(LPVOID lpVoid)
             {
                 OutputDebugString(L"ACK WR_STATE_RELAY\n");
                 if (g_queue.size() > 0) g_queue.pop();
+                enableButtonStateRelay();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[4] == NAK)
@@ -542,6 +547,7 @@ BOOL receive(LPVOID lpVoid)
             {
                 OutputDebugString(L"ACK WR_RANGE_SENSOR\n");
                 if (g_queue.size() > 0) g_queue.pop();
+                enableButtonRangeSensor();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[4] == NAK)

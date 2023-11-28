@@ -3,6 +3,7 @@
 //****************************************************************************
 //*                     extern
 //****************************************************************************
+extern Statusbar g_oStatusbar;
 extern HWND g_hWndDlgTab4;
 extern CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER];
 extern FRAME g_oFrame;
@@ -45,9 +46,16 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
     {
     case BTN_RANGE_SENSOR:
     {
+        OutputDebugString(L"BTN_RANGE_SENSOR\n");
+
+        // disable button BTN_RANGE_SENSOR, until the transaction
+        // has finished
+        EnableWindow(GetDlgItem(hDlg, BTN_RANGE_SENSOR), FALSE);
+        // clear for a new statusbar message
+        g_oStatusbar.setTextStatusbar(3, L"");
+
         // TODO: non integer values are not processed resulting in
         // TODO: lower(value) and as such send to STM32
-        OutputDebugString(L"BTN_RANGE_SENSOR\n");
         FLOAT fTemp = 0.;
         INT16 iTemp;
 
@@ -585,6 +593,20 @@ BOOL setTempSensor(const FRAME& oFrame)
             , (WPARAM)BST_UNCHECKED
             , (LPARAM)0
         );
+
+    return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     enableButtonRangeSensor
+//****************************************************************************
+BOOL enableButtonRangeSensor()
+{
+    // enable button BTN_RANGE_SENSOR, now the transaction
+    // has been finished
+    EnableWindow(GetDlgItem(g_hWndDlgTab4, BTN_RANGE_SENSOR), TRUE);
+    // set statusbar message
+    g_oStatusbar.setTextStatusbar(3, L"range sensor is set");
 
     return EXIT_SUCCESS;
 }

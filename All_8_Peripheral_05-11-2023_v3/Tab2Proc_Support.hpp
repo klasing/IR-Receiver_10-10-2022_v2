@@ -3,6 +3,7 @@
 //****************************************************************************
 //*                     extern
 //****************************************************************************
+extern Statusbar g_oStatusbar;
 extern HWND g_hWndDlgTab2;
 extern CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER];
 
@@ -28,6 +29,14 @@ INT_PTR onWmCommand_Tab2Proc(const HWND& hDlg
 	{
         OutputDebugString(L"BTN_STATE_FAN\n");
 
+        // disable button BTN_STATE_FAN, until the transaction
+        // has finished
+        EnableWindow(GetDlgItem(hDlg, BTN_STATE_FAN), FALSE);
+        // clear for a new statusbar message
+        g_oStatusbar.setTextStatusbar(3, L"");
+
+        // SOLVED by introducing a new control EDITTEXT IDC_FAN_ON_OFF
+        //        where the state will be shown
         // TODO: there will be a confusion when STM32 sets the old state
         //       in the checkbox while the user has altered the state
         // kill timer
@@ -59,7 +68,7 @@ INT_PTR onWmCommand_Tab2Proc(const HWND& hDlg
 //****************************************************************************
 BOOL setStateFan(const FRAME& oFrame)
 {
-	// bFanOff is true, result in 0 (type int)
+    // bFanOff is true, results in 0 (type int)
 	// bFanOff is false, results in 1 (type int)
     (((UINT8)oFrame.payload[1] >> 7) == 0) ?
         // fan is off
@@ -109,6 +118,20 @@ BOOL setStateFan(const FRAME& oFrame)
         , (WPARAM)0
         , (LPARAM)g_chTextBuffer
     );
+
+    return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     enableButtonStateFan
+//****************************************************************************
+BOOL enableButtonStateFan()
+{
+    // enable button BTN_STATE_FAN, now the transaction
+    // has been finished
+    EnableWindow(GetDlgItem(g_hWndDlgTab2, BTN_STATE_FAN), TRUE);
+    // set statusbar message
+    g_oStatusbar.setTextStatusbar(3, L"state fan is set");
 
     return EXIT_SUCCESS;
 }

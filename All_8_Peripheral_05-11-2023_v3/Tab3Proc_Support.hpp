@@ -3,6 +3,7 @@
 //****************************************************************************
 //*                     extern
 //****************************************************************************
+extern Statusbar g_oStatusbar;
 extern HWND g_hWndDlgTab3;
 extern CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER];
 
@@ -29,6 +30,12 @@ INT_PTR onWmCommand_Tab3Proc(const HWND& hDlg
     case BTN_STATE_RELAY:
     {
         OutputDebugString(L"BTN_STATE_RELAY\n");
+
+        // disable button BTN_STATE_RELAY, until the transaction
+        // has finished
+        EnableWindow(GetDlgItem(hDlg, BTN_STATE_RELAY), FALSE);
+        // clear for a new statusbar message
+        g_oStatusbar.setTextStatusbar(3, L"");
 
         (SendMessage(GetDlgItem(hDlg, IDC_RELAY1)
             , BM_GETCHECK
@@ -123,6 +130,20 @@ BOOL setStateRelay(const FRAME& oFrame)
             );
         mask <<= 1;
     }
+
+    return EXIT_SUCCESS;
+}
+
+//****************************************************************************
+//*                     enableButtonStateRelay
+//****************************************************************************
+BOOL enableButtonStateRelay()
+{
+    // enable button BTN_STATE_RELAY, now the transaction
+    // has been finished
+    EnableWindow(GetDlgItem(g_hWndDlgTab3, BTN_STATE_RELAY), TRUE);
+    // set statusbar message
+    g_oStatusbar.setTextStatusbar(3, L"state relay is set");
 
     return EXIT_SUCCESS;
 }
