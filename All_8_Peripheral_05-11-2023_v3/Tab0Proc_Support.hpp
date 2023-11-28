@@ -34,6 +34,7 @@ DWORD               WINAPI TxRx(LPVOID lpVoid);
 void                TimerProc(HWND hWnd, UINT uint, UINT_PTR pUint, DWORD dword);
 BOOL                transmit(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
+BOOL                setIrRemote(const FRAME& oFrame);
 BOOL                setStateFan(const FRAME& oFrame);
 BOOL                setStateRelay(const FRAME& oFrame);
 BOOL                setRangeSensor(const FRAME& oFrame);
@@ -107,6 +108,7 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             // 4) read temperature range of all sensors
             g_oFrame.cmd = RD_RANGE_SENSOR;
             g_queue.push(g_oFrame);
+
             // enable infinite loop
             g_bContinueTxRx = TRUE;
             // create thread to continuously transmit and receive
@@ -390,6 +392,7 @@ BOOL transmit(LPVOID lpVoid)
     if (oFrame.cmd == WR_STATE_FAN) OutputDebugString(L"transmit WR_STATE_FAN\n");
     if (oFrame.cmd == WR_STATE_RELAY) OutputDebugString(L"transmit WR_STATE_RELAY\n");
     if (oFrame.cmd == WR_RANGE_SENSOR) OutputDebugString(L"transmit WR_RANGE_SENSOR\n");
+    if (oFrame.cmd == RD_IR_REMOTE) OutputDebugString(L"transmit RD_IR_REMOTE\n");
     if (oFrame.cmd == RD_STATE_FAN) OutputDebugString(L"transmit RD_STATE_FAN\n");
     if (oFrame.cmd == RD_STATE_RELAY) OutputDebugString(L"transmit RD_STATE_RELAY\n");
     if (oFrame.cmd == RD_RANGE_SENSOR) OutputDebugString(L"transmit RD_RANGE_SENSOR\n");
@@ -557,6 +560,48 @@ BOOL receive(LPVOID lpVoid)
             }
             break;
         } // eof WR_RANGE_SENSOR
+		case (0xABF): // radio
+		case (0xAEF): // menu | text
+		case (0xBBB): // forward
+		case (0xBEB): // stop; turn fan off
+		case (0xBEF): // record
+		case (0xBFB): // rewind
+		case (0xBFE): // blue; seven segment display toggle show second
+		case (0xEBB): // guide | tv home
+		case (0xEBF): // louder
+		case (0xEEB): // quieter
+		case (0xEEF): // pause/play | back/? turn fan on
+		case (0xEFB): // P+ | red | av increase RPM, with PWM
+		case (0xEFE): // P- | green | right | audio off decrease RPM, with PWM
+		case (0xEFF): // yellow
+		case (0xFAB): // 0
+		case (0xFAF): // i-tv
+		case (0xFBB): // 9 | down
+		case (0xFBE): // 8 | left | up
+		case (0xFBF): // OK
+		case (0xFEB): // 5
+		case (0xFEE): // 4 | 6
+		case (0xFEF): // 7
+		case (0xFFA): // 2
+		case (0xFFB): // 3
+		case (0xFFE): // 1
+		case (0xFFF): // INVALID
+        /*case (RD_IR_REMOTE):*/
+        {
+            if (g_chBuffer[4] == ACK)
+            {
+                OutputDebugString(L"ACK RD_IR_REMOTE\n");
+                setIrRemote(g_oFrame);
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[4] == NAK)
+            {
+                OutputDebugString(L"NAK RD_IR_REMOTE\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_STATE_FAN
         case (RD_STATE_FAN):
         {
             if (g_chBuffer[4] == ACK)
@@ -633,6 +678,8 @@ BOOL receive(LPVOID lpVoid)
 //****************************************************************************
 BOOL reorganize_queue()
 {
+    g_oFrame.cmd = RD_IR_REMOTE;
+    g_queue.push(g_oFrame);
     g_oFrame.cmd = RD_STATE_FAN;
     g_queue.push(g_oFrame);
     g_oFrame.cmd = RD_TEMP_SENSOR;

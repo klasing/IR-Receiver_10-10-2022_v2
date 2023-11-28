@@ -69,10 +69,11 @@
 #define WR_STATE_FAN											33601 // write state fan
 #define WR_STATE_RELAY											33602 // write state of all relays to STM32
 #define WR_RANGE_SENSOR											33603 // write range sensor to all sensors
-#define RD_STATE_FAN											33610 // read state fan
-#define RD_STATE_RELAY											33611 // read state to all relays
-#define RD_RANGE_SENSOR											33612 // read temperature range from all sensors
-#define RD_TEMP_SENSOR											33613 // read temperature and alert from all sensors
+#define RD_IR_REMOTE											33610 // read code and description from IR-remote
+#define RD_STATE_FAN											33611 // read state fan
+#define RD_STATE_RELAY											33612 // read state to all relays
+#define RD_RANGE_SENSOR											33613 // read temperature range from all sensors
+#define RD_TEMP_SENSOR											33614 // read temperature and alert from all sensors
 
 #define IDT_TIMER												33999
 
