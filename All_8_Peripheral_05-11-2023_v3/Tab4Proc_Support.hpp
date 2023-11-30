@@ -51,8 +51,10 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
         // clear for a new statusbar message
         g_oStatusbar.setTextStatusbar(3, L"");
 
-        // TODO: non integer values are not processed resulting in
-        // TODO: lower(value) and as such send to STM32
+        // SOLVED: non integer values are not processed resulting in
+        // SOLVED: lower(value) and as such send to STM32
+        // nof bytes to be written in func HAL_I2C_Master_Transmit()
+        // had to be three instead of two
         FLOAT fTemp = 0.;
         INT16 iTemp;
 
