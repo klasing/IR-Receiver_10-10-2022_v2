@@ -152,7 +152,9 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
         g_oStatusbar.setTextStatusbar(1, L"");
         g_oStatusbar.setTextStatusbar(2, L"");
         g_oStatusbar.setTextStatusbar(3, L"");
+        // reset error condition and the transmission counter
         g_bIsSetError = FALSE;
+        g_cTransmission = 0; 
         // set focus to control CONNECT_SERIAL
         PostMessage(hDlg
             , WM_NEXTDLGCTL
