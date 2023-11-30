@@ -23,13 +23,16 @@ HANDLE g_hThreadTxRx = INVALID_HANDLE_VALUE;
 BOOL g_bTransmit = FALSE;
 BOOL g_bSwitch = TRUE;
 CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER] = { 0 };
+BOOL g_bIsSetError = FALSE;
 
 //*****************************************************************************
 //*                     prototype
 //*****************************************************************************
 BOOL                connect();
-BOOL                date_time_for_serial(CHAR* pszDateTime);
-BOOL                set_date_time(const CHAR* pszDateTime);
+BOOL                date_time_for_serial(UCHAR* pszDateTime);
+/*BOOL                date_time_for_serial(CHAR* pszDateTime);*/
+BOOL                set_date_time(const UCHAR* pszDateTime);
+/*BOOL                set_date_time(const CHAR* pszDateTime);*/
 DWORD               WINAPI TxRx(LPVOID lpVoid);
 void                TimerProc(HWND hWnd, UINT uint, UINT_PTR pUint, DWORD dword);
 BOOL                transmit(LPVOID lpVoid);
@@ -145,14 +148,17 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
         EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
         // set connect state
         g_oStatusbar.setTextStatusbar(0, L"STM32 disconnected");
+        // clear connected date time, error, and last transaction
+        g_oStatusbar.setTextStatusbar(1, L"");
+        g_oStatusbar.setTextStatusbar(2, L"");
+        g_oStatusbar.setTextStatusbar(3, L"");
+        g_bIsSetError = FALSE;
         // set focus to control CONNECT_SERIAL
         PostMessage(hDlg
             , WM_NEXTDLGCTL
             , (WPARAM)GetDlgItem(hDlg, CONNECT_SERIAL)
             , (LPARAM)TRUE
         );
-        // clear connected date time
-        g_oStatusbar.setTextStatusbar(1, L"");
         // disable infinite loop
         g_bContinueTxRx = FALSE;
         // make empty queue
@@ -250,7 +256,8 @@ BOOL connect()
 //****************************************************************************
 //*                     date_time_for_serial
 //****************************************************************************
-BOOL date_time_for_serial(CHAR* pszDateTime)
+BOOL date_time_for_serial(UCHAR* pszDateTime)
+/*BOOL date_time_for_serial(CHAR* pszDateTime)*/
 {
     // use ctime to get date and time
     time_t tt;
@@ -264,7 +271,8 @@ BOOL date_time_for_serial(CHAR* pszDateTime)
     // day......: t.tm_mday
     // month....: (t.tm_mon + 1)
     // year.....: (t.tm_year % 100)
-    sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c%c"
+    sprintf_s((char*)pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c%c"
+    /*sprintf_s(pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c%c"*/
         // size pszDateTime buffer is
         // LEN_DATE_TIME plus one space for null character
         , ((t.tm_hour / 10) << 4) | (t.tm_hour % 10)
@@ -282,7 +290,8 @@ BOOL date_time_for_serial(CHAR* pszDateTime)
 //****************************************************************************
 //*                     set_date_time
 //****************************************************************************
-BOOL set_date_time(const CHAR* pszDateTime)
+BOOL set_date_time(const UCHAR* pszDateTime)
+/*BOOL set_date_time(const CHAR* pszDateTime)*/
 {
     const WCHAR wstrDow[7][3] = { { L"zo" }
         , { L"ma" }
@@ -460,11 +469,32 @@ BOOL receive(LPVOID lpVoid)
     if (dwNofByteTransferred == 0)
     {
         OutputDebugString(L"no bytes received from STM32\n");
+        /*
+        * this is not yet confirmed and if the func ClearCommError()
+        * recovers communication from a failure
+        // possible cause that leads to a communication failure
+        // 1) connection is lost
+        // 2) Windows went into 'sleep' mode
+        DWORD dwError;
+        COMSTAT comstat;
+        ClearCommError(g_hComm
+            , &dwError
+            , &comstat
+        );
+        */
+        if (!g_bIsSetError)
+        {
+            g_oStatusbar.setTextStatusbar(2, L"no bytes received");
+            g_bIsSetError = TRUE;
+        }
         // disregard and simply return with EXIT_FAILURE
         return EXIT_FAILURE;
     }
     else if (dwNofByteTransferred == LEN_FRAME + LEN_CRC)
     {
+        // no error, clear message
+        g_bIsSetError = FALSE;
+        g_oStatusbar.setTextStatusbar(2, L"");
         // check crc
         // isolate received crc from g_chBuffer
         UINT32 rxValCrc = (g_chBuffer[LEN_FRAME + 0] << 24)

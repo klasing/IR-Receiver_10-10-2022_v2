@@ -11,10 +11,7 @@ extern FRAME g_oFrame;
 //****************************************************************************
 //*                     prototype
 //****************************************************************************
-BOOL clcsToBit(const HWND& hDlg
-    , const UINT16 aResourceId[8]
-    , CHAR payload[]
-);
+/*BOOL oneOutOf16(const FLOAT fTemp, UINT8& iFraction);*/
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab4Proc
@@ -75,9 +72,10 @@ INT_PTR onWmCommand_Tab4Proc(const HWND& hDlg
             // no transmission
             return (INT_PTR)TRUE;
         }
+        /*oneOutOf16(fTemp, iFraction);*/
         // conversion succeeded
         fTemp /= 0.0625;
-        iTemp = (INT16)fTemp;
+        iTemp = (INT16)(fTemp);
         // no 2's complement calculation
         g_oFrame.payload[0] = (iTemp & 0x0FF0) >> 4;
         // shift left 4 to get 12-bit left justified
@@ -279,7 +277,9 @@ BOOL setRangeSensor(const FRAME& oFrame)
     FLOAT fTempInCelsiusTimes100;
 
     // sensor 1
-    val = oFrame.payload[1] << 4 | oFrame.payload[2] >> 4;
+    // the INT8/UINT8 casting is IMPORTANT!!!
+    val = ((INT8)oFrame.payload[1] << 4) | ((UINT8)oFrame.payload[2] >> 4);
+    /*val = oFrame.payload[1] << 4 | oFrame.payload[2] >> 4;*/
     if (val & 0x8000)
     {
         val = ~val;
@@ -612,66 +612,29 @@ BOOL enableButtonRangeSensor()
 }
 
 //****************************************************************************
-//*                     clcsToBit
+//*                     oneOutOf16
 //****************************************************************************
 /*
-BOOL clcsToBit(const HWND& hDlg
-    , const UINT16 aResourceId[8]
-    , CHAR payload[]
-)
+BOOL oneOutOf16(const FLOAT fTemp, UINT8& iFraction)
 {
-    FLOAT fTemp = 0.;
-    INT16 iTemp;
+    UINT32 iFraction_ = (UINT32)(fTemp * 100.) % 100;
+    if (iFraction_ < 6) { iFraction = 0; return EXIT_SUCCESS; }
+    if (iFraction_ < 12) { iFraction = 1; return EXIT_SUCCESS; }
+    if (iFraction_ < 18) { iFraction = 2; return EXIT_SUCCESS; }
+    if (iFraction_ < 25) { iFraction = 3; return EXIT_SUCCESS; }
+    if (iFraction_ < 31) { iFraction = 4; return EXIT_SUCCESS; }
+    if (iFraction_ < 37) { iFraction = 5; return EXIT_SUCCESS; }
+    if (iFraction_ < 43) { iFraction = 6; return EXIT_SUCCESS; }
+    if (iFraction_ < 50) { iFraction = 7; return EXIT_SUCCESS; }
+    if (iFraction_ < 56) { iFraction = 8; return EXIT_SUCCESS; }
+    if (iFraction_ < 62) { iFraction = 9; return EXIT_SUCCESS; }
+    if (iFraction_ < 68) { iFraction = 10; return EXIT_SUCCESS; }
+    if (iFraction_ < 75) { iFraction = 11; return EXIT_SUCCESS; }
+    if (iFraction_ < 81) { iFraction = 12; return EXIT_SUCCESS; }
+    if (iFraction_ < 87) { iFraction = 13; return EXIT_SUCCESS; }
+    if (iFraction_ < 93) { iFraction = 14; return EXIT_SUCCESS; }
+    if (iFraction_ >= 93) { iFraction = 15; return EXIT_SUCCESS; }
 
-    for (int s = 0; s < 4; s++)
-    {
-        // 1) temp low sensor s
-        SendMessageA(GetDlgItem(hDlg, aResourceId[s * 2 + 0])
-            , WM_GETTEXT
-            , (LPARAM)LEN_MAX_TEXT_BUFFER
-            , (WPARAM)g_chTextBuffer
-        );
-        // try to convert string to float
-        try
-        {
-            fTemp = std::stof(g_chTextBuffer);
-        }
-        catch (const std::exception e)
-        {
-            return EXIT_FAILURE;
-        }
-        // conversion succeeded
-        fTemp /= 0.0625;
-        iTemp = (INT16)fTemp;
-        // no 2's complement calculation
-        payload[s * 4 + 0] = (iTemp & 0x0FF0) >> 4;
-        // shift left 4 to get 12-bit left justified
-        payload[s * 4 + 1] = (iTemp & 0x000F) << 4;
-
-        // 2) temp high sensor s
-        SendMessageA(GetDlgItem(hDlg, aResourceId[s * 2 + 1])
-            , WM_GETTEXT
-            , (LPARAM)LEN_MAX_TEXT_BUFFER
-            , (WPARAM)g_chTextBuffer
-        );
-        // try to convert string to float
-        try
-        {
-            fTemp = std::stof(g_chTextBuffer);
-        }
-        catch (const std::exception e)
-        {
-            return EXIT_FAILURE;
-        }
-        // conversion succeeded
-        fTemp /= 0.0625;
-        iTemp = (INT16)fTemp;
-        // no 2's complement calculation
-        payload[s * 4 + 0] = (iTemp & 0x0FF0) >> 4;
-        // shift left 4 to get 12-bit left justified
-        payload[s * 4 + 1] = (iTemp & 0x000F) << 4;
-    }
-
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }
 */
