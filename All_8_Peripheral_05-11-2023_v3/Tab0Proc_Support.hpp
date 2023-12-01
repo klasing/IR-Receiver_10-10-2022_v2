@@ -5,6 +5,7 @@
 //****************************************************************************
 extern Statusbar g_oStatusbar;
 extern HWND g_hWndDlgTab0;
+extern BOOL g_bConnected;
 
 //****************************************************************************
 //*                     global
@@ -85,6 +86,7 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), TRUE);
             // set connect state
             g_oStatusbar.setTextStatusbar(0, L"STM32 connected");
+            g_bConnected = TRUE;
             // set focus to control DISCONNECT_SERIAL
             PostMessage(hDlg
                 , WM_NEXTDLGCTL
@@ -148,6 +150,7 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
         EnableWindow(GetDlgItem(hDlg, DISCONNECT_SERIAL), FALSE);
         // set connect state
         g_oStatusbar.setTextStatusbar(0, L"STM32 disconnected");
+        g_bConnected = FALSE;
         // clear connected date time, error, and last transaction
         g_oStatusbar.setTextStatusbar(1, L"");
         g_oStatusbar.setTextStatusbar(2, L"");

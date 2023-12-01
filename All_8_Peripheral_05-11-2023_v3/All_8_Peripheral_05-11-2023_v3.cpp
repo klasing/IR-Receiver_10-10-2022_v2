@@ -29,6 +29,11 @@ HWND g_hWndDlgTab2 = NULL;
 HWND g_hWndDlgTab3 = NULL;
 HWND g_hWndDlgTab4 = NULL;
 
+// when receiving a message WM_SIZE in the WndProc
+// the connected state must be known to correctly
+// restore the statusbar
+BOOL g_bConnected = FALSE;
+
 //****************************************************************************
 //*                     prototype
 //****************************************************************************
@@ -190,8 +195,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GetClientRect(hWnd, &rect);
         // set statusbar
         g_oStatusbar.setStatusbar(hWnd);
-        // set intial connect state
-        g_oStatusbar.setTextStatusbar(0, L"STM32 disconnected");
+        // set intial connect state, 
+        // the state must be kept during a Minimize/Resize operation
+        (g_bConnected) ?
+            g_oStatusbar.setTextStatusbar(0, L"STM32 connected")
+            :
+            g_oStatusbar.setTextStatusbar(0, L"STM32 disconnected");
         // set teb control
         g_oTabControl.showTabItems(lParam);
 
