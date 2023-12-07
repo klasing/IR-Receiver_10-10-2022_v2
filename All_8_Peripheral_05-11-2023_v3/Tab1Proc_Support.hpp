@@ -11,6 +11,13 @@ extern CHAR g_chTextBuffer[LEN_MAX_TEXT_BUFFER];
 //****************************************************************************
 BOOL onWmInitDialog_Tab1Proc(const HWND& hDlg)
 {
+    // check the control radiobutton IDC_RUWIDO_REMOTE
+    // for the Ruwido remote
+    SendMessage(GetDlgItem(hDlg, IDC_RUWIDO_REMOTE)
+        , BM_SETCHECK
+        , (WPARAM)BST_CHECKED
+        , (LPARAM)0
+    );
 
     return EXIT_SUCCESS;
 }
@@ -53,6 +60,37 @@ BOOL setIrRemote(const FRAME& oFrame)
         , (WPARAM)0
         , (LPARAM)&oFrame.payload[1]
     );
+    // vendor remote
+    if ((oFrame.payload[0] & 0x80) == 0)
+    {
+        // check the control radiobutton IDC_RUWIDO_REMOTE
+        // for the Ruwido remote
+        SendMessage(GetDlgItem(g_hWndDlgTab1, IDC_RUWIDO_REMOTE)
+            , BM_SETCHECK
+            , (WPARAM)BST_CHECKED
+            , (LPARAM)0
+        );
+        SendMessage(GetDlgItem(g_hWndDlgTab1, IDC_YAMAHA_REMOTE)
+            , BM_SETCHECK
+            , (WPARAM)BST_UNCHECKED
+            , (LPARAM)0
+        );
+    }
+    else
+    {
+        SendMessage(GetDlgItem(g_hWndDlgTab1, IDC_RUWIDO_REMOTE)
+            , BM_SETCHECK
+            , (WPARAM)BST_UNCHECKED
+            , (LPARAM)0
+        );
+        // check the control radiobutton IDC_YAMAHA_REMOTE
+        // for the Yamaha remote
+        SendMessage(GetDlgItem(g_hWndDlgTab1, IDC_YAMAHA_REMOTE)
+            , BM_SETCHECK
+            , (WPARAM)BST_CHECKED
+            , (LPARAM)0
+        );
+    }
 
     return EXIT_SUCCESS;
 }

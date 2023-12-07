@@ -623,7 +623,7 @@ BOOL receive(LPVOID lpVoid)
 		case (0xFFF): // INVALID
         /*case (RD_IR_REMOTE):*/
         {
-            if (g_chBuffer[4] == ACK)
+            if ((g_chBuffer[4] & 0b01111111) == ACK)
             {
                 OutputDebugString(L"ACK RD_IR_REMOTE\n");
                 setIrRemote(g_oFrame);
