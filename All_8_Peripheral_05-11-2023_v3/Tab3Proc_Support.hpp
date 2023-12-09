@@ -147,5 +147,3 @@ BOOL enableButtonStateRelay()
 
     return EXIT_SUCCESS;
 }
-
-

@@ -13,9 +13,12 @@
 // serial communication
 #define LEN_DATE_TIME											7
 #define LEN_MAX_ENTRY											32	// max length payload
-#define LEN_FRAME												39
+// the command has gone to 32-bit ( 08-12-2023 )
+#define LEN_FRAME												41
+/*#define LEN_FRAME												39*/
 #define LEN_CRC													4
-#define LEN_MAX_TEXT_BUFFER										32
+#define OFFSET_PAYLOAD											6
+#define LEN_MAX_TEXT_BUFFER										LEN_MAX_ENTRY
 #define BUFFER_MAX_SERIAL										512
 #define DELAY_HALFHZ_SERIAL										1000 // 2 * 1000 = 2000, is 0.5 time per second is 1/2 Hz
 // control
@@ -67,15 +70,15 @@
 #define IDC_TEMP_LO_SENSOR4										33137
 #define BTN_RANGE_SENSOR										33138 // button that applies temp range
 // serial communication
-#define WR_DATE_TIME											33600 // write date and time to STM32, to initialize the RTC
-#define WR_STATE_FAN											33601 // write state fan
-#define WR_STATE_RELAY											33602 // write state of all relays to STM32
-#define WR_RANGE_SENSOR											33603 // write range sensor to all sensors
-#define RD_IR_REMOTE											33610 // read code and description from IR-remote
-#define RD_STATE_FAN											33611 // read state fan
-#define RD_STATE_RELAY											33612 // read state to all relays
-#define RD_RANGE_SENSOR											33613 // read temperature range from all sensors
-#define RD_TEMP_SENSOR											33614 // read temperature and alert from all sensors
+#define WR_DATE_TIME											33600 // 0x00008340 write date and time to STM32, to initialize the RTC
+#define WR_STATE_FAN											33601 // 0x00008341 write state fan
+#define WR_STATE_RELAY											33602 // 0x00008342 write state of all relays to STM32
+#define WR_RANGE_SENSOR											33603 // 0x00008343 write range sensor to all sensors
+#define RD_IR_REMOTE											33610 // 0x0000834A read code and description from IR-remote
+#define RD_STATE_FAN											33611 // 0x0000834B read state fan
+#define RD_STATE_RELAY											33612 // 0x0000834C read state to all relays
+#define RD_RANGE_SENSOR											33613 // 0x0000834D read temperature range from all sensors
+#define RD_TEMP_SENSOR											33614 // 0x0000834E read temperature and alert from all sensors
 
 #define IDT_TIMER												33999
 

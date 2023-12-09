@@ -44,11 +44,19 @@ INT_PTR onWmCommand_Tab1Proc(const HWND& hDlg
 BOOL setIrRemote(const FRAME& oFrame)
 {
     // code
+    // the command has gone to 32-bit ( 08-12-2023 )
+    sprintf_s(g_chTextBuffer
+        , LEN_MAX_TEXT_BUFFER
+        , "0x%X"
+        , oFrame.cmd
+    );
+    /*
     sprintf_s(g_chTextBuffer
         , LEN_MAX_TEXT_BUFFER
         , "0x%X"
         , (oFrame.cmd & 0xF00) | (oFrame.cmd & 0x0FF)
     );
+    */
     SendMessageA(GetDlgItem(g_hWndDlgTab1, IDC_CODE)
         , WM_SETTEXT
         , (WPARAM)0

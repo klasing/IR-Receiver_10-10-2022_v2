@@ -413,6 +413,28 @@ BOOL transmit(LPVOID lpVoid)
     if (oFrame.cmd == RD_TEMP_SENSOR) OutputDebugString(L"transmit RD_TEMP_SENSOR\n");
 
     // transfer frame to buffer
+    // the command has gone to 32-bit ( 08-12-2023 )
+    g_chBuffer[0] = oFrame.soh;
+    g_chBuffer[1] = 0;
+    g_chBuffer[2] = 0;
+    g_chBuffer[3] = (oFrame.cmd & 0xFF00) >> 8;
+    g_chBuffer[4] = (oFrame.cmd & 0x00FF);
+    g_chBuffer[5] = oFrame.stx;
+    for (int i = 0; i < LEN_MAX_ENTRY; i++)
+    {
+        g_chBuffer[i + OFFSET_PAYLOAD] = oFrame.payload[i];
+    }
+    g_chBuffer[38] = oFrame.etx;
+    g_chBuffer[39] = oFrame.etb;
+    g_chBuffer[40] = oFrame.eot;
+
+    // calculate crc and feed into g_chBuffer
+    calcCrcEx((const UCHAR*)g_chBuffer, LEN_FRAME, g_valCrc);
+    g_chBuffer[41] = (g_valCrc & 0xFF000000) >> 24;
+    g_chBuffer[42] = (g_valCrc & 0x00FF0000) >> 16;
+    g_chBuffer[43] = (g_valCrc & 0x0000FF00) >> 8;
+    g_chBuffer[44] = (g_valCrc & 0x000000FF);
+    /*
     g_chBuffer[0] = oFrame.soh;
     g_chBuffer[1] = (oFrame.cmd >> 8) & 0xFF;
     g_chBuffer[2] = oFrame.cmd & 0xFF;
@@ -431,6 +453,7 @@ BOOL transmit(LPVOID lpVoid)
     g_chBuffer[40] = (g_valCrc & 0x00FF0000) >> 16;
     g_chBuffer[41] = (g_valCrc & 0x0000FF00) >> 8;
     g_chBuffer[42] = (g_valCrc & 0x000000FF);
+    */
 
     // transmit
     DWORD dwNofByteTransferred = 0;
@@ -524,23 +547,28 @@ BOOL receive(LPVOID lpVoid)
         }
         // no crc error
         // save the received command into the frame
-        g_oFrame.cmd = g_chBuffer[1] << 8 | g_chBuffer[2];
+        // the command has gone to 32-bit ( 08-12-2023 )
+        g_oFrame.cmd = (g_chBuffer[1] << 24)
+            | (g_chBuffer[2] << 16)
+            | (g_chBuffer[3] << 8)
+            | (g_chBuffer[4]);
+        /*g_oFrame.cmd = g_chBuffer[1] << 8 | g_chBuffer[2];*/
         // save the received payload into the frame
         for (int i = 0; i < LEN_MAX_ENTRY; i++)
         {
-            g_oFrame.payload[i] = g_chBuffer[i + 4];
+            g_oFrame.payload[i] = g_chBuffer[i + OFFSET_PAYLOAD];
         }
         switch (g_oFrame.cmd)
         {
         case (WR_DATE_TIME):
         {
-            if (g_chBuffer[4] == ACK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
                 OutputDebugString(L"ACK WR_DATE_TIME\n");
                 if (g_queue.size() > 0) g_queue.pop();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK WR_DATE_TIME\n");
                 return EXIT_FAILURE;
@@ -549,14 +577,14 @@ BOOL receive(LPVOID lpVoid)
         } // eof WR_DATE_TIME
         case (WR_STATE_FAN):
         {
-            if (g_chBuffer[4] == ACK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
                 OutputDebugString(L"ACK WR_STATE_FAN\n");
                 if (g_queue.size() > 0) g_queue.pop();
                 enableButtonStateFan();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK WR_STATE_FAN\n");
                 return EXIT_FAILURE;
@@ -565,14 +593,14 @@ BOOL receive(LPVOID lpVoid)
         } // eof WR_STATE_FAN
         case (WR_STATE_RELAY):
         {
-            if (g_chBuffer[4] == ACK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
                 OutputDebugString(L"ACK WR_STATE_RELAY\n");
                 if (g_queue.size() > 0) g_queue.pop();
                 enableButtonStateRelay();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK WR_STATE_RELAY\n");
                 return EXIT_FAILURE;
@@ -581,14 +609,14 @@ BOOL receive(LPVOID lpVoid)
         } // eof WR_STATE_RELAY
         case (WR_RANGE_SENSOR):
         {
-            if (g_chBuffer[4] == ACK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
                 OutputDebugString(L"ACK WR_RANGE_SENSOR\n");
                 if (g_queue.size() > 0) g_queue.pop();
                 enableButtonRangeSensor();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK WR_RANGE_SENSOR\n");
                 return EXIT_FAILURE;
@@ -621,32 +649,91 @@ BOOL receive(LPVOID lpVoid)
 		case (0xFFB): // 3
 		case (0xFFE): // 1
 		case (0xFFF): // INVALID
-        /*case (RD_IR_REMOTE):*/
+        // Yamaha function codes
+        case (0x5EA1F807): // POWER
+        case (0x5EA1EA15): // SLEEP
+        case (0x5EA1D02F): // CD SKIP REWIND
+        case (0x5EA150AF): // CD SKIP FORWARD
+        case (0x5EA1F20D): // CD DISC SKIP
+        case (0x5EA1708F): // PHONO PLAY/CUT
+        case (0x5EA128D7): // PHONO
+        case (0x5EA1B04F): // CD SEARCH REWIND
+        case (0x5EA130CF): // CD SEARCH FORWARD
+        case (0x5EA1906F): // CD PAUSE/STOP
+        case (0x5EA110EF): // CD PLAY
+        case (0x5EA1A857): // CD
+        case (0x5EA1609F): // TAPE 1 MON DECK A/B
+        case (0x5EA18877): // TUNER PRESET -
+        case (0x5EA108F7): // TUNER PRESET +
+        case (0x5EA148B7): // TUNER A/B/C/D/E
+        case (0x5EA16897): // TUNER
+        case (0x5EA120DF): // TAPE 1 MON REC/PAUSE
+        case (0x5EA1E01F): // TAPE 1 MON DIR A
+        case (0x5EA100FF): // TAPE 1 MON PLAY
+        case (0x5EA102FD): // TAPE 1 MON DIR B
+        case (0x5EA19867): // TAPE 1 MON
+        case (0x5EA1A05F): // TAPE 1 MON REC/MUTE
+        case (0x5EA1807F): // TAPE 1 MON REWIND
+        case (0x5EA1C03F): // TAPE 1 MON STOP
+        case (0x5EA140BF): // TAPE 1 MON FORWARD
+        case (0x5EA1DA25): // STOP
+        case (0x3EC120DF): // PAUSE/STOP
+        case (0x3EC1A05F): // PLAY
+        case (0x5EA1E817): // LD/TV
+        case (0x3EC140BF): // CHAPTER/CH -
+        case (0x3EC1C03F): // CHAPTER/CH +
+        case (0x3EC1609F): // SEARCH REWIND
+        case (0x3EC1E01F): // SEARCH FORWARD
+        case (0x5EA1F00F): // VCR 1 MON
+        case (0x3EC1C837): // DISPLAY
+        case (0x3EC150AF): // STILL PREVIOUS
+        case (0x3EC1D02F): // STILL NEXT
+        case (0x5EC1C837): // VCR 2 MON / TAPE 2 MON
+        case (0x5EA1A15E): // TEST
+        case (0x5EA111EE): // DSP DOLBY PRO LOGIC 1
+        case (0x5EA1916E): // DSP DOLBY ENHANCED 2
+        case (0x5EA151AE): // DSP CNCT VIDEO 3
+        case (0x5EA1D12E): // MONO MOVIE 4
+        case (0x5EA131CE): // ROCK 5
+        case (0x5EA1B14E): // HALL 6
+        case (0x5EA16A95): // EFFECT ON/OFF
+        case (0x5EA1817E): // FRONT EFFECT LEVEL -
+        case (0x5EA101FE): // FRONT EFFECT LEVEL +
+        case (0x5EA14AB5): // DELAY TIME +
+        case (0x5EA158A7): // MASTER VOLUME +
+        case (0x5EA1C13E): // CENTER LEVEL -
+        case (0x5EA141BE): // CENTER LEVEL +
+        case (0x5EA138C7): // MUTING
+        case (0x5EA1FA05): // REAR LEVEL -
+        case (0x5EA17A85): // REAR LEVEL +
+        case (0x5EA1CA35): // DELAY -
+        case (0x5EA1D827): // MASTER VOLUME -
+        case (0xFFFFFFFF): // INVALID
         {
-            if ((g_chBuffer[4] & 0b01111111) == ACK)
+            if ((g_chBuffer[OFFSET_PAYLOAD] & 0b01111111) == ACK)
             {
                 OutputDebugString(L"ACK RD_IR_REMOTE\n");
                 setIrRemote(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK RD_IR_REMOTE\n");
                 return EXIT_FAILURE;
             }
             break;
-        } // eof RD_STATE_FAN
+        } // eof RD_IR_REMOTE
         case (RD_STATE_FAN):
         {
-            if (g_chBuffer[4] == ACK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             { 
                 OutputDebugString(L"ACK RD_STATE_FAN\n");
                 setStateFan(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK RD_STATE_FAN\n");
                 return EXIT_FAILURE;
@@ -655,14 +742,14 @@ BOOL receive(LPVOID lpVoid)
         } // eof RD_STATE_FAN
         case (RD_STATE_RELAY):
         {
-            if (g_chBuffer[4] == ACK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
                 OutputDebugString(L"ACK RD_STATE_RELAY\n");
                 setStateRelay(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK RD_STATE_RELAY\n");
                 return EXIT_FAILURE;
@@ -671,7 +758,7 @@ BOOL receive(LPVOID lpVoid)
         } // eof RD_STATE_RELAY
         case (RD_RANGE_SENSOR):
         {
-            if (g_chBuffer[4] == ACK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
                 OutputDebugString(L"ACK RD_RANGE_SENSOR\n");
                 setRangeSensor(g_oFrame);
@@ -679,7 +766,7 @@ BOOL receive(LPVOID lpVoid)
                 reorganize_queue();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK RD_RANGE_SENSOR\n");
                 return EXIT_FAILURE;
@@ -688,7 +775,7 @@ BOOL receive(LPVOID lpVoid)
         } // eof RD_RANGE_SENSOR
         case (RD_TEMP_SENSOR):
         {
-            if (g_chBuffer[4] == ACK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
                 OutputDebugString(L"ACK RD_TEMP_SENSOR\n");
                 setTempSensor(g_oFrame);
@@ -696,7 +783,7 @@ BOOL receive(LPVOID lpVoid)
                 reorganize_queue();
                 return EXIT_SUCCESS;
             }
-            if (g_chBuffer[4] == NAK)
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
                 OutputDebugString(L"NAK RD_TEMP_SENSOR\n");
                 return EXIT_FAILURE;
