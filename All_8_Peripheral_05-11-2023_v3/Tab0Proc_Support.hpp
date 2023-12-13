@@ -498,8 +498,8 @@ BOOL receive(LPVOID lpVoid)
     {
         OutputDebugString(L"no bytes received from STM32\n");
         /*
-        * this is not yet confirmed and if the func ClearCommError()
-        * recovers communication from a failure
+        // this is not yet confirmed and if the func ClearCommError()
+        // recovers communication from a failure
         // possible cause that leads to a communication failure
         // 1) connection is lost
         // 2) Windows went into 'sleep' mode
@@ -623,91 +623,106 @@ BOOL receive(LPVOID lpVoid)
             }
             break;
         } // eof WR_RANGE_SENSOR
-		case (0xABF): // radio
-		case (0xAEF): // menu | text
-		case (0xBBB): // forward
-		case (0xBEB): // stop; turn fan off
-		case (0xBEF): // record
-		case (0xBFB): // rewind
-		case (0xBFE): // blue; seven segment display toggle show second
-		case (0xEBB): // guide | tv home
-		case (0xEBF): // louder
-		case (0xEEB): // quieter
-		case (0xEEF): // pause/play | back/? turn fan on
-		case (0xEFB): // P+ | red | av increase RPM, with PWM
-		case (0xEFE): // P- | green | right | audio off decrease RPM, with PWM
-		case (0xEFF): // yellow
-		case (0xFAB): // 0
-		case (0xFAF): // i-tv
-		case (0xFBB): // 9 | down
-		case (0xFBE): // 8 | left | up
-		case (0xFBF): // OK
-		case (0xFEB): // 5
-		case (0xFEE): // 4 | 6
-		case (0xFEF): // 7
-		case (0xFFA): // 2
-		case (0xFFB): // 3
-		case (0xFFE): // 1
-		case (0xFFF): // INVALID
+        // both hex codes initially are zero
+        case (0):
+        // Ruwido function codes
+        case (0x0000454A): // i-tv
+        case (0x00004550): // rewind
+        case (0x00008B4A): // pause/play
+        case (0x00011554): // forward
+        case (0x00008AA2): // stop
+        case (0x00008AAA): // record
+        case (0x00008A50): // red
+        case (0x0000452A): // green
+        case (0x000022A4): // yellow
+        case (0x000022AA): // blue
+        //case (0x0B): // up | green
+        //case (0x0C): // left | green
+        //case (0x0D): // OK | yellow
+        //case (0x0E): // right | blue
+        case (0x000045AA): // down
+        //case (0x010): // menu | forward
+        case (0x00004554): // tv home
+        case (0x00008A94): // gids
+        case (0x00022A94): // radio
+        //case (0x14): // back/? | blue
+        //case (0x15): // louder | i-tv
+        //case (0x016): // P+ | red
+        case (0x00008B94): // quieter
+        case (0x0000152A): // audio off
+        case (0x00008ACA): // P-
+        case (0x000008A8): // 1 | ;@?!
+        case (0x00001150): // 2 | abc
+        case (0x00001154): // 3 | def
+        //case (0x1D): // 4 | ghi | blue
+        //case (0x1E): // 5 | jkl | blue
+        case (0x000022CA): // 6 | mno
+        //case (0x20): // 7 | pqrs | yellow
+        //case (0x21): // 8 | tuv | blue
+        //case (0x22): // 9 | wxyz | rewind
+        //case (0x23): // av | rewind
+        //case (0x24): // 0 | _ | tv-home
+        //case (0x25): // menu/text | stop
+        case (0xFFFF): // invalid
         // Yamaha function codes
-        case (0x5EA1F807): // POWER
-        case (0x5EA1EA15): // SLEEP
-        case (0x5EA1D02F): // CD SKIP REWIND
-        case (0x5EA150AF): // CD SKIP FORWARD
-        case (0x5EA1F20D): // CD DISC SKIP
-        case (0x5EA1708F): // PHONO PLAY/CUT
-        case (0x5EA128D7): // PHONO
-        case (0x5EA1B04F): // CD SEARCH REWIND
-        case (0x5EA130CF): // CD SEARCH FORWARD
-        case (0x5EA1906F): // CD PAUSE/STOP
-        case (0x5EA110EF): // CD PLAY
-        case (0x5EA1A857): // CD
-        case (0x5EA1609F): // TAPE 1 MON DECK A/B
-        case (0x5EA18877): // TUNER PRESET -
-        case (0x5EA108F7): // TUNER PRESET +
-        case (0x5EA148B7): // TUNER A/B/C/D/E
-        case (0x5EA16897): // TUNER
-        case (0x5EA120DF): // TAPE 1 MON REC/PAUSE
-        case (0x5EA1E01F): // TAPE 1 MON DIR A
-        case (0x5EA100FF): // TAPE 1 MON PLAY
-        case (0x5EA102FD): // TAPE 1 MON DIR B
-        case (0x5EA19867): // TAPE 1 MON
-        case (0x5EA1A05F): // TAPE 1 MON REC/MUTE
-        case (0x5EA1807F): // TAPE 1 MON REWIND
-        case (0x5EA1C03F): // TAPE 1 MON STOP
-        case (0x5EA140BF): // TAPE 1 MON FORWARD
-        case (0x5EA1DA25): // STOP
-        case (0x3EC120DF): // PAUSE/STOP
-        case (0x3EC1A05F): // PLAY
-        case (0x5EA1E817): // LD/TV
-        case (0x3EC140BF): // CHAPTER/CH -
-        case (0x3EC1C03F): // CHAPTER/CH +
-        case (0x3EC1609F): // SEARCH REWIND
-        case (0x3EC1E01F): // SEARCH FORWARD
-        case (0x5EA1F00F): // VCR 1 MON
-        case (0x3EC1C837): // DISPLAY
-        case (0x3EC150AF): // STILL PREVIOUS
-        case (0x3EC1D02F): // STILL NEXT
-        case (0x5EC1C837): // VCR 2 MON / TAPE 2 MON
-        case (0x5EA1A15E): // TEST
-        case (0x5EA111EE): // DSP DOLBY PRO LOGIC 1
-        case (0x5EA1916E): // DSP DOLBY ENHANCED 2
-        case (0x5EA151AE): // DSP CNCT VIDEO 3
-        case (0x5EA1D12E): // MONO MOVIE 4
-        case (0x5EA131CE): // ROCK 5
-        case (0x5EA1B14E): // HALL 6
-        case (0x5EA16A95): // EFFECT ON/OFF
-        case (0x5EA1817E): // FRONT EFFECT LEVEL -
-        case (0x5EA101FE): // FRONT EFFECT LEVEL +
-        case (0x5EA14AB5): // DELAY TIME +
-        case (0x5EA158A7): // MASTER VOLUME +
-        case (0x5EA1C13E): // CENTER LEVEL -
-        case (0x5EA141BE): // CENTER LEVEL +
-        case (0x5EA138C7): // MUTING
-        case (0x5EA1FA05): // REAR LEVEL -
-        case (0x5EA17A85): // REAR LEVEL +
-        case (0x5EA1CA35): // DELAY -
-        case (0x5EA1D827): // MASTER VOLUME -
+        case (0xBD43F00E): // POWER
+        case (0xBD43D42A): // SLEEP
+        case (0xBD43A05E): // CD SKIP REWIND
+        case (0xBD42A15E): // CD SKIP FORWARD
+        case (0xBD43E41A): // CD DISC SKIP
+        case (0xBD42E11E): // PHONO PLAY/CUT
+        case (0xBD4251AE): // PHONO
+        case (0xBD43609E): // CD SEARCH REWIND
+        case (0xBD42619E): // CD SEARCH FORWARD
+        case (0xBD4320DE): // CD PAUSE/STOP
+        case (0xBD4221DE): // CD PLAY
+        case (0xBD4350AE): // CD
+        case (0xBD42C13E): // TAPE 1 MON DECK A/B
+        case (0xBD4310EE): // TUNER PRESET -
+        case (0xBD4211EE): // TUNER PRESET +
+        case (0xBD42916E): // TUNER A/B/C/D/E
+        case (0xBD42D12E): // TUNER
+        case (0xBD4241BE): // TAPE 1 MON REC/PAUSE
+        case (0xBD43C03E): // TAPE 1 MON DIR A
+        case (0xBD4201FE): // TAPE 1 MON PLAY
+        case (0xBD4205FA): // TAPE 1 MON DIR B
+        case (0xBD4330CE): // TAPE 1 MON
+        case (0xBD4340BE): // TAPE 1 MON REC/MUTE
+        case (0xBD4300FE): // TAPE 1 MON REWIND
+        case (0xBD43807E): // TAPE 1 MON STOP
+        case (0xBD42817E): // TAPE 1 MON FORWARD
+        case (0x7D83B44A): // STOP
+        case (0x7D8241BE): // PAUSE/STOP
+        case (0x7D8340BE): // PLAY
+        case (0xBD43D02E): // LD/TV
+        case (0x7D82817E): // CHAPTER/CH -
+        case (0x7D83807E): // CHAPTER/CH +
+        case (0x7D82C13E): // SEARCH REWIND
+        case (0x7D83C03E): // SEARCH FORWARD
+        case (0xBD43E01E): // VCR 1 MON
+        case (0x7D83906E): // DISPLAY
+        case (0x7D82A15E): // STILL PREVIOUS
+        case (0x7D83A05E): // STILL NEXT
+        case (0xBD43906E): // VCR 2 MON / TAPE 2 MON
+        case (0xBD4342BC): // TEST
+        case (0xBD4223DC): // DSP DOLBY PRO LOGIC 1
+        case (0xBD4322DC): // DSP DOLBY ENHANCED 2
+        case (0xBD42A35C): // DSP CNCT VIDEO 3
+        case (0xBD43A25C): // MONO MOVIE 4
+        case (0xBD42639C): // ROCK 5
+        case (0xBD43629C): // HALL 6
+        case (0xBD42D52A): // EFFECT ON/OFF
+        case (0xBD4302FC): // FRONT EFFECT LEVEL -
+        case (0xBD4203FC): // FRONT EFFECT LEVEL +
+        case (0xBD42956A): // DELAY TIME +
+        case (0xBD42B14E): // MASTER VOLUME +
+        case (0xBD43827C): // CENTER LEVEL -
+        case (0xBD42837C): // CENTER LEVEL +
+        case (0xBD42718E): // MUTING
+        case (0xBD43F40A): // REAR LEVEL -
+        case (0xBD42F50A): // REAR LEVEL +
+        case (0xBD43946A): // DELAY -
+        case (0xBD43B04E): // MASTER VOLUME -
         case (0xFFFFFFFF): // INVALID
         {
             if ((g_chBuffer[OFFSET_PAYLOAD] & 0b01111111) == ACK)

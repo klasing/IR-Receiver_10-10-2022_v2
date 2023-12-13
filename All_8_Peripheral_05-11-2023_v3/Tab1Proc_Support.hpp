@@ -47,7 +47,7 @@ BOOL setIrRemote(const FRAME& oFrame)
     // the command has gone to 32-bit ( 08-12-2023 )
     sprintf_s(g_chTextBuffer
         , LEN_MAX_TEXT_BUFFER
-        , "0x%X"
+        , "0x%08X"
         , oFrame.cmd
     );
     /*
