@@ -20,7 +20,8 @@
 #define OFFSET_PAYLOAD											6
 #define LEN_MAX_TEXT_BUFFER										LEN_MAX_ENTRY
 #define BUFFER_MAX_SERIAL										512
-#define DELAY_HALFHZ_SERIAL										1000 // 2 * 1000 = 2000, is 0.5 time per second is 1/2 Hz
+#define DELAY_HALFHZ_SERIAL										250
+/*#define DELAY_HALFHZ_SERIAL										1000 // 2 * 1000 = 2000, is 0.5 time per second is 1/2 Hz*/
 // control
 // common
 #define IDC_STATUSBAR											33000

@@ -626,6 +626,7 @@ BOOL receive(LPVOID lpVoid)
         // both hex codes initially are zero
         case (0):
         // Ruwido function codes
+        case (0x0052A954): // tv
         case (0x0000454A): // i-tv
         case (0x00004550): // rewind
         case (0x00008B4A): // pause/play
@@ -636,34 +637,34 @@ BOOL receive(LPVOID lpVoid)
         case (0x0000452A): // green
         case (0x000022A4): // yellow
         case (0x000022AA): // blue
-        //case (0x0B): // up | green
-        //case (0x0C): // left | green
-        //case (0x0D): // OK | yellow
-        //case (0x0E): // right | blue
+        //case (0x0000000B): // up
+        //case (0x0000000C): // left
+        //case (0x0000000D): // OK
+        //case (0x0000000E): // right
         case (0x000045AA): // down
-        //case (0x010): // menu | forward
-        case (0x00004554): // tv home
+        //case (0x00000010): // menu
+        //case (0x00000011): // tv home
         case (0x00008A94): // gids
-        case (0x00022A94): // radio
-        //case (0x14): // back/? | blue
-        //case (0x15): // louder | i-tv
-        //case (0x016): // P+ | red
-        case (0x00008B94): // quieter
-        case (0x0000152A): // audio off
+        //case (0x00000013): // radio
+        //case (0x00000014): // back/?
+        //case (0x00000015): // louder
+        //case (0x00000016): // P+
+        //case (0x00000017): // quieter
+        case (0x007FFFE0): // audio off
         case (0x00008ACA): // P-
         case (0x000008A8): // 1 | ;@?!
         case (0x00001150): // 2 | abc
         case (0x00001154): // 3 | def
-        //case (0x1D): // 4 | ghi | blue
-        //case (0x1E): // 5 | jkl | blue
+        //case (0x0000001D): // 4 | ghi
+        //case (0x0000001E): // 5 | jkl
         case (0x000022CA): // 6 | mno
-        //case (0x20): // 7 | pqrs | yellow
-        //case (0x21): // 8 | tuv | blue
-        //case (0x22): // 9 | wxyz | rewind
-        //case (0x23): // av | rewind
-        //case (0x24): // 0 | _ | tv-home
-        //case (0x25): // menu/text | stop
-        case (0xFFFF): // invalid
+        //case (0x00000020): // 7 | pqrs
+        //case (0x00000021): // 8 | tuv
+        //case (0x00000022): // 9 | wxyz
+        case (0x00565552): // av
+        case (0x00004554): // 0 | _
+        //case (0x00000025): // menu/text
+        case (0x0000FFFF): // invalid
         // Yamaha function codes
         case (0xBD43F00E): // POWER
         case (0xBD43D42A): // SLEEP
