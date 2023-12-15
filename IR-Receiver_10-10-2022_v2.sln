@@ -23,6 +23,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "STM32-Win32_rs232_communica
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "All_8_Peripheral_05-11-2023_v3", "All_8_Peripheral_05-11-2023_v3\All_8_Peripheral_05-11-2023_v3.vcxproj", "{90C10415-9BBD-4EEA-99AB-E9349CE800D3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "STM32-Win32_rs232_communication_15-11-2023_v2_1", "STM32-Win32_rs232_communication_15-11-2023_v2_1\STM32-Win32_rs232_communication_15-11-2023_v2_1.vcxproj", "{76C7FD28-014B-4695-B096-CF2B9596E2D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -111,6 +113,14 @@ Global
 		{90C10415-9BBD-4EEA-99AB-E9349CE800D3}.Release|x64.Build.0 = Release|x64
 		{90C10415-9BBD-4EEA-99AB-E9349CE800D3}.Release|x86.ActiveCfg = Release|Win32
 		{90C10415-9BBD-4EEA-99AB-E9349CE800D3}.Release|x86.Build.0 = Release|Win32
+		{76C7FD28-014B-4695-B096-CF2B9596E2D8}.Debug|x64.ActiveCfg = Debug|x64
+		{76C7FD28-014B-4695-B096-CF2B9596E2D8}.Debug|x64.Build.0 = Debug|x64
+		{76C7FD28-014B-4695-B096-CF2B9596E2D8}.Debug|x86.ActiveCfg = Debug|Win32
+		{76C7FD28-014B-4695-B096-CF2B9596E2D8}.Debug|x86.Build.0 = Debug|Win32
+		{76C7FD28-014B-4695-B096-CF2B9596E2D8}.Release|x64.ActiveCfg = Release|x64
+		{76C7FD28-014B-4695-B096-CF2B9596E2D8}.Release|x64.Build.0 = Release|x64
+		{76C7FD28-014B-4695-B096-CF2B9596E2D8}.Release|x86.ActiveCfg = Release|Win32
+		{76C7FD28-014B-4695-B096-CF2B9596E2D8}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
