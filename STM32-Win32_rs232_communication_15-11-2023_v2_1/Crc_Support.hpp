@@ -137,4 +137,3 @@ BOOL calcCrcEx(const UCHAR* chBuffer
 	} // eof switch
 	return EXIT_SUCCESS;
 }
-

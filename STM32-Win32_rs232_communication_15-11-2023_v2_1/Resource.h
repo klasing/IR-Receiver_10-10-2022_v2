@@ -7,10 +7,18 @@
 #define ETX								3
 #define ETB								23
 #define EOT								4
-#define MAX_LEN_ENTRY					32
+// characters used in g_oFrame.payload for acknowledgement
+#define ACK								6
+#define NAK								21
+// serial communication
+#define LEN_DATE_TIME					7
+#define MAX_LEN_ENTRY					32	// max length payload
 #define LEN_FRAME						43
 #define LEN_CRC							4
-#define BUFFER_MAX_SERIAL				512
+#define OFFSET_PAYLOAD					8
+#define MAX_LEN_TEXT_BUFFER				MAX_LEN_ENTRY
+#define MAX_BUFFER_SERIAL				512
+#define DELAY_TIME_SERIAL				25 // (ms) roundtrip is 50 ms
 // control
 // common
 #define IDC_STATUSBAR					33000
@@ -20,6 +28,10 @@
 #define DISCONNECT_SERIAL				33101
 #define IDC_NOF_TRANSMISSION			33102
 #define IDC_NOF_ERROR_CRC				33103
+// serial communication
+#define WR_NOP							33699 // 0x000083A3 no operation
+
+#define IDT_TIMER						33999
 
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

@@ -30,10 +30,8 @@ BOOL g_bIsSetError = FALSE;
 //*                     prototype
 //*****************************************************************************
 BOOL                connect();
-BOOL                date_time_for_serial(UCHAR* pszDateTime);
-/*BOOL                date_time_for_serial(CHAR* pszDateTime);*/
-BOOL                set_date_time(const UCHAR* pszDateTime);
-/*BOOL                set_date_time(const CHAR* pszDateTime);*/
+BOOL                date_time_for_serial(CHAR* pszDateTime);
+BOOL                set_date_time(const CHAR* pszDateTime);
 DWORD               WINAPI TxRx(LPVOID lpVoid);
 void                TimerProc(HWND hWnd, UINT uint, UINT_PTR pUint, DWORD dword);
 BOOL                transmit(LPVOID lpVoid);
@@ -261,8 +259,7 @@ BOOL connect()
 //****************************************************************************
 //*                     date_time_for_serial
 //****************************************************************************
-BOOL date_time_for_serial(UCHAR* pszDateTime)
-/*BOOL date_time_for_serial(CHAR* pszDateTime)*/
+BOOL date_time_for_serial(CHAR* pszDateTime)
 {
     // use ctime to get date and time
     time_t tt;
@@ -295,8 +292,7 @@ BOOL date_time_for_serial(UCHAR* pszDateTime)
 //****************************************************************************
 //*                     set_date_time
 //****************************************************************************
-BOOL set_date_time(const UCHAR* pszDateTime)
-/*BOOL set_date_time(const CHAR* pszDateTime)*/
+BOOL set_date_time(const CHAR* pszDateTime)
 {
     const WCHAR wstrDow[7][3] = { { L"zo" }
         , { L"ma" }
