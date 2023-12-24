@@ -45,6 +45,15 @@
     <ClInclude Include="Tab1Proc_Support.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Tab2Proc_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tab3Proc_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tab4Proc_Support.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="All_8_Peripheral_05-11-2023_v3_1.cpp">

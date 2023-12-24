@@ -135,6 +135,9 @@
     <ClInclude Include="Struct_Support.hpp" />
     <ClInclude Include="Tab0Proc_Support.hpp" />
     <ClInclude Include="Tab1Proc_Support.hpp" />
+    <ClInclude Include="Tab2Proc_Support.hpp" />
+    <ClInclude Include="Tab3Proc_Support.hpp" />
+    <ClInclude Include="Tab4Proc_Support.hpp" />
     <ClInclude Include="TabControl.hpp" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>

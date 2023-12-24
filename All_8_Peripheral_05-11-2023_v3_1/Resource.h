@@ -35,10 +35,52 @@
 #define IDC_RUWIDO_REMOTE				33106
 #define IDC_YAMAHA_REMOTE				33107
 #define BTN_YAMAHA_REMOTE				33108
+
+#define IDC_FAN_ON						33109
+#define IDC_FAN_ON_OFF					33110
+#define IDC_PWM_FAN						33111
+#define IDC_RPM_FAN						33112
+#define BTN_STATE_FAN					33113 // button that applies fan state
+
+#define IDC_RELAY1						33114
+#define IDC_RELAY2						33115
+#define IDC_RELAY3						33116
+#define IDC_RELAY4						33117
+#define IDC_RELAY5						33118
+#define IDC_RELAY6						33119
+#define IDC_RELAY7						33120
+#define IDC_RELAY8						33121
+#define BTN_STATE_RELAY					33122 // button that applies relay state
+
+#define IDC_TEMP_SENSOR1				33123
+#define IDC_TEMP_SENSOR2				33124
+#define IDC_TEMP_SENSOR3				33125
+#define IDC_TEMP_SENSOR4				33126
+#define IDC_ALERT_SENSOR1				33127
+#define IDC_ALERT_SENSOR2				33128
+#define IDC_ALERT_SENSOR3				33129
+#define IDC_ALERT_SENSOR4				33130
+#define IDC_TEMP_HI_SENSOR1				33131
+#define IDC_TEMP_HI_SENSOR2				33132
+#define IDC_TEMP_HI_SENSOR3				33133
+#define IDC_TEMP_HI_SENSOR4				33134
+#define IDC_TEMP_LO_SENSOR1				33135
+#define IDC_TEMP_LO_SENSOR2				33136
+#define IDC_TEMP_LO_SENSOR3				33137
+#define IDC_TEMP_LO_SENSOR4				33138
+#define BTN_RANGE_SENSOR				33139 // button that applies temp range
 // serial communication
-#define WR_YAMAHA_REMOTE				33604 // 0x00008344 Yamaha IR-remote mode
-#define WR_NOP							33699 // 0x000083A3 no operation
+#define WR_DATE_TIME					33600 // 0x00008340 write date and time to STM32, to initialize the RTC
+#define WR_STATE_FAN					33601 // 0x00008341 write state fan
+#define WR_STATE_RELAY					33602 // 0x00008342 write state of all relays to STM32
+#define WR_RANGE_SENSOR					33603 // 0x00008343 write range sensor to all sensors
+#define WR_YAMAHA_REMOTE				33604 // 0x00008344 write Yamaha IR-remote mode
+#define WR_NOP							33609 // 0x000083A3 write no operation
 #define RD_IR_REMOTE					33610 // 0x0000834A read code and description from IR-remote
+#define RD_STATE_FAN					33611 // 0x0000834B read state fan
+#define RD_STATE_RELAY					33612 // 0x0000834C read state to all relays
+#define RD_RANGE_SENSOR					33613 // 0x0000834D read temperature range from all sensors
+#define RD_TEMP_SENSOR					33614 // 0x0000834E read temperature and alert from all sensors
 
 #define IDT_TIMER						33999
 

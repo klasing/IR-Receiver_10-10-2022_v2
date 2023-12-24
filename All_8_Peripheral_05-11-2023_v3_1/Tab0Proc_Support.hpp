@@ -37,6 +37,14 @@ BOOL                transmit(LPVOID lpVoid);
 BOOL                receive(LPVOID lpVoid);
 BOOL                reorganize_queue();
 BOOL                setIrRemote(const FRAME& oFrame);
+BOOL                setStateFan(const FRAME& oFrame);
+BOOL                setStateRelay(const FRAME& oFrame);
+BOOL                setRangeSensor(const FRAME& oFrame);
+BOOL                setTempSensor(const FRAME& oFrame);
+BOOL                reorganize_queue();
+BOOL                enableButtonStateFan();
+BOOL                enableButtonStateRelay();
+BOOL                enableButtonRangeSensor();
 
 //****************************************************************************
 //*                     onWmInitDialog_Tab0Proc
@@ -97,12 +105,19 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
             // set date time on statusbar, by using the g_oFrame.payload as a buffer
             set_date_time(g_oFrame.payload);
             // start the communication
-            // 1) read code and description from IR-remote
-            g_oFrame.cmd = RD_IR_REMOTE;
+            // 1) write the date and time to the STM32
+            g_oFrame.cmd = WR_DATE_TIME;
             g_queue.push(g_oFrame);
-            // 2) write a no operation to the STM32
-            g_oFrame.cmd = WR_NOP;
+            // 2) read state of the fan
+            g_oFrame.cmd = RD_STATE_FAN;
             g_queue.push(g_oFrame);
+            // 3) read state of the relays
+            g_oFrame.cmd = RD_STATE_RELAY;
+            g_queue.push(g_oFrame);
+            // 4) read temperature range of all sensors
+            g_oFrame.cmd = RD_RANGE_SENSOR;
+            g_queue.push(g_oFrame);
+
             // enable infinite loop
             g_bContinueTxRx = TRUE;
             // create thread to continuously transmit and receive
@@ -391,9 +406,17 @@ BOOL transmit(LPVOID lpVoid)
     if (g_queue.empty()) return EXIT_FAILURE;
     FRAME oFrame = g_queue.front();
 
+    /*if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");*/
+    /*if (oFrame.cmd == WR_STATE_FAN) OutputDebugString(L"transmit WR_STATE_FAN\n");*/
+    /*if (oFrame.cmd == WR_STATE_RELAY) OutputDebugString(L"transmit WR_STATE_RELAY\n");*/
+    /*if (oFrame.cmd == WR_RANGE_SENSOR) OutputDebugString(L"transmit WR_RANGE_SENSOR\n");*/
     /*if (oFrame.cmd == WR_YAMAHA_REMOTE) OutputDebugString(L"transmit WR_YAMAHA_REMOTE\n");*/
     /*if (oFrame.cmd == WR_NOP) OutputDebugString(L"transmit WR_NOP\n");*/
     /*if (oFrame.cmd == RD_IR_REMOTE) OutputDebugString(L"transmit RD_IR_REMOTE\n");*/
+    /*if (oFrame.cmd == RD_STATE_FAN) OutputDebugString(L"transmit RD_STATE_FAN\n");*/
+    /*if (oFrame.cmd == RD_STATE_RELAY) OutputDebugString(L"transmit RD_STATE_RELAY\n");*/
+    /*if (oFrame.cmd == RD_RANGE_SENSOR) OutputDebugString(L"transmit RD_RANGE_SENSOR\n");*/
+    /*if (oFrame.cmd == RD_TEMP_SENSOR) OutputDebugString(L"transmit RD_TEMP_SENSOR\n");*/
 
     // transfer frame to buffer
     g_chBuffer[0] = oFrame.soh;
@@ -533,6 +556,69 @@ BOOL receive(LPVOID lpVoid)
 
         switch (g_oFrame.cmd)
         {
+        case (WR_DATE_TIME):
+        {
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
+            {
+                OutputDebugString(L"ACK WR_DATE_TIME\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                OutputDebugString(L"NAK WR_DATE_TIME\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof WR_DATE_TIME
+        case (WR_STATE_FAN):
+        {
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
+            {
+                OutputDebugString(L"ACK WR_STATE_FAN\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                enableButtonStateFan();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                OutputDebugString(L"NAK WR_STATE_FAN\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof WR_STATE_FAN
+        case (WR_STATE_RELAY):
+        {
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
+            {
+                OutputDebugString(L"ACK WR_STATE_RELAY\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                enableButtonStateRelay();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                OutputDebugString(L"NAK WR_STATE_RELAY\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof WR_STATE_RELAY
+        case (WR_RANGE_SENSOR):
+        {
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
+            {
+                OutputDebugString(L"ACK WR_RANGE_SENSOR\n");
+                if (g_queue.size() > 0) g_queue.pop();
+                enableButtonRangeSensor();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                OutputDebugString(L"NAK WR_RANGE_SENSOR\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof WR_RANGE_SENSOR
         case (WR_YAMAHA_REMOTE): // 33604
         {
             if ((g_chBuffer[OFFSET_PAYLOAD] & 0b01111111) == ACK)
@@ -551,7 +637,7 @@ BOOL receive(LPVOID lpVoid)
             }
 
             break;
-        }
+        } // eof WR_YAMAHA_REMOTE
         case (WR_NOP): // 33699
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
@@ -589,6 +675,72 @@ BOOL receive(LPVOID lpVoid)
             }
             break;
         } // eof RD_IR_REMOTE
+        case (RD_STATE_FAN):
+        {
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
+            {
+                OutputDebugString(L"ACK RD_STATE_FAN\n");
+                setStateFan(g_oFrame);
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                OutputDebugString(L"NAK RD_STATE_FAN\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_STATE_FAN
+        case (RD_STATE_RELAY):
+        {
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
+            {
+                OutputDebugString(L"ACK RD_STATE_RELAY\n");
+                setStateRelay(g_oFrame);
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                OutputDebugString(L"NAK RD_STATE_RELAY\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_STATE_RELAY
+        case (RD_RANGE_SENSOR):
+        {
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
+            {
+                OutputDebugString(L"ACK RD_RANGE_SENSOR\n");
+                setRangeSensor(g_oFrame);
+                if (g_queue.size() > 0) g_queue.pop();
+                reorganize_queue();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                OutputDebugString(L"NAK RD_RANGE_SENSOR\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_RANGE_SENSOR
+        case (RD_TEMP_SENSOR):
+        {
+            if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
+            {
+                OutputDebugString(L"ACK RD_TEMP_SENSOR\n");
+                setTempSensor(g_oFrame);
+                if (g_queue.size() > 0) g_queue.pop();
+                reorganize_queue();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                OutputDebugString(L"NAK RD_TEMP_SENSOR\n");
+                return EXIT_FAILURE;
+            }
+            break;
+        } // eof RD_TEMP_SENSOR
         } // eof switch
     }
 
