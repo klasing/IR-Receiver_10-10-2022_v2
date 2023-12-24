@@ -18,7 +18,8 @@
 #define OFFSET_PAYLOAD					8
 #define MAX_LEN_TEXT_BUFFER				MAX_LEN_ENTRY
 #define MAX_BUFFER_SERIAL				512
-#define DELAY_TIME_SERIAL				25 // (ms) roundtrip is 50 ms
+#define DELAY_TIME_SERIAL				250 // (ms) roundtrip is 1.2 s
+/*#define DELAY_TIME_SERIAL				25 // (ms) roundtrip is 50 ms*/
 // control
 // common
 #define IDC_STATUSBAR					33000
@@ -33,7 +34,9 @@
 #define IDC_DESCRIPTION					33105
 #define IDC_RUWIDO_REMOTE				33106
 #define IDC_YAMAHA_REMOTE				33107
+#define BTN_YAMAHA_REMOTE				33108
 // serial communication
+#define WR_YAMAHA_REMOTE				33604 // 0x00008344 Yamaha IR-remote mode
 #define WR_NOP							33699 // 0x000083A3 no operation
 #define RD_IR_REMOTE					33610 // 0x0000834A read code and description from IR-remote
 

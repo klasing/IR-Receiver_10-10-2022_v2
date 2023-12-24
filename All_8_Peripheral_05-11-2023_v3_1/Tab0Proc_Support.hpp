@@ -391,8 +391,9 @@ BOOL transmit(LPVOID lpVoid)
     if (g_queue.empty()) return EXIT_FAILURE;
     FRAME oFrame = g_queue.front();
 
-    /*if (oFrame.cmd == RD_IR_REMOTE) OutputDebugString(L"transmit RD_IR_REMOTE\n");*/
+    /*if (oFrame.cmd == WR_YAMAHA_REMOTE) OutputDebugString(L"transmit WR_YAMAHA_REMOTE\n");*/
     /*if (oFrame.cmd == WR_NOP) OutputDebugString(L"transmit WR_NOP\n");*/
+    /*if (oFrame.cmd == RD_IR_REMOTE) OutputDebugString(L"transmit RD_IR_REMOTE\n");*/
 
     // transfer frame to buffer
     g_chBuffer[0] = oFrame.soh;
@@ -532,6 +533,25 @@ BOOL receive(LPVOID lpVoid)
 
         switch (g_oFrame.cmd)
         {
+        case (WR_YAMAHA_REMOTE): // 33604
+        {
+            if ((g_chBuffer[OFFSET_PAYLOAD] & 0b01111111) == ACK)
+            {
+                /*OutputDebugString(L"receive ACK WR_YAMAHA_REMOTE\n");*/
+                /*OutputDebugStringA(g_chTextBuffer);*/
+                setIrRemote(g_oFrame);
+                if (g_queue.size() > 0) g_queue.pop();
+                return EXIT_SUCCESS;
+            }
+            if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
+            {
+                /*OutputDebugString(L"receive NAK WR_YAMAHA_REMOTE\n");*/
+                /*OutputDebugStringA(g_chTextBuffer);*/
+                return EXIT_FAILURE;
+            }
+
+            break;
+        }
         case (WR_NOP): // 33699
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)

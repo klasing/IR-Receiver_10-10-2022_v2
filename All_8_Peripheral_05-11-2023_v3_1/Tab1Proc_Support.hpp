@@ -29,11 +29,23 @@ INT_PTR onWmCommand_Tab1Proc(const HWND& hDlg
     , const WPARAM& wParam
 )
 {
-    /*
     switch (LOWORD(wParam))
     {
+    case BTN_YAMAHA_REMOTE:
+    {
+        // kill timer
+        KillTimer(g_hWndDlgTab0, IDT_TIMER);
+        g_oFrame.cmd = WR_YAMAHA_REMOTE;
+        g_queue.push(g_oFrame);
+        // set timer
+        SetTimer(g_hWndDlgTab0
+            , IDT_TIMER
+            , DELAY_TIME_SERIAL
+            , (TIMERPROC)TimerProc
+        );
+        return (INT_PTR)TRUE;
+    } // eof BTN_YAMAHA_REMOTE
     } // eof switch
-    */
 
     return (INT_PTR)FALSE;
 }
@@ -46,7 +58,7 @@ BOOL setIrRemote(const FRAME& oFrame)
     // code
     sprintf_s(g_chTextBuffer
         , MAX_LEN_TEXT_BUFFER
-        , "0x%X"
+        , "0x%08X"
         , oFrame.functionCode
     );
     SendMessageA(GetDlgItem(g_hWndDlgTab1, IDC_CODE)
