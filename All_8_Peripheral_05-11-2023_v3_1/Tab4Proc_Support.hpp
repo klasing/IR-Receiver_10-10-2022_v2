@@ -9,11 +9,6 @@ extern CHAR g_chTextBuffer[MAX_LEN_TEXT_BUFFER];
 extern FRAME g_oFrame;
 
 //****************************************************************************
-//*                     prototype
-//****************************************************************************
-/*BOOL oneOutOf16(const FLOAT fTemp, UINT8& iFraction);*/
-
-//****************************************************************************
 //*                     onWmInitDialog_Tab4Proc
 //****************************************************************************
 BOOL onWmInitDialog_Tab4Proc(const HWND& hDlg)

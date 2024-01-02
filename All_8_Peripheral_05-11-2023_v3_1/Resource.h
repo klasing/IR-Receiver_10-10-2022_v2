@@ -18,7 +18,7 @@
 #define OFFSET_PAYLOAD					8
 #define MAX_LEN_TEXT_BUFFER				MAX_LEN_ENTRY
 #define MAX_BUFFER_SERIAL				512
-#define DELAY_TIME_SERIAL				250 // (ms) roundtrip is 1.2 s
+#define DELAY_TIME_SERIAL				500 // (ms) roundtrip is 1000 ms
 /*#define DELAY_TIME_SERIAL				25 // (ms) roundtrip is 50 ms*/
 // control
 // common
@@ -50,25 +50,33 @@
 #define IDC_RELAY6						33119
 #define IDC_RELAY7						33120
 #define IDC_RELAY8						33121
-#define BTN_STATE_RELAY					33122 // button that applies relay state
+#define IDC_RELAY1_ON_OFF				33122
+#define IDC_RELAY2_ON_OFF				33123
+#define IDC_RELAY3_ON_OFF				33124
+#define IDC_RELAY4_ON_OFF				33125
+#define IDC_RELAY5_ON_OFF				33126
+#define IDC_RELAY6_ON_OFF				33127
+#define IDC_RELAY7_ON_OFF				33128
+#define IDC_RELAY8_ON_OFF				33129
+#define BTN_STATE_RELAY					33130 // button that applies relay state
 
-#define IDC_TEMP_SENSOR1				33123
-#define IDC_TEMP_SENSOR2				33124
-#define IDC_TEMP_SENSOR3				33125
-#define IDC_TEMP_SENSOR4				33126
-#define IDC_ALERT_SENSOR1				33127
-#define IDC_ALERT_SENSOR2				33128
-#define IDC_ALERT_SENSOR3				33129
-#define IDC_ALERT_SENSOR4				33130
-#define IDC_TEMP_HI_SENSOR1				33131
-#define IDC_TEMP_HI_SENSOR2				33132
-#define IDC_TEMP_HI_SENSOR3				33133
-#define IDC_TEMP_HI_SENSOR4				33134
-#define IDC_TEMP_LO_SENSOR1				33135
-#define IDC_TEMP_LO_SENSOR2				33136
-#define IDC_TEMP_LO_SENSOR3				33137
-#define IDC_TEMP_LO_SENSOR4				33138
-#define BTN_RANGE_SENSOR				33139 // button that applies temp range
+#define IDC_TEMP_SENSOR1				33131
+#define IDC_TEMP_SENSOR2				33132
+#define IDC_TEMP_SENSOR3				33133
+#define IDC_TEMP_SENSOR4				33134
+#define IDC_ALERT_SENSOR1				33135
+#define IDC_ALERT_SENSOR2				33136
+#define IDC_ALERT_SENSOR3				33137
+#define IDC_ALERT_SENSOR4				33138
+#define IDC_TEMP_HI_SENSOR1				33139
+#define IDC_TEMP_HI_SENSOR2				33140
+#define IDC_TEMP_HI_SENSOR3				33141
+#define IDC_TEMP_HI_SENSOR4				33142
+#define IDC_TEMP_LO_SENSOR1				33143
+#define IDC_TEMP_LO_SENSOR2				33144
+#define IDC_TEMP_LO_SENSOR3				33145
+#define IDC_TEMP_LO_SENSOR4				33146
+#define BTN_RANGE_SENSOR				33147 // button that applies temp range
 // serial communication
 #define WR_DATE_TIME					33600 // 0x00008340 write date and time to STM32, to initialize the RTC
 #define WR_STATE_FAN					33601 // 0x00008341 write state fan

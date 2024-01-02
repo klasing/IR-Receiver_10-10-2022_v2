@@ -84,22 +84,6 @@ BOOL setStateFan(const FRAME& oFrame)
             , (WPARAM)0
             , (LPARAM)L"ON"
         );
-    /*
-	(((UINT8)oFrame.payload[1] >> 7) == 0) ?
-		// fan is off
-		SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-			, BM_SETCHECK
-			, (WPARAM)BST_UNCHECKED
-			, (LPARAM)0
-		)
-		:
-		// fan is on
-		SendMessage(GetDlgItem(g_hWndDlgTab2, IDC_FAN_ON)
-			, BM_SETCHECK
-			, (WPARAM)BST_CHECKED
-			, (LPARAM)0
-		);
-    */
     // percentagePWM
     // value lies between 0 .. 99, adjust this value to 1 .. 100
     // add 1 to the value given in oFrame.payload[1]

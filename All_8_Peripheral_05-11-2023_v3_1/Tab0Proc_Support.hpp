@@ -280,6 +280,21 @@ BOOL date_time_for_serial(UCHAR* pszDateTime)
     // day......: t.tm_mday
     // month....: (t.tm_mon + 1)
     // year.....: (t.tm_year % 100)
+    sprintf_s((char*)pszDateTime, (size_t)LEN_DATE_TIME + 2, "%c%c%c%c%c%c%c%c"
+        // avoid conflict with ACK in STM32
+        // place date/time in OFFSET_PAYLOAD + 1
+        , ' ' // dummy
+        // size pszDateTime buffer is
+        // LEN_DATE_TIME plus one space for null character
+        , ((t.tm_hour / 10) << 4) | (t.tm_hour % 10)
+        , ((t.tm_min / 10) << 4) | (t.tm_min % 10)
+        , ((t.tm_sec / 10) << 4) | (t.tm_sec % 10)
+        , ((t.tm_mday / 10) << 4) | (t.tm_mday % 10)
+        , ((t.tm_mon / 10) << 4) | (t.tm_mon % 10)
+        , (((t.tm_year % 100) / 10) << 4) | ((t.tm_year % 100) % 10)
+        , t.tm_wday
+    );
+    /*
     sprintf_s((char*)pszDateTime, (size_t)LEN_DATE_TIME + 1, "%c%c%c%c%c%c%c"
         // size pszDateTime buffer is
         // LEN_DATE_TIME plus one space for null character
@@ -291,6 +306,7 @@ BOOL date_time_for_serial(UCHAR* pszDateTime)
         , (((t.tm_year % 100) / 10) << 4) | ((t.tm_year % 100) % 10)
         , t.tm_wday
     );
+    */
 
     return EXIT_SUCCESS;
 }
@@ -322,6 +338,21 @@ BOOL set_date_time(const UCHAR* pszDateTime)
         , { L"dec" }
     };
     UCHAR idx_month = 0;
+    switch (pszDateTime[5])
+    {
+    case 0b00010000: // (BCD format)
+        // November
+        idx_month = 10;
+        break;
+    case 0b00010001: // (BCD format)
+        // Decomber
+        idx_month = 11;
+        break;
+    default: // (0 - 9 in BCD format)
+        // January up to October
+        idx_month = pszDateTime[4];
+    }
+    /*
     switch (pszDateTime[4])
     {
     case 0b00010000: // (BCD format)
@@ -336,8 +367,24 @@ BOOL set_date_time(const UCHAR* pszDateTime)
         // January up to October
         idx_month = pszDateTime[4];
     }
+    */
     const UCHAR lenDateTime = 24;
     WCHAR wstrDateTime[lenDateTime] = { L'\0' };
+    wsprintf(wstrDateTime, L"%s %d%d-%s-20%d%d %d%d:%d%d:%d%d"
+        , wstrDow[pszDateTime[7]]
+        , (pszDateTime[4] & 0xF0) >> 4
+        , pszDateTime[4] & 0x0F
+        , wstrMonth[idx_month]
+        , (pszDateTime[6] & 0xF0) >> 4
+        , pszDateTime[6] & 0x0F
+        , (pszDateTime[1] & 0xF0) >> 4
+        , pszDateTime[1] & 0x0F
+        , (pszDateTime[2] & 0xF0) >> 4
+        , pszDateTime[2] & 0x0F
+        , (pszDateTime[3] & 0xF0) >> 4
+        , pszDateTime[3] & 0x0F
+    );
+    /*
     wsprintf(wstrDateTime, L"%s %d%d-%s-20%d%d %d%d:%d%d:%d%d"
         , wstrDow[pszDateTime[6]]
         , (pszDateTime[3] & 0xF0) >> 4
@@ -352,6 +399,7 @@ BOOL set_date_time(const UCHAR* pszDateTime)
         , (pszDateTime[2] & 0xF0) >> 4
         , pszDateTime[2] & 0x0F
     );
+    */
     g_oStatusbar.setTextStatusbar(1, wstrDateTime);
 
     return EXIT_SUCCESS;
@@ -406,16 +454,16 @@ BOOL transmit(LPVOID lpVoid)
     if (g_queue.empty()) return EXIT_FAILURE;
     FRAME oFrame = g_queue.front();
 
-    /*if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");*/
+    if (oFrame.cmd == WR_DATE_TIME) OutputDebugString(L"transmit WR_DATE_TIME\n");
     /*if (oFrame.cmd == WR_STATE_FAN) OutputDebugString(L"transmit WR_STATE_FAN\n");*/
     /*if (oFrame.cmd == WR_STATE_RELAY) OutputDebugString(L"transmit WR_STATE_RELAY\n");*/
     /*if (oFrame.cmd == WR_RANGE_SENSOR) OutputDebugString(L"transmit WR_RANGE_SENSOR\n");*/
     /*if (oFrame.cmd == WR_YAMAHA_REMOTE) OutputDebugString(L"transmit WR_YAMAHA_REMOTE\n");*/
-    /*if (oFrame.cmd == WR_NOP) OutputDebugString(L"transmit WR_NOP\n");*/
+    if (oFrame.cmd == WR_NOP) OutputDebugString(L"transmit WR_NOP\n");
     /*if (oFrame.cmd == RD_IR_REMOTE) OutputDebugString(L"transmit RD_IR_REMOTE\n");*/
-    /*if (oFrame.cmd == RD_STATE_FAN) OutputDebugString(L"transmit RD_STATE_FAN\n");*/
-    /*if (oFrame.cmd == RD_STATE_RELAY) OutputDebugString(L"transmit RD_STATE_RELAY\n");*/
-    /*if (oFrame.cmd == RD_RANGE_SENSOR) OutputDebugString(L"transmit RD_RANGE_SENSOR\n");*/
+    if (oFrame.cmd == RD_STATE_FAN) OutputDebugString(L"transmit RD_STATE_FAN\n");
+    if (oFrame.cmd == RD_STATE_RELAY) OutputDebugString(L"transmit RD_STATE_RELAY\n");
+    if (oFrame.cmd == RD_RANGE_SENSOR) OutputDebugString(L"transmit RD_RANGE_SENSOR\n");
     /*if (oFrame.cmd == RD_TEMP_SENSOR) OutputDebugString(L"transmit RD_TEMP_SENSOR\n");*/
 
     // transfer frame to buffer
@@ -470,7 +518,7 @@ BOOL transmit(LPVOID lpVoid)
             , "%02d byte written\n"
             , dwNofByteTransferred
         );
-        /*OutputDebugStringA(g_chTextBuffer);*/
+        OutputDebugStringA(g_chTextBuffer);
     }
 
     return EXIT_SUCCESS;
@@ -560,12 +608,14 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"ACK WR_DATE_TIME\n");
                 if (g_queue.size() > 0) g_queue.pop();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"NAK WR_DATE_TIME\n");
                 return EXIT_FAILURE;
             }
@@ -575,13 +625,16 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"ACK WR_STATE_FAN\n");
-                if (g_queue.size() > 0) g_queue.pop();
                 enableButtonStateFan();
+                if (g_queue.size() > 0) g_queue.pop();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"NAK WR_STATE_FAN\n");
                 return EXIT_FAILURE;
             }
@@ -591,13 +644,16 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"ACK WR_STATE_RELAY\n");
-                if (g_queue.size() > 0) g_queue.pop();
                 enableButtonStateRelay();
+                if (g_queue.size() > 0) g_queue.pop();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"NAK WR_STATE_RELAY\n");
                 return EXIT_FAILURE;
             }
@@ -607,13 +663,16 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"ACK WR_RANGE_SENSOR\n");
-                if (g_queue.size() > 0) g_queue.pop();
                 enableButtonRangeSensor();
+                if (g_queue.size() > 0) g_queue.pop();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"NAK WR_RANGE_SENSOR\n");
                 return EXIT_FAILURE;
             }
@@ -623,16 +682,17 @@ BOOL receive(LPVOID lpVoid)
         {
             if ((g_chBuffer[OFFSET_PAYLOAD] & 0b01111111) == ACK)
             {
-                /*OutputDebugString(L"receive ACK WR_YAMAHA_REMOTE\n");*/
-                /*OutputDebugStringA(g_chTextBuffer);*/
+                OutputDebugString(L"receive ACK WR_YAMAHA_REMOTE\n");
+                OutputDebugStringA(g_chTextBuffer);
                 setIrRemote(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
-                /*OutputDebugString(L"receive NAK WR_YAMAHA_REMOTE\n");*/
-                /*OutputDebugStringA(g_chTextBuffer);*/
+                OutputDebugString(L"receive NAK WR_YAMAHA_REMOTE\n");
+                OutputDebugStringA(g_chTextBuffer);
                 return EXIT_FAILURE;
             }
 
@@ -642,16 +702,16 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
-                /*OutputDebugString(L"receive ACK WR_NOP\n");*/
-                /*OutputDebugStringA(g_chTextBuffer);*/
+                OutputDebugStringA(g_chTextBuffer);
+                OutputDebugString(L"receive ACK WR_NOP\n");
                 if (g_queue.size() > 0) g_queue.pop();
                 if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
-                /*OutputDebugString(L"receive NAK WR_NOP\n");*/
-                /*OutputDebugStringA(g_chTextBuffer);*/
+                OutputDebugStringA(g_chTextBuffer);
+                OutputDebugString(L"receive NAK WR_NOP\n");
                 return EXIT_FAILURE;
             }
 
@@ -661,16 +721,17 @@ BOOL receive(LPVOID lpVoid)
         {
             if ((g_chBuffer[OFFSET_PAYLOAD] & 0b01111111) == ACK)
             {
-                /*OutputDebugString(L"receive ACK RD_IR_REMOTE\n");*/
-                /*OutputDebugStringA(g_chTextBuffer);*/
+                OutputDebugStringA(g_chTextBuffer);
+                OutputDebugString(L"receive ACK RD_IR_REMOTE\n");
                 setIrRemote(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
-                /*OutputDebugString(L"receive NAK RD_IR_REMOTE\n");*/
-                /*OutputDebugStringA(g_chTextBuffer);*/
+                OutputDebugStringA(g_chTextBuffer);
+                OutputDebugString(L"receive NAK RD_IR_REMOTE\n");
                 return EXIT_FAILURE;
             }
             break;
@@ -679,13 +740,16 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"ACK RD_STATE_FAN\n");
                 setStateFan(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"NAK RD_STATE_FAN\n");
                 return EXIT_FAILURE;
             }
@@ -695,13 +759,16 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"ACK RD_STATE_RELAY\n");
                 setStateRelay(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"NAK RD_STATE_RELAY\n");
                 return EXIT_FAILURE;
             }
@@ -711,14 +778,16 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"ACK RD_RANGE_SENSOR\n");
                 setRangeSensor(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
-                reorganize_queue();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"NAK RD_RANGE_SENSOR\n");
                 return EXIT_FAILURE;
             }
@@ -728,14 +797,16 @@ BOOL receive(LPVOID lpVoid)
         {
             if (g_chBuffer[OFFSET_PAYLOAD] == ACK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"ACK RD_TEMP_SENSOR\n");
                 setTempSensor(g_oFrame);
                 if (g_queue.size() > 0) g_queue.pop();
-                reorganize_queue();
+                if (g_queue.size() == 0) reorganize_queue();
                 return EXIT_SUCCESS;
             }
             if (g_chBuffer[OFFSET_PAYLOAD] == NAK)
             {
+                OutputDebugStringA(g_chTextBuffer);
                 OutputDebugString(L"NAK RD_TEMP_SENSOR\n");
                 return EXIT_FAILURE;
             }
@@ -753,6 +824,12 @@ BOOL receive(LPVOID lpVoid)
 BOOL reorganize_queue()
 {
     g_oFrame.cmd = RD_IR_REMOTE;
+    g_queue.push(g_oFrame);
+    g_oFrame.cmd = RD_STATE_FAN;
+    g_queue.push(g_oFrame);
+    g_oFrame.cmd = RD_STATE_RELAY;
+    g_queue.push(g_oFrame);
+    g_oFrame.cmd = RD_TEMP_SENSOR;
     g_queue.push(g_oFrame);
     g_oFrame.cmd = WR_NOP;
     g_queue.push(g_oFrame);
