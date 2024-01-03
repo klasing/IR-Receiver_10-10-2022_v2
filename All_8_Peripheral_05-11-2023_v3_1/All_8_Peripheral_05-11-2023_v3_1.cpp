@@ -1,5 +1,15 @@
 // All_8_Peripheral_05-11-2023_v3_1.cpp : Defines the entry point for the application.
 //
+/*
+* Try to use:
+* HPOWERNOTIFY RegisterPowerSettingNotification(
+*  [in] HANDLE  hRecipient,
+*  [in] LPCGUID PowerSettingGuid,
+*  [in] DWORD   Flags
+* );
+* to detect when Windows goes into sleep mode
+* maybe the connection can be stabelized ( broken ) before
+*/
 
 //****************************************************************************
 //*                     include
