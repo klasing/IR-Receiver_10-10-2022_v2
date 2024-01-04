@@ -26,3 +26,6 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <string>
 #include <ctime>
 #include <queue>
+
+#include <powrprof.h>
+#pragma comment(lib, "PowrProf.lib")

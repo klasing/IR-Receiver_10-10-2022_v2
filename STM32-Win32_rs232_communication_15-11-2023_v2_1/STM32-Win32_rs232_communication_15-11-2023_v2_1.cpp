@@ -250,6 +250,15 @@ INT_PTR CALLBACK Tab0Proc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             , wParam
         );
     } // eof WM_COMMAND
+    case WM_POWERBROADCAST:
+    {
+        onWmPowerBroadcast(hDlg
+            , wParam
+            , lParam
+        );
+
+        return (INT_PTR)TRUE;
+    } // eof WM_POWERBROADCAST
     } // eof switch
 
     return (INT_PTR)FALSE;

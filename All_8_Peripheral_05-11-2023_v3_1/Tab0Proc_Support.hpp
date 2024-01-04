@@ -61,6 +61,13 @@ BOOL onWmInitDialog_Tab0Proc(const HWND& hDlg)
         , (LPARAM)TRUE
     );
 
+    // register for WM_POWERBROADCAST
+    DWORD dwFlags = DEVICE_NOTIFY_WINDOW_HANDLE;
+    HPOWERNOTIFY hPwrNotify = RegisterPowerSettingNotification(hDlg
+        , (LPCGUID)&GUID_SESSION_USER_PRESENCE
+        , dwFlags
+    );
+
     return EXIT_SUCCESS;
 }
 
@@ -181,6 +188,64 @@ INT_PTR onWmCommand_Tab0Proc(const HWND& hDlg
     return (INT_PTR)FALSE;
 }
 
+
+//****************************************************************************
+//*                     onWmPowerBroadcast
+//****************************************************************************
+BOOL onWmPowerBroadcast(const HWND& hDlg
+    , const WPARAM& wParam
+    , const LPARAM& lParam
+)
+{
+    if (wParam == PBT_POWERSETTINGCHANGE)
+    {
+        POWERBROADCAST_SETTING* pwrbc_setting =
+            (POWERBROADCAST_SETTING*)lParam;
+        // 2 = PowerUserInactive
+        // Windows will fall into sleep mode
+        if (pwrbc_setting->Data[0] == 2)
+        {
+            if (g_hComm != INVALID_HANDLE_VALUE)
+            {
+                // disconnect from STM32
+                SendMessage(hDlg
+                    , WM_COMMAND
+                    , (WPARAM)DISCONNECT_SERIAL
+                    , (LPARAM)0
+                );
+            }
+        }
+    }
+    
+    return EXIT_SUCCESS;
+}
+/*
+    g_oStatusbar.setTextStatusbar(3, L"WM_POWERBROADCAST");
+    if (wParam == PBT_POWERSETTINGCHANGE)
+    {
+        g_oStatusbar.setTextStatusbar(3, L"PBT_POWERSETTINGCHANGE");
+        POWERBROADCAST_SETTING* pwrbc_setting =
+            (POWERBROADCAST_SETTING*)lParam;
+        // 0 = PowerUserPresent
+        if (pwrbc_setting->Data[0] == 0)
+        {
+            g_oStatusbar.setTextStatusbar(3, L"PowerUserPresent");
+        }
+        // 2 = PowerUserInactive
+        if (pwrbc_setting->Data[0] == 2)
+        {
+            g_oStatusbar.setTextStatusbar(2, L"PowerUserInactive");
+            if (g_hComm != INVALID_HANDLE_VALUE)
+            {
+                SendMessage(hDlg
+                    , WM_COMMAND
+                    , (WPARAM)DISCONNECT_SERIAL
+                    , (LPARAM)0
+                );
+            }
+        }
+    }
+*/
 //****************************************************************************
 //*                     connect
 //****************************************************************************

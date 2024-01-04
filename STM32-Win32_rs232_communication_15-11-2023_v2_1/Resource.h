@@ -18,7 +18,7 @@
 #define OFFSET_PAYLOAD					8
 #define MAX_LEN_TEXT_BUFFER				MAX_LEN_ENTRY
 #define MAX_BUFFER_SERIAL				512
-#define DELAY_TIME_SERIAL				25 // (ms) roundtrip is 50 ms
+#define DELAY_TIME_SERIAL				500 // (ms) roundtrip is 1000 ms
 // control
 // common
 #define IDC_STATUSBAR					33000
@@ -29,7 +29,7 @@
 #define IDC_NOF_TRANSMISSION			33102
 #define IDC_NOF_ERROR_CRC				33103
 // serial communication
-#define WR_NOP							33699 // 0x000083A3 no operation
+#define WR_NOP							33609 // 0x000083A3 write no operation
 
 #define IDT_TIMER						33999
 
